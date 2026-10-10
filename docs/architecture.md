@@ -73,7 +73,7 @@ The app is split into two distinct zones:
 
 ### 2. Dashboard (protected)
 
-- Requires `isAuthenticated = "true"` in `localStorage`
+- Requires a signed-in Pincer session (`useSession().connected`, see `docs/app/login.md`)
 - Uses `AppSidebar.tsx` layout
 - Covers core product features: AI Agents, Staff, Teams, Workflows, Integrations, Chat, Tasks, etc.
 - Purpose: product functionality

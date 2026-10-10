@@ -24,7 +24,7 @@
  * workforce/teams API, so its headcount and productivity figures were demo
  * numbers with nothing behind them.
  */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   ArrowUpRight,
   Bot,
@@ -76,8 +76,8 @@ function ConnectStrip() {
     <div className="plat-panel mb-6 flex flex-wrap items-center gap-3 !py-3.5">
       <Plug className="h-4 w-4 shrink-0" style={{ color: 'var(--text-5)' }} />
       <p className="flex-1 text-xs" style={{ color: 'var(--text-3)' }}>
-        Not connected to a Pincer backend — the live sections below are empty. Connect this
-        browser with the shared bearer token to see real spend, activity and schedules.
+        Not connected to a Pincer backend — the live sections below are empty. Sign in again
+        to see real spend, activity and schedules.
       </p>
       <Link to="/login" className="plat-btn !h-8 !px-4 !text-xs">
         Connect (Login → Token)
@@ -419,7 +419,6 @@ function AutomationCard() {
 // ── Page ─────────────────────────────────────────────────────────────
 
 const Dashboard = () => {
-  const navigate = useNavigate();
   const [wizardOpen, setWizardOpen] = useState(false);
   const connected = isConnected();
   const activityDetail = useDetail(
@@ -427,14 +426,6 @@ const Dashboard = () => {
     'The full audit log, with volume and failure rate over time',
     <ActivityDetail />,
   );
-
-  useEffect(() => {
-    const isAuthenticated =
-      localStorage.getItem('isAuthenticated') || sessionStorage.getItem('isAuthenticated');
-    if (isAuthenticated !== 'true') {
-      navigate('/login');
-    }
-  }, [navigate]);
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -8,8 +8,8 @@ Filled in FE0 (2026-09-06). A later sprint spec that says "the API client" or "r
 | Owner-app entry (view switch) | `src/pages/telephony/TelephonyHome.tsx` |
 | Route constants | `src/pages/telephony/_lib/routes.ts` — `ROUTES.HOME` (= Übersicht), `ROUTES.LOGIN`, `ROUTES.ASSISTANT`, `ROUTES.CALLS`, `ROUTES.CALL(sid)`, `ROUTES.SETTINGS_PROFILE`, …; `OWNER_SURFACES` (placeholder rows), `TELEPHONY_STATIC_PATHS` |
 | Layout shell (desktop rail / mobile tabs) | `src/pages/telephony/_components/shared/TelephonyLayout.tsx` (platform sidebar + inset) · `_components/sidebar/TelephonyMiniRail.tsx` (desktop, ≥ md) · `_components/sidebar/MobileTabBar.tsx` (bottom tabs + "Mehr" sheet, < md) · nav model `_components/sidebar/telephonyNav.tsx` (`NAV_GROUPS`, `PRIMARY_ITEMS`, `SETUP_ITEM` submenu, `useVisibleNavGroups`, `isNavItemActive`); rail collapses (`voice.rail.collapsed`) |
-| Login page | `src/pages/telephony/OwnerLoginPage.tsx` at `ROUTES.LOGIN` (`/telephony/login`, outside ProtectedRoute) — see `login.md` |
-| Auth guard | `src/pages/telephony/_components/shared/VoiceAuthGuard.tsx` (connection required; 401 → `/telephony/login?returnTo=`) |
+| Login page | `src/pages/telephony/OwnerLoginPage.tsx` at `ROUTES.LOGIN` (`/telephony/login`, outside ProtectedRoute): name or email + password — see `login.md` |
+| Auth guard | `src/components/ProtectedRoute.tsx` reads `useSession().connected`; signed out → `/telephony/login?returnTo=` for `/telephony*`, else `/login?returnTo=`. `VoiceAuthGuard.tsx` inside the owner shell is a second line behind it |
 | Status banner | `src/pages/telephony/_components/shared/StatusBanner.tsx` (`useBannerState`: checking / offline / sip / inactive / active) |
 | Übersicht | `src/pages/telephony/_components/overview/OverviewView.tsx` + `TodayCard`, `ActiveCallsCard`, `AttentionCard`, `StatusCard`, `CostsCard`, `ResidencyChip`, `ComputedBadge` |
 | Anrufe | `src/pages/telephony/_components/owner-calls/*` (`CallsListView`, `CallDetailPage`, `TranscriptView`, `AttentionView`, `ResultChip`, `IntentChip`, `CallFiltersBar`, `LiveCallsSection`, `CsvExportButton`, `OutcomeSummary`, `AppointmentSummary`, `BriefingSummary`, `OutboundDialog`) · data `src/lib/api/owner/calls.ts` — see `calls.md` |
@@ -37,12 +37,12 @@ Filled in FE0 (2026-09-06). A later sprint spec that says "the API client" or "r
 | Role gating | `can()` / `useCan()` / `canRole()` in `src/stores/session.ts` (`OwnerAction`, `ROLE_ACTIONS`) |
 | User menu | `src/pages/telephony/_components/sidebar/UserMenu.tsx` (language DE/EN, logout; `useLogout`) |
 | Per-route error boundary | `src/pages/telephony/_components/shared/ViewErrorBoundary.tsx` |
-| API client | `src/lib/api/client.ts` — `api.get/post/put/patch/del`, `request()`, `ApiError`, `onUnauthorized`, `qs()`; `apiFetch` in `voice.ts` is an alias |
+| API client | `src/lib/api/client.ts` — `api.get/post/put/patch/del`, `request()`, `publicRequest()`, `ApiError` (`code` = the auth layer's `error`), `onUnauthorized` (session lost), `qs()`; `src/lib/api/auth.ts` — `authApi.login/logout/me`, `loginErrorKind`; token refresh lives in `authedFetch` (`src/lib/pincerClient.ts`); `apiFetch` in `voice.ts` is an alias |
 | Tenant header | `src/lib/api/tenant.ts` (`X-Tenant-Id` only when set) |
 | Generated types | `src/lib/api/generated/schema.d.ts` (+ `openapi.json` snapshot); `Schema<"CallSummary">` via `client.ts` |
 | Contract lock & scripts | `api-contract.lock` · `scripts/gen-api.mjs` (`npm run gen:api`) · `scripts/check-api.mjs` (`npm run check:api`) · `scripts/api-contract-lib.mjs` |
 | Query hooks folder | `src/lib/api/voice.ts` (voice endpoints, one file) · `src/lib/api/owner/<feature>.ts` for owner-app features (`overview.ts`: today stats, attention, residency, doctor, costs, calendar, telephony facts · `calls.ts`: owner history/detail vocabulary, filters, transcript, CSV) |
-| Session store | `src/stores/session.ts` — `useSession` (`connected`, `remembered`, `apiUrl`, `tenantId`, `role`, `userId`, `locale`, `returnTo`, `login()`, `logout()`), `consumeMagicLink`, `defaultApiUrl`, `resolveVoiceLocale`, `safeReturnTo` |
+| Session store | `src/stores/session.ts` — `useSession` (`connected`, `remembered`, `apiUrl`, `tenantId`, `role`, `userId`, `locale`, `returnTo`, `identity`, `login({identifier, password, remember})`, `logout()`), `defaultApiUrl`, `resolveReturnTo`, `resolveVoiceLocale`, `safeReturnTo` |
 | i18n init + namespaces | `src/i18n/index.ts` (platform) · `src/i18n/voice.ts` (owner app: `useVoiceT(ns)`, `voiceT`, `intlLocale`, `VOICE_NAMESPACES`) · `src/i18n/locales/{de,en}/voice/{common,nav,placeholders,auth,overview}.json`; one file per feature |
 | i18n lint & check | `eslint.config.js` (`OWNER_APP_FILES`, `i18next/no-literal-string`) · `scripts/i18n-check.mjs` (`npm run i18n:check`) |
 | UI primitives | `src/components/ui/*` (shadcn) + `empty-state.tsx`, `data-table.tsx` (FE0) — see `components.md` |

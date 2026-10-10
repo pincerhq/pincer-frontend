@@ -13,7 +13,8 @@ import {
 // Auth stays single-source: the voice endpoints live on the same Pincer
 // backend as /api/chat and /api/status, so the token, the per-browser
 // `X-Pincer-User` id and the error shape all come from pincerClient.
-import { getAuth, authHeaders, isConnected, PincerError } from "@/lib/pincerClient";
+import { authedFetch, isConnected, PincerError } from "@/lib/pincerClient";
+import { useSession } from "@/stores/session";
 import { request } from "@/lib/api/client";
 
 // Re-exported so voice surfaces have one import for "is there a backend?".
@@ -550,9 +551,6 @@ export function useLiveCallDetail(callSid: string | null) {
 const SUMMARIZER_ID_KEY = "pincer.web.summarizerId";
 
 export async function generateCallSummary(transcript: string): Promise<string> {
-  const auth = getAuth();
-  if (!auth) throw new PincerError("Not connected to Pincer backend", 0);
-
   let sid = localStorage.getItem(SUMMARIZER_ID_KEY);
   if (!sid) {
     sid = crypto.randomUUID();
@@ -568,11 +566,10 @@ export async function generateCallSummary(transcript: string): Promise<string> {
     "If the call has no business content (e.g. a test call), say that in one sentence.\n\n" +
     "TRANSCRIPT:\n" + transcript;
 
-  const res = await fetch(`${auth.apiUrl}/api/chat/message`, {
+  const res = await authedFetch("/api/chat/message", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${auth.token}`,
       "X-Pincer-User": `call-summarizer-${sid}`,
     },
     body: JSON.stringify({ text: prompt }),
@@ -813,11 +810,8 @@ async function runApprovalStream(onFrame: (a: VoiceApproval) => void) {
 
   while (streamAbort && !streamAbort.signal.aborted) {
     try {
-      const auth = getAuth();
-      if (!auth) throw new PincerError("Not connected", 0);
-
-      const res = await fetch(`${auth.apiUrl}${APPROVALS_STREAM_PATH}`, {
-        headers: { Accept: "text/event-stream", ...authHeaders(auth) },
+      const res = await authedFetch(APPROVALS_STREAM_PATH, {
+        headers: { Accept: "text/event-stream" },
         signal: streamAbort.signal,
       });
       if (!res.ok || !res.body) throw new PincerError(`HTTP ${res.status}`, res.status);
@@ -833,8 +827,14 @@ async function runApprovalStream(onFrame: (a: VoiceApproval) => void) {
           /* a malformed frame is dropped, not acted on */
         }
       }
-    } catch {
-      /* fall through to the backoff below — polling covers the gap */
+    } catch (err) {
+      // Signed out — including a 401 that just ended the session: retrying
+      // cannot help. The hook starts a new stream on the next sign-in.
+      if (err instanceof PincerError && err.status === 0) {
+        setStreamUp(false);
+        return;
+      }
+      /* otherwise fall through to the backoff below — polling covers the gap */
     }
 
     setStreamUp(false);
@@ -854,19 +854,22 @@ async function runApprovalStream(onFrame: (a: VoiceApproval) => void) {
 export function usePendingApprovals() {
   const qc = useQueryClient();
   const [streaming, setStreaming] = useState(false);
+  // Mounted at the app root, so it outlives sign-in and sign-out: follow the
+  // session instead of what was true at mount.
+  const connected = useSession((s) => s.connected);
 
   const query = useQuery<VoiceApproval[], PincerError>({
     queryKey: APPROVALS_KEY,
     queryFn: async () => asApprovalList(await apiFetch("/api/voice/approvals/pending")),
     refetchInterval: streaming ? APPROVAL_POLL_STREAMING_MS : APPROVAL_POLL_MS,
-    enabled: isConnected(),
+    enabled: connected,
     // A backend without the endpoint answers 404; retrying that every 3s is
     // not useful.
     retry: false,
   });
 
   useEffect(() => {
-    if (!isConnected()) return;
+    if (!connected) return;
 
     const onUp = (up: boolean) => setStreaming(up);
     streamStateListeners.add(onUp);
@@ -900,7 +903,7 @@ export function usePendingApprovals() {
         streamAbort = null;
       }
     };
-  }, [qc]);
+  }, [qc, connected]);
 
   // What the server last listed, plus anything the stream announced since,
   // minus anything already expired.
@@ -933,11 +936,9 @@ export function useDecideApproval() {
     { id: string; decision: "approve" | "deny" }
   >({
     mutationFn: async ({ id, decision }) => {
-      const auth = getAuth();
-      if (!auth) throw new PincerError("Not connected to Pincer backend", 0);
-      const res = await fetch(`${auth.apiUrl}/api/voice/approvals/${id}`, {
+      const res = await authedFetch(`/api/voice/approvals/${id}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders(auth) },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ decision }),
       });
       const body = (await res.json().catch(() => ({}))) as {

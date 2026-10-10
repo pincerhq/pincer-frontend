@@ -69,9 +69,13 @@ import { cn } from "@/lib/utils";
 
 ## Authentication (Dev/Demo)
 
-Authentication uses `localStorage`. To log in during development use the hardcoded demo credentials on the `/login` page:
+Sign-in is real: `/login` and `/telephony/login` post a Pincer identity's name or email and password to the API at `VITE_PINCER_API_URL` (default: this app's origin). There are no demo credentials and no flag to set in DevTools. Create an identity on the API side first:
 
-- **Username:** `admin`
-- **Password:** `admin`
+```sh
+cd ../pincer
+uv run pincer identity create alice --email alice@example.com --display-name Alice
+uv run pincer identity set-password alice
+PINCER_VOICE_ENABLED=1 uv run pincer run
+```
 
-The `ProtectedRoute` component checks `localStorage.getItem("isAuthenticated")`. Set it to `"true"` manually in DevTools to bypass the login page if needed.
+Then put `VITE_PINCER_API_URL=http://localhost:<api port>` in `.env.local` and run `npm run dev` (port 3000 is on the API's dev CORS list). See `docs/app/login.md`.

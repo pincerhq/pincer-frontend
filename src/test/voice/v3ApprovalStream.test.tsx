@@ -15,6 +15,11 @@ vi.mock('@/lib/pincerClient', async (importOriginal) => {
     isConnected: () => true,
     getAuth: () => ({ apiUrl: 'http://backend.test', token: 't', userId: 'u' }),
     authHeaders: () => ({ Authorization: 'Bearer t' }),
+    authedFetch: (path: string, init: RequestInit = {}) =>
+      fetch(`http://backend.test${path}`, {
+        ...init,
+        headers: { Authorization: 'Bearer t', ...(init.headers as Record<string, string> | undefined) },
+      }),
   };
 });
 

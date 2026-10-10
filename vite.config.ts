@@ -17,6 +17,9 @@ const NOTES_API_TARGET = process.env.NOTES_API_TARGET ?? "http://localhost:8000"
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // `SIGNUP_ALLOWED` keeps its own name. Everything with these prefixes is
+  // inlined into the bundle, so neither may ever name a secret.
+  envPrefix: ["VITE_", "SIGNUP_"],
   server: {
     host: "::",
     port: 3000,

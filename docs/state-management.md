@@ -35,19 +35,19 @@ The context persists the theme choice to `localStorage` under the key `theme`.
 
 ### 4. Persisted State — `localStorage`
 
-Used for auth status and theme preference. Keys:
+Used for the session and theme preference. Keys:
 
 | Key | Values | Description |
 |-----|--------|-------------|
-| `isAuthenticated` | `"true"` / not set | Whether the user is logged in |
-| `userEmail` | string | The logged-in user's email |
+| `pincer.web.auth` | `{apiUrl, token, refreshToken, expiresAt, userId}` | The signed-in session. In `sessionStorage` by default, in `localStorage` only with "remember this device" |
 | `theme` | `"light"` / `"dark"` / `"system"` | Active theme |
 
-Read/write directly:
+Never read or write `pincer.web.auth` directly: `src/lib/pincerClient.ts` owns the record and `useSession` (`src/stores/session.ts`) is the single source of truth for "is someone signed in".
+
 ```ts
-localStorage.setItem("isAuthenticated", "true");
-localStorage.getItem("isAuthenticated");
-localStorage.removeItem("isAuthenticated");
+const connected = useSession((s) => s.connected);
+const identity = useSession((s) => s.identity); // { id, displayName, email } | null
+useSession.getState().logout();
 ```
 
 ### 5. Server State — TanStack React Query
@@ -75,7 +75,7 @@ Currently the app uses mock/static data in most pages. When real endpoints are w
 | Form values | `useForm` (React Hook Form) |
 | Currently selected item | `useState` or URL param |
 | Theme | `ThemeContext` + localStorage |
-| Auth status | `localStorage` |
+| Auth status | `useSession` (`src/stores/session.ts`) |
 | API data (future) | TanStack React Query |
 | Shared page-level data | Prop drilling or co-located context |
 
@@ -83,9 +83,12 @@ Currently the app uses mock/static data in most pages. When real endpoints are w
 
 ## Authentication Flow
 
-1. User submits login form on `/login`
-2. Credentials are checked (currently hardcoded: `admin` / `admin`)
-3. On success: `localStorage.setItem("isAuthenticated", "true")` + `localStorage.setItem("userEmail", email)`
-4. User is redirected to `/dashboard`
-5. `ProtectedRoute` reads `localStorage` on every protected render — if not set, redirects to `/login`
-6. Logout clears both localStorage keys and navigates to `/login`
+1. User submits name or email + password on `/login` (or `/telephony/login`)
+2. `useSession.getState().login()` posts them to `POST /api/auth/login`
+3. On success the access + refresh token pair is stored under `pincer.web.auth` and `/api/identity/me` fills `identity`
+4. User is redirected to `returnTo`, else `/dashboard`
+5. `ProtectedRoute` reads `connected` from the store — if false, redirects to the login with `returnTo`
+6. `authedFetch` refreshes the access token before it expires and once on a 401 `token_expired`; a rejected refresh signs the user out
+7. Logout clears the session locally, calls `POST /api/auth/logout`, and navigates to the login
+
+Details: `docs/app/login.md`.

@@ -12,8 +12,8 @@
  * Table chrome, filter pills and tab styling are kept from the old mocked page
  * so the platform still reads as one system.
  */
-import React, { useMemo, useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
@@ -363,8 +363,8 @@ function ConnectStrip() {
     <div className="plat-panel mb-6 flex flex-wrap items-center gap-3 !py-3.5">
       <Plug className="h-4 w-4 shrink-0" style={{ color: 'var(--text-5)' }} />
       <p className="flex-1 text-xs" style={{ color: 'var(--text-3)' }}>
-        Not connected to a Pincer backend — scheduled tasks and the journal are empty. Connect
-        this browser with the shared bearer token to see the real data.
+        Not connected to a Pincer backend — scheduled tasks and the journal are empty. Sign in
+        again to see the real data.
       </p>
       <Link to="/login" className="plat-btn !h-8 !px-4 !text-xs">
         Connect (Login → Token)
@@ -763,19 +763,11 @@ function JournalTable() {
 // ── Page ─────────────────────────────────────────────────────────────
 
 const TasksInner = () => {
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>('scheduled');
   const connected = isConnected();
 
   const { data: schedules } = useSchedules(true);
   const { data: audit } = useRecentAudit(100);
-
-  useEffect(() => {
-    const isAuthenticated = localStorage.getItem('isAuthenticated') || sessionStorage.getItem('isAuthenticated');
-    if (isAuthenticated !== 'true') {
-      navigate('/login');
-    }
-  }, [navigate]);
 
   const tabs = [
     { key: 'scheduled' as TabKey, label: `Scheduled${schedules ? ` (${schedules.total})` : ''}`, icon: Activity },

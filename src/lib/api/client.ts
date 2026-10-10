@@ -7,17 +7,23 @@
  * older `apiFetch` in `voice.ts` is an alias of it, so there is exactly one
  * place that knows about headers, error shapes and the 401 contract.
  *
- * Errors are normalised to `ApiError { status, detail, fields? }`:
+ * Errors are normalised to `ApiError { status, detail, fields?, code? }`:
  *   - a hand-raised HTTPException carries a sentence → `detail`
  *   - a FastAPI 422 carries `[{loc, msg}]` → `detail` is the messages joined,
  *     `fields` maps the field path ("phone_number", "hours.mon.0") to its msg
- *   - a 401 additionally notifies `onUnauthorized` listeners; the session
- *     store logs out and the auth guard redirects with `returnTo`.
+ *   - the auth layer adds a machine-readable `error` → `code`
+ *     ("invalid_credentials", "token_expired", "locked_out", …)
+ *
+ * The session's tokens are kept alive by `authedFetch` (refresh ahead of
+ * expiry, one retry on `token_expired`). When the session is actually lost,
+ * `onUnauthorized` listeners are notified; the session store logs out and the
+ * auth guard redirects with `returnTo`. A 401 that is a route's own answer is
+ * just an error.
  *
  * Rule 11 of the Block I spec: the server's `detail` is shown verbatim — it is
  * the single source of truth for validation text, so nothing here rewrites it.
  */
-import { authHeaders, getAuth, PincerError } from "@/lib/pincerClient";
+import { authedFetch, getAuth, normalizeApiUrl, onAuthLost, PincerError } from "@/lib/pincerClient";
 import type { components, paths } from "./generated/schema";
 import { getTenantId } from "./tenant";
 
@@ -32,11 +38,16 @@ export type ApiFieldErrors = Record<string, string>;
 
 export class ApiError extends PincerError {
   readonly fields?: ApiFieldErrors;
+  /** The auth layer's machine-readable `error` ("invalid_credentials", "locked_out", …). */
+  readonly code?: string;
+  /** Seconds from a 429's `Retry-After`, when the browser was allowed to read it. */
+  retryAfter?: number;
 
-  constructor(detail: string, status: number, fields?: ApiFieldErrors) {
+  constructor(detail: string, status: number, fields?: ApiFieldErrors, code?: string) {
     super(detail, status);
     this.name = "ApiError";
     if (fields && Object.keys(fields).length) this.fields = fields;
+    if (code) this.code = code;
   }
 
   /** The server's own sentence — what the UI shows. */
@@ -53,13 +64,24 @@ export class ApiError extends PincerError {
 type UnauthorizedListener = (err: ApiError) => void;
 const unauthorizedListeners = new Set<UnauthorizedListener>();
 
-/** Subscribe to 401s. Returns the unsubscribe function. */
+/** Subscribe to "the session was lost". Returns the unsubscribe function. */
 export function onUnauthorized(fn: UnauthorizedListener): () => void {
   unauthorizedListeners.add(fn);
   return () => {
     unauthorizedListeners.delete(fn);
   };
 }
+
+onAuthLost(() => {
+  const error = new ApiError("Session expired", 401, undefined, "invalid_token");
+  for (const fn of unauthorizedListeners) {
+    try {
+      fn(error);
+    } catch {
+      /* a listener must never mask the original error */
+    }
+  }
+});
 
 interface FastApiValidationItem {
   loc?: Array<string | number>;
@@ -162,35 +184,13 @@ function normalizeErrorBodyRaw(
   return { detail: fallback };
 }
 
-/**
- * Authenticated JSON request. `path` is absolute on the API ("/api/voice/calls").
- */
-export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const auth = getAuth();
-  if (!auth) throw new ApiError("Not connected to Pincer backend", 0);
+/** The auth layer's `error` code of an error body, if it carries one. */
+function errorCodeOf(body: unknown): string | undefined {
+  const code = body && typeof body === "object" ? (body as { error?: unknown }).error : undefined;
+  return typeof code === "string" && code ? code : undefined;
+}
 
-  const url = `${auth.apiUrl}${path}`;
-  const tenant = getTenantId();
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders(auth),
-        // C3 reads `X-Pincer-Tenant` (instance-admin impersonation, audited); `X-Tenant-Id` is the FE spec's belt-and-braces.
-        ...(tenant ? { "X-Pincer-Tenant": tenant, "X-Tenant-Id": tenant } : {}),
-        ...(init.headers ?? {}),
-      },
-    });
-  } catch (err) {
-    // The request never left the browser: a stored URL with no scheme, a dead
-    // host, a blocked origin. Engines word this differently and none of them
-    // name the address, so say which one failed.
-    const because = err instanceof Error ? err.message : String(err);
-    throw new ApiError(`Could not reach the Pincer backend at ${url} — ${because}`, 0);
-  }
-
+async function parseResponse<T>(res: Response, path: string): Promise<T> {
   if (!res.ok) {
     let body: unknown = null;
     try {
@@ -199,16 +199,10 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
       /* non-JSON error page; keep the status-only detail */
     }
     const { detail, fields } = normalizeErrorBody(body, res.status);
-    const error = new ApiError(detail, res.status, fields);
-    if (res.status === 401) {
-      for (const fn of unauthorizedListeners) {
-        try {
-          fn(error);
-        } catch {
-          /* a listener must never mask the original error */
-        }
-      }
-    }
+    const error = new ApiError(detail, res.status, fields, errorCodeOf(body));
+    // Not CORS-safelisted: readable same-origin, or when the API exposes it.
+    const retryAfter = Number(res.headers.get("Retry-After"));
+    if (Number.isFinite(retryAfter) && retryAfter > 0) error.retryAfter = retryAfter;
     throw error;
   }
 
@@ -224,6 +218,60 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     throw new ApiError(`No ${path} on this backend`, 404);
   }
   return res.json() as Promise<T>;
+}
+
+// The request never left the browser: a stored URL with no scheme, a dead
+// host, a blocked origin. Engines word this differently and none of them
+// name the address, so say which one failed.
+function unreachable(url: string, err: unknown): ApiError {
+  const because = err instanceof Error ? err.message : String(err);
+  return new ApiError(`Could not reach the Pincer backend at ${url} — ${because}`, 0);
+}
+
+/**
+ * Authenticated JSON request. `path` is absolute on the API ("/api/voice/calls").
+ */
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const auth = getAuth();
+  if (!auth) throw new ApiError("Not connected to Pincer backend", 0);
+
+  const tenant = getTenantId();
+  let res: Response;
+  try {
+    res = await authedFetch(path, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        // C3 reads `X-Pincer-Tenant` (instance-admin impersonation, audited); `X-Tenant-Id` is the FE spec's belt-and-braces.
+        ...(tenant ? { "X-Pincer-Tenant": tenant, "X-Tenant-Id": tenant } : {}),
+        ...(init.headers ?? {}),
+      },
+    });
+  } catch (err) {
+    // The refresh ahead of this request was rejected: the session is over.
+    if (err instanceof PincerError) throw new ApiError("Session expired", 401, undefined, "invalid_token");
+    throw unreachable(`${auth.apiUrl}${path}`, err);
+  }
+  return parseResponse<T>(res, path);
+}
+
+/**
+ * JSON request without credentials, for the routes that create a session
+ * (`/api/auth/login`). Never refreshes and never ends a session: a 401 here
+ * is an answer about what was typed.
+ */
+export async function publicRequest<T>(apiUrl: string, path: string, init: RequestInit = {}): Promise<T> {
+  const url = `${normalizeApiUrl(apiUrl)}${path}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...init,
+      headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
+    });
+  } catch (err) {
+    throw unreachable(url, err);
+  }
+  return parseResponse<T>(res, path);
 }
 
 function withBody(method: string, body: unknown, init: RequestInit = {}): RequestInit {

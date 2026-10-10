@@ -25,9 +25,22 @@ The dev server runs on **:3000** (`strictPort`).
 
 | App       | Service                                   | Configure with           |
 | --------- | ----------------------------------------- | ------------------------ |
-| Platform  | `pincer` (`/api/*`)                        | set at sign-in           |
-| Telephony | `pincer` (`/api/voice/*`)                  | set at sign-in           |
+| Platform  | `pincer` (`/api/*`)                        | `VITE_PINCER_API_URL` (default: same origin) |
+| Telephony | `pincer` (`/api/voice/*`)                  | `VITE_PINCER_API_URL` (default: same origin) |
 | Notes     | `pincer_extensions/notes_app` (`:8000`)    | `VITE_NOTES_API_URL`     |
+
+### Environment
+
+| Variable              | Default       | What it does |
+| --------------------- | ------------- | ------------ |
+| `VITE_PINCER_API_URL` | page origin   | The Pincer API both login pages sign in against |
+| `VITE_NOTES_API_URL`  | —             | Base URL of the Notes service (required for `/notes`) |
+| `VITE_NOTES_TOKEN`    | —             | A credential for the Notes service, when it does not accept the Pincer session's token |
+| `SIGNUP_ALLOWED`      | `false`       | `true` adds the `/signup` request-access page (build-time) |
+
+Sign-in is a Pincer identity's name or email plus password — see
+[`docs/app/login.md`](docs/app/login.md). There is no token or password to put
+in an env file; anything prefixed `VITE_` or `SIGNUP_` ends up in the bundle.
 
 Notes calls are same-origin-proxied in dev: point `VITE_NOTES_API_URL` at
 `/notes-api` in `.env.local` to use the proxy, and override the upstream with

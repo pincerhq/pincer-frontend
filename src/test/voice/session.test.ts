@@ -1,34 +1,32 @@
 /**
- * FE1 §7 — session store: magic-link parse + URL scrub, remember-device
- * storage, 401 logout, and `can()` gating.
+ * FE1 §7 — session store: password sign-in, remember-device storage, the
+ * identity from /api/identity/me, logout, session loss, and `can()` gating.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearAuth, getAuth, isAuthPersisted } from "@/lib/pincerClient";
 import { ApiError } from "@/lib/api/client";
-import { canRole, consumeMagicLink, defaultApiUrl, useSession } from "@/stores/session";
+import { canRole, defaultApiUrl, resolveReturnTo, safeReturnTo, useSession } from "@/stores/session";
 
-// A fresh Response per call: a body can only be read once.
-const jsonResponse = (body: unknown, status = 200) => () =>
-  Promise.resolve(new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } }));
+const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
+  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
 
-describe("consumeMagicLink", () => {
-  it("reads t (and api) and scrubs them from the address bar", () => {
-    const replace = vi.spyOn(history, "replaceState");
-    window.history.pushState({}, "", "/telephony/login?t=abc123&api=https%3A%2F%2Fapi.example&returnTo=%2Ftelephony%2Fcalls");
-    const link = consumeMagicLink();
-    expect(link).toEqual({ token: "abc123", apiUrl: "https://api.example" });
-    expect(window.location.search).toBe("?returnTo=%2Ftelephony%2Fcalls");
-    expect(window.location.href).not.toContain("abc123");
-    expect(replace).toHaveBeenCalled();
-    replace.mockRestore();
-  });
+const PAIR = {
+  access_token: "access-1",
+  refresh_token: "refresh-1",
+  token_type: "bearer",
+  expires_in: 1800,
+  pincer_user_id: "alice",
+};
+const ME = { pincer_user_id: "alice", display_name: "Alice", email: "alice@example.com", auth_method: "session" };
 
-  it("returns null when there is no token", () => {
-    window.history.pushState({}, "", "/telephony/login");
-    expect(consumeMagicLink()).toBeNull();
-    expect(consumeMagicLink("?returnTo=%2Fx")).toBeNull();
-  });
-});
+/** Answers by path; anything not listed is a 404. A fresh Response per call. */
+function backend(routes: Record<string, () => Response | Promise<Response>>) {
+  return async (url: RequestInfo | URL) => {
+    const path = new URL(String(url)).pathname;
+    const answer = routes[path];
+    return answer ? answer() : json({ detail: "Not found" }, 404);
+  };
+}
 
 describe("login", () => {
   const fetchMock = vi.fn<typeof fetch>();
@@ -45,61 +43,145 @@ describe("login", () => {
     clearAuth();
   });
 
-  it("keeps the token in sessionStorage by default and in localStorage when remembered", async () => {
-    fetchMock.mockImplementation(jsonResponse({ enabled: true }));
-    await useSession.getState().login({ token: "tok", apiUrl: "http://api.test" });
-    expect(getAuth()).toEqual({ apiUrl: "http://api.test", token: "tok" });
+  it("posts name/email + password and keeps the session in sessionStorage by default", async () => {
+    fetchMock.mockImplementation(backend({ "/api/auth/login": () => json(PAIR), "/api/identity/me": () => json(ME) }));
+    await useSession.getState().login({ identifier: "  Alice@Example.com ", password: " pw with spaces ", apiUrl: "http://api.test" });
+
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe("http://api.test/api/auth/login");
+    // The identifier is trimmed; a password is sent exactly as typed.
+    expect(JSON.parse(init!.body as string)).toEqual({ identifier: "Alice@Example.com", password: " pw with spaces " });
+    expect((init!.headers as Record<string, string>).Authorization).toBeUndefined();
+
+    expect(getAuth()).toMatchObject({ apiUrl: "http://api.test", token: "access-1", refreshToken: "refresh-1", userId: "alice" });
+    expect(getAuth()!.expiresAt).toBeGreaterThan(Date.now() + 1700_000);
     expect(isAuthPersisted()).toBe(false);
-    expect(sessionStorage.getItem("pincer.web.auth")).toContain("tok");
+    expect(sessionStorage.getItem("pincer.web.auth")).toContain("refresh-1");
     expect(localStorage.getItem("pincer.web.auth")).toBeNull();
-    expect(sessionStorage.getItem("isAuthenticated")).toBe("true");
     expect(useSession.getState().connected).toBe(true);
     expect(useSession.getState().role).toBe("owner");
-
-    await useSession.getState().login({ token: "tok2", apiUrl: "http://api.test", remember: true });
-    expect(isAuthPersisted()).toBe(true);
-    expect(localStorage.getItem("pincer.web.auth")).toContain("tok2");
-    expect(sessionStorage.getItem("pincer.web.auth")).toBeNull();
-    expect(localStorage.getItem("isAuthenticated")).toBe("true");
-  });
-
-  it("validates against /api/voice/status and stores nothing on 401", async () => {
-    fetchMock.mockImplementation(jsonResponse({ detail: "Invalid token" }, 401));
-    await expect(useSession.getState().login({ token: "bad", apiUrl: "http://api.test" })).rejects.toMatchObject({ status: 401 });
-    expect(fetchMock.mock.calls[0]![0]).toBe("http://api.test/api/voice/status");
-    expect(getAuth()).toBeNull();
-    expect(useSession.getState().connected).toBe(false);
+    // The old browser-side flag is gone for good.
     expect(sessionStorage.getItem("isAuthenticated")).toBeNull();
   });
 
-  it("logs out on a 401 from any later request and remembers where to return", async () => {
-    fetchMock.mockImplementation(jsonResponse({ ok: true }));
-    await useSession.getState().login({ token: "tok", apiUrl: "http://api.test", remember: true });
+  it("keeps the session in localStorage when the device is remembered", async () => {
+    fetchMock.mockImplementation(backend({ "/api/auth/login": () => json(PAIR), "/api/identity/me": () => json(ME) }));
+    await useSession.getState().login({ identifier: "alice", password: "pw", apiUrl: "http://api.test", remember: true });
+    expect(isAuthPersisted()).toBe(true);
+    expect(localStorage.getItem("pincer.web.auth")).toContain("access-1");
+    expect(sessionStorage.getItem("pincer.web.auth")).toBeNull();
+    expect(useSession.getState().remembered).toBe(true);
+  });
+
+  it("loads who is signed in from /api/identity/me", async () => {
+    fetchMock.mockImplementation(backend({ "/api/auth/login": () => json(PAIR), "/api/identity/me": () => json(ME) }));
+    await useSession.getState().login({ identifier: "alice", password: "pw", apiUrl: "http://api.test" });
+    expect(useSession.getState().identity).toEqual({ id: "alice", displayName: "Alice", email: "alice@example.com" });
+    const me = fetchMock.mock.calls.find((c) => String(c[0]).endsWith("/api/identity/me"))!;
+    expect((me[1]!.headers as Record<string, string>).Authorization).toBe("Bearer access-1");
+  });
+
+  it("still signs in when /api/identity/me fails", async () => {
+    fetchMock.mockImplementation(backend({ "/api/auth/login": () => json(PAIR), "/api/identity/me": () => json({ detail: "boom" }, 500) }));
+    await useSession.getState().login({ identifier: "alice", password: "pw", apiUrl: "http://api.test" });
+    expect(useSession.getState().connected).toBe(true);
+    expect(useSession.getState().identity).toEqual({ id: "alice", displayName: null, email: null });
+  });
+
+  it.each([
+    ["wrong credentials", 401, { error: "invalid_credentials", detail: "Invalid credentials" }, "invalid_credentials"],
+    ["a lockout", 429, { error: "locked_out", detail: "Too many failed authentication attempts" }, "locked_out"],
+  ])("stores nothing on %s", async (_name, status, body, code) => {
+    fetchMock.mockImplementation(backend({ "/api/auth/login": () => json(body, status) }));
+    await expect(useSession.getState().login({ identifier: "alice", password: "bad", apiUrl: "http://api.test" })).rejects.toMatchObject({ status, code });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(getAuth()).toBeNull();
+    expect(sessionStorage.getItem("pincer.web.auth")).toBeNull();
+    expect(localStorage.getItem("pincer.web.auth")).toBeNull();
+    expect(useSession.getState().connected).toBe(false);
+    expect(useSession.getState().lastDisconnect).toBeNull();
+  });
+
+  it("logs out when the session is lost on a later request and remembers where to return", async () => {
+    fetchMock.mockImplementation(backend({ "/api/auth/login": () => json(PAIR), "/api/identity/me": () => json(ME) }));
+    await useSession.getState().login({ identifier: "alice", password: "pw", apiUrl: "http://api.test", remember: true });
     window.history.pushState({}, "", "/telephony/calls?view=table");
-    fetchMock.mockImplementation(jsonResponse({ detail: "expired" }, 401));
+    fetchMock.mockImplementation(async () => json({ error: "invalid_token", detail: "Invalid token" }, 401));
     const { request } = await import("@/lib/api/client");
     await expect(request("/api/voice/calls")).rejects.toBeInstanceOf(ApiError);
     const s = useSession.getState();
     expect(s.connected).toBe(false);
     expect(s.lastDisconnect).toBe("unauthorized");
     expect(s.returnTo).toBe("/telephony/calls?view=table");
+    expect(s.identity).toBeNull();
     expect(getAuth()).toBeNull();
-    expect(localStorage.getItem("isAuthenticated")).toBeNull();
   });
 
-  it("logout clears both storages and the platform flag", async () => {
-    fetchMock.mockImplementation(jsonResponse({}));
-    await useSession.getState().login({ token: "tok", apiUrl: "http://api.test", remember: true });
+  it("logout clears both storages and ends the session on the server", async () => {
+    fetchMock.mockImplementation(backend({ "/api/auth/login": () => json(PAIR), "/api/identity/me": () => json(ME), "/api/auth/logout": () => new Response(null, { status: 204 }) }));
+    await useSession.getState().login({ identifier: "alice", password: "pw", apiUrl: "http://api.test", remember: true });
     useSession.getState().logout();
+    // Synchronous: the screen changes without waiting for the server.
     expect(getAuth()).toBeNull();
     expect(localStorage.getItem("pincer.web.auth")).toBeNull();
     expect(sessionStorage.getItem("pincer.web.auth")).toBeNull();
-    expect(localStorage.getItem("isAuthenticated")).toBeNull();
     expect(useSession.getState().role).toBeNull();
+    expect(useSession.getState().identity).toBeNull();
+    const call = fetchMock.mock.calls.find((c) => String(c[0]) === "http://api.test/api/auth/logout")!;
+    expect(call[1]!.method).toBe("POST");
+    expect((call[1]!.headers as Record<string, string>).Authorization).toBe("Bearer access-1");
+  });
+
+  it("logout clears the session even when the server cannot be reached", async () => {
+    fetchMock.mockImplementation(backend({ "/api/auth/login": () => json(PAIR), "/api/identity/me": () => json(ME), "/api/auth/logout": () => Promise.reject(new TypeError("Failed to fetch")) }));
+    await useSession.getState().login({ identifier: "alice", password: "pw", apiUrl: "http://api.test" });
+    expect(() => useSession.getState().logout()).not.toThrow();
+    await Promise.resolve();
+    expect(getAuth()).toBeNull();
+    expect(useSession.getState().connected).toBe(false);
+    expect(useSession.getState().lastDisconnect).toBe("user");
+  });
+
+  it("re-reads the session when another tab changes it", async () => {
+    fetchMock.mockImplementation(backend({ "/api/auth/login": () => json(PAIR), "/api/identity/me": () => json(ME) }));
+    await useSession.getState().login({ identifier: "alice", password: "pw", apiUrl: "http://api.test", remember: true });
+    // The other tab signed out: the record is gone, this tab's memory copy is not.
+    localStorage.removeItem("pincer.web.auth");
+    window.dispatchEvent(new StorageEvent("storage", { key: "pincer.web.auth" }));
+    expect(useSession.getState().connected).toBe(false);
+    expect(getAuth()).toBeNull();
   });
 
   it("falls back to the build's API URL, then the page origin", () => {
     expect(defaultApiUrl()).toBe(window.location.origin);
+  });
+});
+
+describe("returnTo", () => {
+  afterEach(() => {
+    useSession.getState().setReturnTo(null);
+    window.history.pushState({}, "", "/");
+  });
+
+  it("honours a same-origin path from the query", () => {
+    window.history.pushState({}, "", "/login?returnTo=%2Ftelephony%2Fcalls%3Fview%3Dtable");
+    expect(resolveReturnTo("/dashboard")).toBe("/telephony/calls?view=table");
+  });
+
+  it("rejects another origin and anything carrying a credential", () => {
+    for (const bad of ["https://evil.example/x", "//evil.example/x", "/x?token=abc", "javascript:alert(1)"]) {
+      expect(safeReturnTo(bad)).toBeNull();
+      window.history.pushState({}, "", `/login?returnTo=${encodeURIComponent(bad)}`);
+      expect(resolveReturnTo("/dashboard")).toBe("/dashboard");
+    }
+  });
+
+  it("falls back to where the session was lost, then to the default", () => {
+    window.history.pushState({}, "", "/login");
+    useSession.getState().setReturnTo("/notes/daily");
+    expect(resolveReturnTo("/dashboard")).toBe("/notes/daily");
+    useSession.getState().setReturnTo(null);
+    expect(resolveReturnTo("/dashboard")).toBe("/dashboard");
   });
 });
 

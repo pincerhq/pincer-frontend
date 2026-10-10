@@ -10,7 +10,7 @@
 //     the MCP tools — those panels stay mocked and badged.
 
 import { useQuery } from "@tanstack/react-query";
-import { getAuth, isConnected, PincerError } from "@/lib/pincerClient";
+import { authedFetch, isConnected, PincerError } from "@/lib/pincerClient";
 import { REFETCH_INTERVALS } from "@/lib/constants";
 
 export interface IntegrationEntry {
@@ -26,11 +26,7 @@ export function useIntegrations() {
   return useQuery<{ integrations: IntegrationEntry[] }, PincerError>({
     queryKey: ["company", "integrations"],
     queryFn: async () => {
-      const auth = getAuth();
-      if (!auth) throw new PincerError("Not connected", 0);
-      const res = await fetch(`${auth.apiUrl}/api/integrations`, {
-        headers: { Authorization: `Bearer ${auth.token}` },
-      });
+      const res = await authedFetch("/api/integrations");
       if (!res.ok) throw new PincerError(`HTTP ${res.status}`, res.status);
       return res.json();
     },
@@ -58,13 +54,10 @@ function brainUserId(): string {
 }
 
 async function brainChat(text: string): Promise<string> {
-  const auth = getAuth();
-  if (!auth) throw new PincerError("Not connected to Pincer backend", 0);
-  const res = await fetch(`${auth.apiUrl}/api/chat/message`, {
+  const res = await authedFetch("/api/chat/message", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${auth.token}`,
       "X-Pincer-User": brainUserId(),
     },
     body: JSON.stringify({ text }),

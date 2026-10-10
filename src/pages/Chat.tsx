@@ -15,11 +15,10 @@ import {
   sendChat,
   fetchLatestConversation,
   resetUserId,
-  clearAuth,
   respondApproval,
   PincerError,
   type PincerMessage,
-  getUserId,
+  getAuth,
 } from '@/lib/pincerClient';
 import { listConversations, type Conversation } from '@/lib/api/conversations';
 import { cleanAssistantText, renderAssistantText, renderTextWithLinks } from '@/lib/formatChat';
@@ -134,7 +133,7 @@ const Chat = () => {
       return;
     }
     try {
-      const { conversations } = await listConversations(getUserId(), 20);
+      const { conversations } = await listConversations(getAuth()?.userId ?? '', 20);
       convByIdRef.current = new Map(conversations.map(c => [c.id, c]));
       setChatHistory(
         conversations.map(c => {
@@ -172,8 +171,8 @@ const Chat = () => {
         if (err instanceof PincerError && err.status === 401) {
           setPincerOn(false);
           toast({
-            title: 'Pincer token rejected',
-            description: 'Reconnect from the login page.',
+            title: 'Session expired',
+            description: 'Sign in again to continue.',
             variant: 'destructive',
           });
         }
@@ -452,12 +451,6 @@ const Chat = () => {
     );
   };
 
-  const disconnectPincer = () => {
-    clearAuth();
-    setPincerOn(false);
-    toast({ title: 'Disconnected from Pincer', description: 'Chat will use demo replies until you reconnect.' });
-  };
-
   const getFileIcon = (type: string) => type.startsWith('image/') ? Image : FileText;
   const fmt = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -569,18 +562,17 @@ const Chat = () => {
   );
 
   const pincerBadge = (
-    <button
-      onClick={pincerOn ? disconnectPincer : undefined}
-      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
+    <span
+      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${
         pincerOn
-          ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
-          : 'bg-gray-50 border-gray-200 text-gray-500 cursor-default'
+          ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+          : 'bg-gray-50 border-gray-200 text-gray-500'
       }`}
-      title={pincerOn ? 'Connected to Pincer — click to disconnect' : 'Demo mode — sign in with a token to connect'}
+      title={pincerOn ? 'Connected to Pincer' : 'Demo mode — sign in again to connect'}
     >
       {pincerOn ? <Link2 className="h-3 w-3" /> : <Unlink className="h-3 w-3" />}
       {pincerOn ? 'Pincer connected' : 'Demo mode'}
-    </button>
+    </span>
   );
 
   return (

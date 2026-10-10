@@ -2,11 +2,34 @@ import type { Page } from "@playwright/test";
 
 /**
  * The owner app talks to `auth.apiUrl + path`. For backend-free e2e the
- * magic link (or the stored session) points at MOCK_API and Playwright
- * answers every `/api/*` call from the fixtures below — deterministic, and
- * exactly the shapes of the pinned contract plus the FE1 asks.
+ * stored session points at MOCK_API and Playwright answers every `/api/*`
+ * call from the fixtures below — deterministic, and exactly the shapes of the
+ * pinned contract plus the FE1 asks.
+ *
+ * The login form has no server field: it posts to the build's
+ * `VITE_PINCER_API_URL`, else the page origin. So `/api/*` is answered on
+ * *any* origin, and a sign-in through the form works whatever the dev server
+ * was started with.
  */
 export const MOCK_API = "http://mock.pincer.local";
+
+/** The one account the mocked `/api/auth/login` knows. */
+export const E2E_USER = { name: "alice", email: "alice@example.com", password: "correct horse battery" };
+
+const tokenPair = (n: number | string) => ({
+  access_token: `e2e-access-${n}`,
+  refresh_token: `e2e-refresh-${n}`,
+  token_type: "bearer",
+  expires_in: 1800,
+  pincer_user_id: E2E_USER.name,
+});
+
+const authError = (code: string, status = 401) => ({
+  status,
+  contentType: "application/json",
+  headers: { "access-control-allow-origin": "*" },
+  body: JSON.stringify({ error: code, detail: code }),
+});
 
 const NOW = new Date();
 const iso = (minutesAgo: number) => new Date(NOW.getTime() - minutesAgo * 60_000).toISOString();
@@ -61,36 +84,60 @@ export const FIXTURES: Record<string, unknown> = {
   "/api/doctor": { score: 95, passed: true, warnings: 2, critical: 0, checks: [] },
   "/api/costs/today": { date: "2026-09-07", total_usd: 1.23, request_count: 14 },
   "/api/integrations": { integrations: [{ slug: "google", name: "Google Workspace", active: true }] },
+  "/api/identity/me": { pincer_user_id: E2E_USER.name, display_name: "Alice Owner", email: E2E_USER.email, auth_method: "session" },
 };
 
 export async function mockBackend(page: Page, overrides: Record<string, unknown | null> = {}) {
-  await page.route(`${MOCK_API}/**`, async (route) => {
-    const url = new URL(route.request().url());
-    const path = url.pathname;
-    if (path === "/api/approvals/stream") return route.abort();
-    const body = path in overrides ? overrides[path] : FIXTURES[path];
-    if (body === null) return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "Not found" }) });
-    if (body === undefined) return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: `no fixture for ${path}` }) });
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
-  });
-}
-
-/** Start with an already-signed-in owner session (the magic-link flow has its own test). */
-export async function loginAsOwner(page: Page) {
-  await page.addInitScript(
-    ({ apiUrl, token }: { apiUrl: string; token: string }) => {
-      sessionStorage.setItem("isAuthenticated", "true");
-      sessionStorage.setItem("userEmail", "owner");
-      sessionStorage.setItem("pincer.web.auth", JSON.stringify({ apiUrl, token }));
+  let issued = 1;
+  const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "*" };
+  await page.route(
+    (url) => url.origin === MOCK_API || url.pathname.startsWith("/api/"),
+    async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: "application/json", headers: cors, body: JSON.stringify(body) });
+      if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
+      if (path === "/api/approvals/stream") return route.abort();
+      if (!(path in overrides)) {
+        if (path === "/api/auth/login") {
+          const body = request.postDataJSON() as { identifier?: string; password?: string } | null;
+          const known = [E2E_USER.name, E2E_USER.email].includes((body?.identifier ?? "").toLowerCase());
+          if (!known || body?.password !== E2E_USER.password) return route.fulfill(authError("invalid_credentials"));
+          return json(tokenPair(issued++));
+        }
+        if (path === "/api/auth/refresh") return json(tokenPair(issued++));
+        if (path === "/api/auth/logout") return route.fulfill({ status: 204, headers: cors });
+      }
+      const body = path in overrides ? overrides[path] : FIXTURES[path];
+      if (body === null) return json({ detail: "Not found" }, 404);
+      if (body === undefined) return json({ detail: `no fixture for ${path}` }, 404);
+      return json(body);
     },
-    { apiUrl: MOCK_API, token: "e2e-token" },
   );
 }
 
-/** The platform flag only — the owner app is then "not connected". */
-export async function loginPlatformOnly(page: Page) {
-  await page.addInitScript(() => {
-    localStorage.setItem("isAuthenticated", "true");
-    localStorage.setItem("userEmail", "e2e@example.com");
-  });
+/** Start with an already-signed-in owner session (the sign-in form has its own tests). */
+export async function loginAsOwner(page: Page, over: { expiresInMs?: number } = {}) {
+  await page.addInitScript(
+    ({ apiUrl, userId, expiresInMs }: { apiUrl: string; userId: string; expiresInMs: number }) => {
+      // Once per tab: a test that signs out must stay signed out on the next load.
+      if (sessionStorage.getItem("e2e.seeded")) return;
+      sessionStorage.setItem("e2e.seeded", "1");
+      sessionStorage.setItem(
+        "pincer.web.auth",
+        JSON.stringify({ apiUrl, token: "e2e-access-0", refreshToken: "e2e-refresh-0", expiresAt: Date.now() + expiresInMs, userId }),
+      );
+    },
+    { apiUrl: MOCK_API, userId: E2E_USER.name, expiresInMs: over.expiresInMs ?? 30 * 60_000 },
+  );
 }
+
+/** Fill and submit either sign-in form. The labels differ by page and language. */
+export async function signIn(page: Page, labels: { identifier: string; password: string; submit: string }, identifier: string, password: string) {
+  await page.getByLabel(labels.identifier).fill(identifier);
+  await page.getByLabel(labels.password, { exact: true }).fill(password);
+  await page.getByRole("button", { name: labels.submit, exact: true }).click();
+}
+
+export const OWNER_LOGIN_LABELS = { identifier: "Name oder E-Mail", password: "Passwort", submit: "Anmelden" };
+export const PLATFORM_LOGIN_LABELS = { identifier: "Name or email", password: "Password", submit: "Sign in" };
