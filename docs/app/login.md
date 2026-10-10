@@ -73,7 +73,7 @@ Known limit: a **duplicated tab that is not remembered** copies `sessionStorage`
 ## Sign-up and forgotten passwords
 
 - `/forgot-password` opens a prefilled mail to the administrator; there is no self-service reset.
-- `/signup` exists only in builds with `SIGNUP_ALLOWED=true` (build-time; `src/lib/signup.ts`). It is a **request-access** form that opens a mail draft — the API has no registration endpoint, so enabling the flag does not give self-service accounts.
+- `/signup` exists only with `SIGNUP_ALLOWED=true` (set at container start; `src/lib/signup.ts`). It is a **request-access** form that opens a mail draft — the API has no registration endpoint, so enabling the flag does not give self-service accounts.
 
 ## Roles
 

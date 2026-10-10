@@ -1,5 +1,5 @@
 /**
- * SIGNUP_ALLOWED is a build-time flag: without it /signup does not exist and
+ * SIGNUP_ALLOWED is read from the runtime config: without it /signup does not exist and
  * nothing links to it; with it the page is a request-access form, because the
  * API has no registration endpoint to create an account with.
  */
@@ -9,14 +9,14 @@ import userEvent from '@testing-library/user-event';
 
 async function renderApp(url: string, flag?: string) {
   vi.resetModules();
-  if (flag !== undefined) vi.stubEnv('SIGNUP_ALLOWED', flag);
+  if (flag !== undefined) window.__ENV__ = { SIGNUP_ALLOWED: flag };
   window.history.pushState({}, '', url);
   const { default: App } = await import('@/App');
   return render(<App />);
 }
 
 afterEach(() => {
-  vi.unstubAllEnvs();
+  delete window.__ENV__;
   window.history.pushState({}, '', '/');
 });
 

@@ -22,6 +22,9 @@ Then open `/notes`. If nothing loads, the list panel says why rather than showin
 an empty workspace — the two usual causes are an unset `VITE_NOTES_API_URL` and
 no signed-in Pincer session.
 
+`VITE_NOTES_API_URL` and `VITE_NOTES_TOKEN` are set at container start (in dev:
+`.env.local`), not baked into the build — see the README's Environment section.
+
 Seed a workspace with `POST /v1/dev/seed` (owner role, 404 in production). The
 client no longer seeds anything.
 

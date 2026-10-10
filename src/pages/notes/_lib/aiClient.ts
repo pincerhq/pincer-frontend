@@ -12,6 +12,7 @@
 
 import type { Decision, LinkCandidate, LinkSuggestion, Task } from '@/pages/notes/_lib/types';
 import { apiFetch } from '@/auth/apiFetch';
+import { env } from '@/lib/env';
 import { sseJsonFrames } from '@/pages/notes/_lib/sse';
 
 /**
@@ -468,4 +469,4 @@ export async function updateAiConfig(patch: Partial<AiConfig>): Promise<AiConfig
 }
 
 /** The Agent tab stays hidden until BE-4 flips its own flag (§4). */
-export const agentChatEnabled = import.meta.env.VITE_NOTES_AGENT_CHAT === '1';
+export const agentChatEnabled = env('VITE_NOTES_AGENT_CHAT') === '1';

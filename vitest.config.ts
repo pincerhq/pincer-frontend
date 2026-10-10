@@ -12,7 +12,6 @@ import path from 'path';
 process.env.TZ = 'Europe/Berlin';
 
 export default defineConfig({
-  envPrefix: ['VITE_', 'SIGNUP_'],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

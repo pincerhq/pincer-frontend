@@ -18,15 +18,16 @@
  * client-asserted. Pilot-grade, not §203-grade (ADR 0001).
  */
 
+import { env } from '@/lib/env';
 import { ensureFreshAuth, getAuth, getUserId } from '@/lib/pincerClient';
 
-const RAW_API_URL = (import.meta.env.VITE_NOTES_API_URL as string | undefined)?.trim();
+const RAW_API_URL = env('VITE_NOTES_API_URL');
 
 /**
  * Whether a base URL was configured at all.
  *
  * An unset `VITE_NOTES_API_URL` is not the same as "same origin": it means the
- * build was never pointed at a Notes service, and every request would go to the
+ * deployment was never pointed at a Notes service, and every request would go to the
  * frontend's own origin and come back as the SPA's HTML. That produces a
  * baffling JSON parse error, so it is reported as the configuration mistake it
  * is. To deploy behind a reverse proxy on the same origin, set the variable to
@@ -41,7 +42,7 @@ export const NOTES_API_URL = (RAW_API_URL ?? '').replace(/\/+$/, '');
  * A token dedicated to the Notes service, for deployments where it does not
  * share Pincer's. Falls back to the Pincer token, which is the normal case.
  */
-const NOTES_TOKEN = (import.meta.env.VITE_NOTES_TOKEN as string | undefined)?.trim();
+const NOTES_TOKEN = env('VITE_NOTES_TOKEN');
 
 export class NotAuthenticatedError extends Error {
   constructor() {
@@ -54,10 +55,10 @@ export class NotAuthenticatedError extends Error {
 /** Why the Notes API is unreachable, or null when it is reachable. */
 export function notesApiBlocker(): string | null {
   if (!NOTES_API_CONFIGURED) {
-    return 'VITE_NOTES_API_URL is not set, so this build has no Notes backend to talk to. Set it to the service URL (dev: http://localhost:8000) and reload.';
+    return 'VITE_NOTES_API_URL is not set, so this deployment has no Notes backend to talk to. Set it to the service URL (dev: http://localhost:8000) and restart the app.';
   }
   if (!NOTES_TOKEN && !getAuth()) {
-    return 'Not connected to the Notes backend. Sign in again, or set VITE_NOTES_TOKEN for this build.';
+    return 'Not connected to the Notes backend. Sign in again, or set VITE_NOTES_TOKEN for this deployment.';
   }
   return null;
 }

@@ -34,6 +34,7 @@ import {
 import { authApi } from "@/lib/api/auth";
 import { setTenantId } from "@/lib/api/tenant";
 import i18n from "@/i18n";
+import { env } from "@/lib/env";
 
 export type VoiceLocale = "de" | "en";
 
@@ -116,7 +117,7 @@ export interface LoginInput {
   identifier: string;
   password: string;
   remember?: boolean;
-  /** Defaults to the build's `VITE_PINCER_API_URL`, else the page origin. */
+  /** Defaults to `VITE_PINCER_API_URL`, else the page origin. */
   apiUrl?: string;
 }
 
@@ -196,10 +197,10 @@ export function safeReturnTo(path: string | null | undefined): string | null {
   return path;
 }
 
-/** The backend this build talks to when the login does not say otherwise. */
+/** The backend this deployment talks to when the login does not say otherwise. */
 export function defaultApiUrl(): string {
-  const env = (import.meta.env.VITE_PINCER_API_URL as string | undefined)?.trim();
-  if (env) return normalizeApiUrl(env);
+  const configured = env("VITE_PINCER_API_URL");
+  if (configured) return normalizeApiUrl(configured);
   if (typeof window !== "undefined" && window.location?.origin) return normalizeApiUrl(window.location.origin);
   return "";
 }

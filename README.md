@@ -36,11 +36,18 @@ The dev server runs on **:3000** (`strictPort`).
 | `VITE_PINCER_API_URL` | page origin   | The Pincer API both login pages sign in against |
 | `VITE_NOTES_API_URL`  | —             | Base URL of the Notes service (required for `/notes`) |
 | `VITE_NOTES_TOKEN`    | —             | A credential for the Notes service, when it does not accept the Pincer session's token |
-| `SIGNUP_ALLOWED`      | `false`       | `true` adds the `/signup` request-access page (build-time) |
+| `VITE_NOTES_AGENT_CHAT` | —           | `1` shows the Agent tab in the Notes ask panel |
+| `SIGNUP_ALLOWED`      | `false`       | `true` adds the `/signup` request-access page |
 
 Sign-in is a Pincer identity's name or email plus password — see
 [`docs/app/login.md`](docs/app/login.md). There is no token or password to put
-in an env file; anything prefixed `VITE_` or `SIGNUP_` ends up in the bundle.
+in an env file; anything prefixed `VITE_` or `SIGNUP_` is served to the browser.
+
+These are set at container start, not at build time: the container writes every
+`VITE_*` and `SIGNUP_*` variable to `/config.js`, which the page loads before
+the bundle, so one image serves every deployment and a restart applies a
+change. In dev the Vite server builds the same file from `.env.local`. Code
+reads them with `env()` from `src/lib/env.ts`, never from `import.meta.env`.
 
 Notes calls are same-origin-proxied in dev: point `VITE_NOTES_API_URL` at
 `/notes-api` in `.env.local` to use the proxy, and override the upstream with

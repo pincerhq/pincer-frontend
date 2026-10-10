@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-interface ImportMetaEnv {
-  /** "true" enables the /signup request-access page. Build-time. */
-  readonly SIGNUP_ALLOWED?: string;
+interface Window {
+  /** Runtime configuration from `/config.js`. Read it through `src/lib/env.ts`. */
+  __ENV__?: Record<string, string>;
 }

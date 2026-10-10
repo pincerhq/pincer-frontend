@@ -78,4 +78,4 @@ uv run pincer identity set-password alice
 PINCER_VOICE_ENABLED=1 uv run pincer run
 ```
 
-Then put `VITE_PINCER_API_URL=http://localhost:<api port>` in `.env.local` and run `npm run dev` (port 3000 is on the API's dev CORS list). See `docs/app/login.md`.
+Then put `VITE_PINCER_API_URL=http://localhost:<api port>` in `.env.local` and run `npm run dev` (port 3000 is on the API's dev CORS list). In a container the same variable is set at container start, not at build time. See `docs/app/login.md`.

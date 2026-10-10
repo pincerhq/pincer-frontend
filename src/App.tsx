@@ -10,7 +10,7 @@ import { SIGNUP_ALLOWED } from './lib/signup';
 // The public site is gone: everything it advertised is either shipped inside
 // the app or was never built, so the only unauthenticated screens left are the
 // ones the account flow needs. `/` goes straight to the sign-in form. Signup
-// exists only in builds with SIGNUP_ALLOWED=true; otherwise /signup is a 404.
+// exists only when SIGNUP_ALLOWED=true; otherwise /signup is a 404.
 const Signup = SIGNUP_ALLOWED ? lazy(() => import('./pages/Signup')) : null;
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 

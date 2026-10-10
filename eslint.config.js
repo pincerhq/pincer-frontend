@@ -68,6 +68,22 @@ export default tseslint.config(
     },
   },
   {
+    // Configuration is read at runtime from `window.__ENV__`; anything taken
+    // from `import.meta.env` would be baked into the bundle at build time.
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "MemberExpression[object.type='MemberExpression'][object.object.type='MetaProperty'][object.property.name='env']:not([property.name=/^(DEV|PROD|MODE)$/])",
+          message:
+            "Read configuration with env() from src/lib/env.ts: import.meta.env is inlined at build time. Only DEV, PROD and MODE may be read from it.",
+        },
+      ],
+    },
+  },
+  {
     files: OWNER_APP_FILES,
     plugins: { i18next },
     rules: {
