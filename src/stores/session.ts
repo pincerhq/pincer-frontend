@@ -4,7 +4,8 @@
  * zustand holds only session/UI state: the backend connection, the tenant
  * (null until C3), the role (`owner` in phase 1), the per-browser user id,
  * the owner app's locale and where to return after a re-login. Server state
- * stays in TanStack Query.
+ * stays in TanStack Query, and is dropped whenever the signed-in identity
+ * changes: the cache must never show one person another's calls.
  *
  * Sign-in is an identity's name or email plus password against
  * `POST /api/auth/login`. The token pair lives in memory + sessionStorage;
@@ -32,6 +33,7 @@ import {
   setAuth,
 } from "@/lib/pincerClient";
 import { authApi } from "@/lib/api/auth";
+import { queryClient } from "@/lib/queryClient";
 import { setTenantId } from "@/lib/api/tenant";
 import i18n from "@/i18n";
 import { env } from "@/lib/env";
@@ -92,6 +94,11 @@ const ROLE_ACTIONS: Record<Role, ReadonlySet<OwnerAction>> = {
   ]),
 };
 
+const LOCALE_KEY = "voice.locale";
+const RETURN_TO_KEY = "voice.returnTo";
+/** Flags of the old browser-side login; nothing reads them any more. */
+const LEGACY_KEYS = ["isAuthenticated", "userEmail"];
+
 /** The wire role names C3 uses → the app's. */
 export function roleFromWire(raw: string | null | undefined): Role | null {
   const k = (raw ?? "").toLowerCase();
@@ -104,11 +111,6 @@ export function canRole(role: Role | null, action: OwnerAction): boolean {
   if (!role) return false;
   return ROLE_ACTIONS[role].has(action);
 }
-
-const LOCALE_KEY = "voice.locale";
-const RETURN_TO_KEY = "voice.returnTo";
-/** Flags of the old browser-side login; nothing reads them any more. */
-const LEGACY_KEYS = ["isAuthenticated", "userEmail"];
 
 export type DisconnectReason = "unauthorized" | "user";
 
@@ -192,7 +194,13 @@ function writeReturnTo(path: string | null) {
 
 /** Only same-origin paths are worth returning to; never a URL with a token in it. */
 export function safeReturnTo(path: string | null | undefined): string | null {
-  if (!path || !path.startsWith("/") || path.startsWith("//")) return null;
+  // Browsers read a backslash as a slash, so "/\host" is another origin too.
+  if (!path || !path.startsWith("/") || path.includes("\\")) return null;
+  try {
+    if (new URL(path, window.location.origin).origin !== window.location.origin) return null;
+  } catch {
+    return null;
+  }
   if (/[?&#](t|token|access_token|key)=/i.test(path)) return null;
   return path;
 }
@@ -247,6 +255,8 @@ export const useSession = create<SessionState>((set, get) => {
       // Nothing is stored before the server accepted the credentials, so a
       // failed attempt leaves whatever session there was untouched.
       const pair = await authApi.login(url, identifier.trim(), password);
+      // Signing in over someone else's session: what they loaded is not this person's.
+      if (get().identity?.id !== pair.pincer_user_id) queryClient.clear();
       setAuth(authFromTokenPair(url, pair), { persist: remember });
       set({
         apiUrl: url,
@@ -262,6 +272,7 @@ export const useSession = create<SessionState>((set, get) => {
     logout() {
       const auth = getAuth();
       clearAuth();
+      queryClient.clear();
       writeReturnTo(null);
       set({ apiUrl: null, connected: false, remembered: false, role: null, tenantId: null, tenantName: null, impersonating: false, returnTo: null, lastDisconnect: "user", identity: null });
       setTenantId(null);
@@ -272,6 +283,7 @@ export const useSession = create<SessionState>((set, get) => {
       const here = typeof window !== "undefined" ? window.location.pathname + window.location.search : "";
       const returnTo = reason === "unauthorized" ? safeReturnTo(here) : null;
       clearAuth();
+      queryClient.clear();
       writeReturnTo(returnTo);
       set({ apiUrl: null, connected: false, remembered: false, role: null, lastDisconnect: reason, returnTo, identity: null });
     },
@@ -311,6 +323,10 @@ export const useSession = create<SessionState>((set, get) => {
 
     refresh() {
       const current = getAuth();
+      // Another tab signed out or signed in as someone else: the cache is the
+      // previous identity's. Mounted views start over with the new one's data.
+      if (!current) queryClient.clear();
+      else if (get().identity && get().identity?.id !== current.userId) void queryClient.resetQueries();
       set({
         apiUrl: current?.apiUrl ?? null,
         connected: current !== null,

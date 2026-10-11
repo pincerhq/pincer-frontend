@@ -75,8 +75,10 @@ export default tseslint.config(
       "no-restricted-syntax": [
         "error",
         {
+          // Any `import.meta.env` that is not directly `.DEV`, `.PROD` or
+          // `.MODE` — so destructuring it or aliasing it is caught as well.
           selector:
-            "MemberExpression[object.type='MemberExpression'][object.object.type='MetaProperty'][object.property.name='env']:not([property.name=/^(DEV|PROD|MODE)$/])",
+            "MemberExpression[object.type='MetaProperty'][property.name='env']:not(MemberExpression[computed=false][property.name=/^(DEV|PROD|MODE)$/] > .object)",
           message:
             "Read configuration with env() from src/lib/env.ts: import.meta.env is inlined at build time. Only DEV, PROD and MODE may be read from it.",
         },

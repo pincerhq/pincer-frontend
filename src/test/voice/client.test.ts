@@ -201,6 +201,42 @@ describe("api client", () => {
     expect(sessionStorage.getItem("pincer.web.auth")).toContain("access-2");
   });
 
+  it("a session-only tab keeps its refreshed pair to itself while another tab is remembered", async () => {
+    // The other tab's remembered session, then this tab's own.
+    const remembered = JSON.stringify(session({ token: "bob-access", refreshToken: "bob-refresh", userId: "bob" }));
+    setAuth(session({ expiresAt: Date.now() + 5_000 }), { persist: false });
+    localStorage.setItem("pincer.web.auth", remembered);
+    expect(isAuthPersisted()).toBe(false);
+    fetchMock.mockImplementation(async (url) =>
+      String(url).endsWith("/api/auth/refresh") ? jsonResponse(pair(2)) : jsonResponse({ ok: true }),
+    );
+    await api.get("/api/voice/status");
+    expect(sessionStorage.getItem("pincer.web.auth")).toContain("access-2");
+    expect(localStorage.getItem("pincer.web.auth")).toBe(remembered);
+  });
+
+  it("a refresh that answers after sign-out is not written back, and its pair is revoked", async () => {
+    setAuth(session({ expiresAt: Date.now() + 5_000 }), { persist: false });
+    let answerRefresh!: (r: Response) => void;
+    fetchMock.mockImplementation(async (url) => {
+      if (String(url).endsWith("/api/auth/refresh")) return new Promise<Response>((resolve) => (answerRefresh = resolve));
+      return new Response(null, { status: 204 });
+    });
+    const pending = api.get("/api/voice/status").catch((e: unknown) => e);
+    await vi.waitFor(() => expect(answerRefresh).toBeDefined());
+    clearAuth();
+    answerRefresh(jsonResponse(pair(2)));
+    expect(await pending).toBeInstanceOf(ApiError);
+    expect(getAuth()).toBeNull();
+    expect(sessionStorage.getItem("pincer.web.auth")).toBeNull();
+    expect(localStorage.getItem("pincer.web.auth")).toBeNull();
+    await vi.waitFor(() => {
+      const logout = fetchMock.mock.calls.find((c) => String(c[0]).endsWith("/api/auth/logout"));
+      expect(bearerOf(logout?.[1])).toBe("Bearer access-2");
+    });
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).endsWith("/api/voice/status"))).toBe(false);
+  });
+
   it("uses the pair another tab already stored instead of refreshing again", async () => {
     setAuth(session({ expiresAt: Date.now() + 5_000 }));
     // What the other tab wrote; this tab's memory copy still holds the old pair.

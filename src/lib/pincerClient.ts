@@ -18,9 +18,12 @@
  *     under a JWT: the signed-in identity is who the request is.
  *
  * Known limit: a *duplicated* tab that is not remembered copies the session
- * record, refresh token included. Refresh tokens are single-use, so whichever
- * copy refreshes second is signed out. Remembered tabs share localStorage and
- * coordinate through a Web Lock instead.
+ * record, refresh token included. Refresh tokens are single-use: a copy that
+ * refreshes within 30 s of the other is handed the same new token, but past
+ * that the server reads the replayed token as theft and ends the whole
+ * session, so *both* copies are signed out. A background tab pauses its
+ * polling, so that is the usual outcome. Remembered tabs share localStorage
+ * and coordinate through a Web Lock instead.
  */
 
 const AUTH_KEY = "pincer.web.auth";
@@ -104,8 +107,16 @@ function readStorage(storage: Storage | undefined): PincerAuth | null {
   }
 }
 
+/** This tab's record and where it lives: its own sessionStorage wins over the shared localStorage. */
+function readStoredSession(): { auth: PincerAuth; persisted: boolean } | null {
+  const own = readStorage(storageOf("session"));
+  if (own) return { auth: own, persisted: false };
+  const shared = readStorage(storageOf("local"));
+  return shared ? { auth: shared, persisted: true } : null;
+}
+
 function readStoredAuth(): PincerAuth | null {
-  return readStorage(storageOf("session")) ?? readStorage(storageOf("local"));
+  return readStoredSession()?.auth ?? null;
 }
 
 export function getAuth(): PincerAuth | null {
@@ -129,18 +140,21 @@ export function dropMemoryAuth() {
  * one session is live.
  */
 export function setAuth(auth: PincerAuth, opts: { persist?: boolean } = {}) {
-  const next: PincerAuth = { ...auth, apiUrl: normalizeApiUrl(auth.apiUrl) };
-  const record = JSON.stringify(next);
   const persist = opts.persist ?? true;
+  writeAuth(auth, persist);
+  try {
+    (persist ? sessionStorage : localStorage).removeItem(AUTH_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+/** Write the record to one storage (and memory) and leave the other alone. */
+function writeAuth(auth: PincerAuth, persist: boolean) {
+  const next: PincerAuth = { ...auth, apiUrl: normalizeApiUrl(auth.apiUrl) };
   memoryAuth = next;
   try {
-    if (persist) {
-      localStorage.setItem(AUTH_KEY, record);
-      sessionStorage.removeItem(AUTH_KEY);
-    } else {
-      sessionStorage.setItem(AUTH_KEY, record);
-      localStorage.removeItem(AUTH_KEY);
-    }
+    (persist ? localStorage : sessionStorage).setItem(AUTH_KEY, JSON.stringify(next));
   } catch {
     /* storage unavailable — the in-memory copy still serves this page */
   }
@@ -160,13 +174,13 @@ export function clearAuth() {
   }
 }
 
-/** True when the session is in localStorage (the device is remembered). */
+/**
+ * True when this tab's session is the one in localStorage (the device is
+ * remembered). A session-only tab is not, even while another tab's record
+ * sits in localStorage.
+ */
 export function isAuthPersisted(): boolean {
-  try {
-    return localStorage.getItem(AUTH_KEY) !== null;
-  } catch {
-    return false;
-  }
+  return readStoredSession()?.persisted ?? false;
 }
 
 export function isConnected(): boolean {
@@ -266,11 +280,14 @@ export type RefreshResult = "ok" | "rejected" | "unavailable";
 async function requestRefresh(staleToken: string): Promise<RefreshResult> {
   // Re-read storage: with "remember this device" another tab may have
   // refreshed while this one waited for the lock, and its pair is the live one.
-  const stored = readStoredAuth();
-  if (stored) memoryAuth = stored;
-  const current = stored ?? memoryAuth;
+  const stored = readStoredSession();
+  if (stored) memoryAuth = stored.auth;
+  const current = stored?.auth ?? memoryAuth;
   if (!current) return "rejected";
   if (current.token !== staleToken) return "ok";
+  // The new pair goes back where this one came from and nowhere else: a
+  // session-only tab must not touch the record remembered tabs share.
+  const persist = stored?.persisted ?? false;
 
   let res: Response;
   try {
@@ -283,13 +300,23 @@ async function requestRefresh(staleToken: string): Promise<RefreshResult> {
     return "unavailable";
   }
   if (res.ok) {
+    let next: PincerAuth;
     try {
-      const pair = (await res.json()) as TokenPair;
-      setAuth(authFromTokenPair(current.apiUrl, pair), { persist: isAuthPersisted() });
-      return "ok";
+      next = authFromTokenPair(current.apiUrl, (await res.json()) as TokenPair);
     } catch {
       return "unavailable";
     }
+    // The record may have changed while the refresh was in the air. Writing
+    // the new pair then would undo a sign-out, or replace someone else's
+    // sign-in. After a sign-out the pair must not stay live either.
+    const latest = readStoredAuth() ?? memoryAuth;
+    if (!latest) {
+      void endSession(next);
+      return "rejected";
+    }
+    if (latest.token !== staleToken) return "ok";
+    writeAuth(next, persist);
+    return "ok";
   }
   // Only an answer about the token itself ends the session. A lockout (429),
   // a 5xx or a dropped connection says nothing about whether it is valid.
@@ -301,6 +328,40 @@ async function requestRefresh(staleToken: string): Promise<RefreshResult> {
     return "rejected";
   }
   return "unavailable";
+}
+
+/**
+ * End `auth`'s session on the server, so its tokens are dead and not just
+ * forgotten here. Works on the credentials it is given and never reads or
+ * writes the stored session: it runs after a sign-out. Never throws.
+ *
+ * `/api/auth/logout` needs a live access token. After 30 idle minutes the
+ * stored one has expired, and the refresh token would stay valid for days, so
+ * that case trades the refresh token for a fresh access token first. A
+ * rejected refresh means the session is already over, which is the goal.
+ */
+export async function endSession(auth: PincerAuth): Promise<void> {
+  const post = (path: string, init: RequestInit) =>
+    fetch(`${auth.apiUrl}${path}`, { method: "POST", keepalive: true, ...init });
+  const logout = (token: string) => post("/api/auth/logout", { headers: { Authorization: `Bearer ${token}` } });
+  const freshToken = async (): Promise<string | null> => {
+    const res = await post("/api/auth/refresh", {
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: auth.refreshToken }),
+    });
+    return res.ok ? ((await res.json()) as TokenPair).access_token : null;
+  };
+  try {
+    if (auth.expiresAt - Date.now() > 30_000) {
+      const res = await logout(auth.token);
+      // The server's clock may disagree about "not expired yet".
+      if (res.status !== 401) return;
+    }
+    const token = await freshToken();
+    if (token) await logout(token);
+  } catch {
+    /* offline or unreachable: the local sign-out still happened */
+  }
 }
 
 let refreshInFlight: Promise<RefreshResult> | null = null;

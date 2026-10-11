@@ -37,8 +37,10 @@ server {
         proxy_set_header Host $host;
         # Pincer's sign-in lockout is per client IP: without this every user
         # would share nginx's address, and one person's failures lock out all.
+        # This nginx is the edge, so the header is overwritten, not appended to:
+        # Pincer keys on its first entry, which a client could otherwise choose.
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
 
         proxy_set_header Upgrade $http_upgrade;

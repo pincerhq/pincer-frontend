@@ -9,7 +9,7 @@
  * the one `pincerClient` already reads on refresh. `/api/identity/me` answers
  * an untyped dict and stays hand-written.
  */
-import type { PincerAuth, TokenPair } from "@/lib/pincerClient";
+import { endSession, type PincerAuth, type TokenPair } from "@/lib/pincerClient";
 import { ApiError, publicRequest, request, type Schema } from "./client";
 
 export type TokenPairOut = TokenPair;
@@ -47,17 +47,7 @@ export const authApi = {
    * here. Best effort: signing out locally must never fail, so this takes the
    * credentials it should revoke and never throws.
    */
-  logout: async (auth: PincerAuth): Promise<void> => {
-    try {
-      await fetch(`${auth.apiUrl}/api/auth/logout`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${auth.token}` },
-        keepalive: true,
-      });
-    } catch {
-      /* offline or unreachable: the local sign-out still happened */
-    }
-  },
+  logout: (auth: PincerAuth): Promise<void> => endSession(auth),
 
   me: () => request<Me>("/api/identity/me"),
 };

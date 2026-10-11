@@ -3,7 +3,8 @@
  * identity from /api/identity/me, logout, session loss, and `can()` gating.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { clearAuth, getAuth, isAuthPersisted } from "@/lib/pincerClient";
+import { clearAuth, getAuth, isAuthPersisted, setAuth } from "@/lib/pincerClient";
+import { queryClient } from "@/lib/queryClient";
 import { ApiError } from "@/lib/api/client";
 import { canRole, defaultApiUrl, resolveReturnTo, safeReturnTo, useSession } from "@/stores/session";
 
@@ -132,6 +133,53 @@ describe("login", () => {
     expect((call[1]!.headers as Record<string, string>).Authorization).toBe("Bearer access-1");
   });
 
+  it("logout refreshes an expired access token first, so the server-side logout is not refused", async () => {
+    fetchMock.mockImplementation(
+      backend({
+        "/api/auth/login": () => json(PAIR),
+        "/api/identity/me": () => json(ME),
+        "/api/auth/refresh": () => json({ ...PAIR, access_token: "access-2", refresh_token: "refresh-2" }),
+        "/api/auth/logout": () => new Response(null, { status: 204 }),
+      }),
+    );
+    await useSession.getState().login({ identifier: "alice", password: "pw", apiUrl: "http://api.test" });
+    // Idle for longer than the access token lives.
+    setAuth({ ...getAuth()!, expiresAt: Date.now() - 60_000 }, { persist: false });
+    fetchMock.mockClear();
+    useSession.getState().logout();
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const [refresh, logout] = fetchMock.mock.calls;
+    expect(String(refresh[0])).toBe("http://api.test/api/auth/refresh");
+    expect(JSON.parse(refresh[1]!.body as string)).toEqual({ refresh_token: "refresh-1" });
+    expect(String(logout[0])).toBe("http://api.test/api/auth/logout");
+    expect((logout[1]!.headers as Record<string, string>).Authorization).toBe("Bearer access-2");
+    // The fresh pair is used to end the session, never stored.
+    expect(getAuth()).toBeNull();
+    expect(sessionStorage.getItem("pincer.web.auth")).toBeNull();
+  });
+
+  it("drops the previous identity's cached server state on logout, session loss and a cross-tab switch", async () => {
+    fetchMock.mockImplementation(backend({ "/api/auth/login": () => json(PAIR), "/api/identity/me": () => json(ME), "/api/auth/logout": () => new Response(null, { status: 204 }) }));
+    const signInWithCache = async () => {
+      await useSession.getState().login({ identifier: "alice", password: "pw", apiUrl: "http://api.test", remember: true });
+      queryClient.setQueryData(["voice", "calls"], [{ call_sid: "CA-1" }]);
+    };
+    await signInWithCache();
+    useSession.getState().logout();
+    expect(queryClient.getQueryData(["voice", "calls"])).toBeUndefined();
+
+    await signInWithCache();
+    useSession.getState().disconnect("unauthorized");
+    expect(queryClient.getQueryData(["voice", "calls"])).toBeUndefined();
+
+    await signInWithCache();
+    // Another tab signed in as someone else.
+    localStorage.setItem("pincer.web.auth", JSON.stringify({ ...getAuth()!, token: "bob-access", refreshToken: "bob-refresh", userId: "bob" }));
+    window.dispatchEvent(new StorageEvent("storage", { key: "pincer.web.auth" }));
+    expect(useSession.getState().identity?.id).toBe("bob");
+    expect(queryClient.getQueryData(["voice", "calls"])).toBeUndefined();
+  });
+
   it("logout clears the session even when the server cannot be reached", async () => {
     fetchMock.mockImplementation(backend({ "/api/auth/login": () => json(PAIR), "/api/identity/me": () => json(ME), "/api/auth/logout": () => Promise.reject(new TypeError("Failed to fetch")) }));
     await useSession.getState().login({ identifier: "alice", password: "pw", apiUrl: "http://api.test" });
@@ -169,7 +217,7 @@ describe("returnTo", () => {
   });
 
   it("rejects another origin and anything carrying a credential", () => {
-    for (const bad of ["https://evil.example/x", "//evil.example/x", "/x?token=abc", "javascript:alert(1)"]) {
+    for (const bad of ["https://evil.example/x", "//evil.example/x", "/\\evil.example/x", "/x\\y", "/x?token=abc", "javascript:alert(1)"]) {
       expect(safeReturnTo(bad)).toBeNull();
       window.history.pushState({}, "", `/login?returnTo=${encodeURIComponent(bad)}`);
       expect(resolveReturnTo("/dashboard")).toBe("/dashboard");
