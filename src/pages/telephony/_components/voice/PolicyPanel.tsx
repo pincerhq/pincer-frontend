@@ -47,14 +47,14 @@ export default function PolicyPanel() {
 
   if (isLoading) {
     return (
-      <p className="flex items-center gap-2 text-xs text-[var(--text-4)]">
+      <p className="flex items-center gap-2 text-xs text-[var(--text-3)]">
         <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading tool policy…
       </p>
     );
   }
   if (isError || !data) {
     return (
-      <p className="text-xs text-[var(--text-4)]">
+      <p className="text-xs text-[var(--text-3)]">
         This backend does not expose <span className="font-mono">/api/voice/policy</span> yet — check{' '}
         <span className="font-mono">pincer doctor</span> for the active policy.
       </p>

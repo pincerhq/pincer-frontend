@@ -80,7 +80,6 @@ export const FIXTURES: Record<string, unknown> = {
   "/api/voice/approvals/pending": [],
   "/api/voice/approvals": [],
   "/api/voice/threads": [],
-  "/api/voice/residency": { mode: "eu_verified", ok: true, violations: [] },
   "/api/doctor": { score: 95, passed: true, warnings: 2, critical: 0, checks: [] },
   "/api/costs/today": { date: "2026-09-07", total_usd: 1.23, request_count: 14 },
   "/api/integrations": { integrations: [{ slug: "google", name: "Google Workspace", active: true }] },

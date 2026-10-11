@@ -5,21 +5,16 @@
  * name/email or password was wrong, nothing else, so it must never touch the
  * refresh machinery. Everything after sign-in uses the authenticated client.
  *
- * The request/response shapes are hand-written until the pinned contract
- * (`api-contract.lock`) includes the auth routes; they then become
- * `Schema<"LoginIn">` / `Schema<"TokenPairOut">`. `/api/identity/me` answers an
- * untyped dict and stays hand-written.
+ * `LoginIn` is the pinned contract's (`api-contract.lock`). The token pair is
+ * the one `pincerClient` already reads on refresh. `/api/identity/me` answers
+ * an untyped dict and stays hand-written.
  */
 import type { PincerAuth, TokenPair } from "@/lib/pincerClient";
-import { ApiError, publicRequest, request } from "./client";
+import { ApiError, publicRequest, request, type Schema } from "./client";
 
 export type TokenPairOut = TokenPair;
 
-export interface LoginIn {
-  /** Identity name or email. */
-  identifier: string;
-  password: string;
-}
+export type LoginIn = Schema<"LoginIn">;
 
 /** The fields of `GET /api/identity/me` this app reads. */
 export interface Me {

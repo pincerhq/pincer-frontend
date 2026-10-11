@@ -195,7 +195,6 @@ test.describe("owner app shell", () => {
     await expect(attention).toContainText("Weiterleitung fehlgeschlagen");
     const status = page.getByTestId("card-status");
     await expect(status).toContainText("Rufumleitung");
-    await expect(status).toContainText("EU (verifiziert)");
     await expect(status).toContainText("2 Hinweise");
     await expect(status).toContainText("Verbunden (Google Workspace)");
     await expect(page.getByTestId("card-costs")).toContainText("1,23");
@@ -206,32 +205,30 @@ test.describe("owner app shell", () => {
     await page.goto("/telephony");
     const nav = isMobile ? page.getByRole("navigation", { name: "Ihr Empfang" }) : page.getByRole("complementary", { name: "Telefonie" });
     await expect(nav).toBeVisible();
-    await nav.getByRole("button", { name: "Aufmerksamkeit" }).click();
-    await expect(page).toHaveURL(/\/telephony\/attention$/);
-    await expect(page.getByRole("heading", { name: "Aufmerksamkeit", level: 1 })).toBeVisible();
+    await nav.getByRole("button", { name: "Nachrichten" }).click();
+    await expect(page).toHaveURL(/\/telephony\/messages$/);
+    await expect(page.getByRole("heading", { name: "Messages", level: 1 })).toBeVisible();
     await nav.getByRole("button", { name: "Übersicht" }).click();
     await expect(page).toHaveURL(/\/telephony$/);
   });
 
-  test("the 'Mehr' sheet reaches setup areas, language and logout on a phone", async ({ page, isMobile }) => {
+  test("the 'Mehr' sheet reaches the other areas and logout on a phone", async ({ page, isMobile }) => {
     test.skip(!isMobile, "bottom tabs only exist under md");
     await page.goto("/telephony");
     await page.getByRole("button", { name: "Mehr" }).click();
     const sheet = page.getByRole("dialog");
     await expect(sheet.getByText("Alle Bereiche")).toBeVisible();
-    await sheet.getByRole("button", { name: "Datenschutz" }).click();
-    await expect(page).toHaveURL(/\/telephony\/settings\/privacy$/);
+    await sheet.getByRole("button", { name: "Richtlinien" }).click();
+    await expect(page).toHaveURL(/\/telephony\/policies$/);
     await page.getByRole("button", { name: "Mehr" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Abmelden" }).click();
     await expect(page).toHaveURL(/\/telephony\/login$/);
   });
 
-  test("desktop rail collapses and the setup submenu expands", async ({ page, isMobile }) => {
+  test("desktop rail collapses and keeps its areas reachable", async ({ page, isMobile }) => {
     test.skip(isMobile);
     await page.goto("/telephony");
     const rail = page.getByRole("complementary", { name: "Telefonie" });
-    await rail.getByRole("button", { name: "Einrichtung" }).click();
-    await expect(rail.getByRole("button", { name: "Unternehmensprofil" })).toBeVisible();
     await rail.getByRole("button", { name: "Navigation einklappen" }).click();
     await expect(rail).toHaveAttribute("data-collapsed", "true");
     await expect(rail.getByRole("button", { name: "Anrufe", exact: true })).toBeVisible();

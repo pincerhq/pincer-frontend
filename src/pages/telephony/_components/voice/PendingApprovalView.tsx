@@ -96,7 +96,7 @@ export default function PendingApprovalView() {
               <div className="rounded-[14px] border border-[var(--line-soft)] bg-white py-10 text-center">
                 <ShieldCheck className="mx-auto mb-3 h-10 w-10 text-green-500" />
                 <p className="text-sm text-[var(--text-3)]">Nothing waiting on you.</p>
-                <p className="mx-auto mt-1 max-w-md text-xs text-[var(--text-5)]">
+                <p className="mx-auto mt-1 max-w-md text-xs text-[var(--text-3)]">
                   When the agent hits a tool that needs your say-so during a call, the request
                   appears here — and as a card over whatever page you are on.
                 </p>
