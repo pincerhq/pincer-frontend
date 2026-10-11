@@ -134,7 +134,7 @@ Routing is handled by **React Router v6** and defined in `src/App.tsx`.
 
 ### Protected — Dashboard (require login)
 
-All routes below are wrapped in `<ProtectedRoute>` and redirect to `/login` if `localStorage.getItem("isAuthenticated") !== "true"`.
+All routes below are wrapped in `<ProtectedRoute>` and redirect to the login (`/login?returnTo=…`, or `/telephony/login?returnTo=…` for `/telephony*`) when nobody is signed in.
 
 | Path | Page |
 |------|------|
@@ -163,7 +163,7 @@ All routes below are wrapped in `<ProtectedRoute>` and redirect to `/login` if `
 
 ## Authentication Guard
 
-`src/components/ProtectedRoute.tsx` wraps protected routes. It reads `localStorage.getItem("isAuthenticated")` and redirects to `/login` if the value is not `"true"`.
+`src/components/ProtectedRoute.tsx` wraps protected routes. It reads `connected` from the session store (`src/stores/session.ts`) — a signed-in Pincer session — and otherwise redirects to the login with `returnTo` set to the current path. `/signup` is routed only in builds with `SIGNUP_ALLOWED=true`. See `docs/app/login.md`.
 
 ```tsx
 // Usage in App.tsx

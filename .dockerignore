@@ -1,0 +1,17 @@
+.git
+.github
+.claude
+node_modules
+dist
+dist-ssr
+test-results
+playwright-report
+e2e
+docs
+*.local
+.env
+.env.*
+!.env.example
+.DS_Store
+Dockerfile
+.dockerignore

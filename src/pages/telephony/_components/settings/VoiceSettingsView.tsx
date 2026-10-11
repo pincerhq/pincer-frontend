@@ -39,7 +39,7 @@ function Section({
           <Icon className="h-4 w-4 text-[var(--text-5)]" />
           {title}
         </h2>
-        {hint && <span className="text-[11px] text-[var(--text-5)]">{hint}</span>}
+        {hint && <span className="text-[11px] text-[var(--text-3)]">{hint}</span>}
       </div>
       {children}
     </section>
@@ -80,13 +80,13 @@ function TurnModelSetting() {
 
   if (isLoading) {
     return (
-      <p className="flex items-center gap-2 text-xs text-[var(--text-4)]">
+      <p className="flex items-center gap-2 text-xs text-[var(--text-3)]">
         <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
       </p>
     );
   }
   if (isError || !cfg) {
-    return <p className="text-xs text-[var(--text-4)]">This backend does not expose the voice model config.</p>;
+    return <p className="text-xs text-[var(--text-3)]">This backend does not expose the voice model config.</p>;
   }
 
   // A model the server is running but no longer offers still has to be
@@ -147,7 +147,7 @@ export default function VoiceSettingsView() {
         <p className="mt-1 text-xs text-[var(--text-4)]">How this backend's voice stack is configured</p>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto p-6">
+      <div className="flex-1 space-y-4 overflow-y-auto p-6" tabIndex={0}>
         {!connected ? (
           <p className="text-sm text-[var(--text-4)]">
             Connect this browser to a Pincer backend to see its voice settings.

@@ -1500,8 +1500,8 @@ function ConnectPrompt() {
       <Plug className="mx-auto mb-3 h-8 w-8 text-[var(--text-5)]" />
       <h2 className="text-sm font-semibold text-[var(--ink)]">Not connected to a Pincer backend</h2>
       <p className="mt-2 text-xs leading-relaxed text-[var(--text-5)]">
-        The Voice app reads live data from your Pincer server. Connect this browser with the
-        shared bearer token and it will start polling <span className="font-mono">/api/voice/*</span>.
+        The Voice app reads live data from your Pincer server. Sign in again and it will start
+        polling <span className="font-mono">/api/voice/*</span>.
       </p>
       <Link
         to="/login"

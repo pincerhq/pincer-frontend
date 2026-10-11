@@ -48,7 +48,7 @@ export default function NotesSessionDialog() {
           </AlertDialogTitle>
           <AlertDialogDescription className="text-[13px] text-[var(--text-3)]">
             {forbidden
-              ? 'The Notes service accepted the credential but refused the request. Check which workspace this build points at.'
+              ? 'The Notes service accepted the credential but refused the request. Check which workspace this deployment points at.'
               : 'The Notes service rejected the stored credential. Anything you typed is still in this tab — reconnect and it saves on the next keystroke.'}
           </AlertDialogDescription>
         </AlertDialogHeader>

@@ -6,17 +6,15 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-vi.mock('@/lib/pincerClient', () => ({
-  isConnected: () => false,
-  getAuth: () => null,
-  PincerError: class extends Error {},
-}));
+vi.mock('@/lib/pincerClient', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/pincerClient')>();
+  return { ...actual, isConnected: () => false, getAuth: () => null };
+});
 
 const { default: Dashboard } = await import('@/pages/Dashboard');
 
 describe('dashboard page', () => {
   it('renders every section, board included', () => {
-    localStorage.setItem('isAuthenticated', 'true');
     render(
       <MemoryRouter>
         <Dashboard />

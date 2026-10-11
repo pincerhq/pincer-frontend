@@ -2,28 +2,32 @@
  * Authenticated fetch for the standalone Notes service (`notes_app`).
  *
  * Sprint 0 §3.2 specified an OIDC wrapper; **ADR 0001 superseded that** — no
- * Zitadel. What ships is the auth 3days already has: the Pincer shared bearer
- * token plus the per-browser UUID sent as `X-Pincer-User`. The service rejects
- * a request missing *either* header, so both are always set together.
+ * Zitadel. What is sent is the signed-in Pincer session's access token plus the
+ * per-browser UUID as `X-Pincer-User`. The service rejects a request missing
+ * *either* header, so both are always set together.
  *
- * The token is deliberately read through `pincerClient`'s `authHeaders()`
- * instead of re-reading `pincer.web.auth` here — one place knows the storage
- * keys. When OIDC eventually lands, this file is the only thing that changes.
+ * The token is read through `pincerClient` (`ensureFreshAuth`, so it is never
+ * sent already expired) instead of re-reading `pincer.web.auth` here — one
+ * place knows the storage keys. A 401 from the Notes service does not end the
+ * Pincer session; Notes shows its own dialog.
  *
- * Known limit, recorded because it is easy to forget: the token is shared and
- * `X-Pincer-User` is client-asserted, so anyone holding the token can claim any
- * user id. Pilot-grade, not §203-grade (ADR 0001).
+ * Open question, recorded because it is easy to forget: ADR 0001 was written
+ * for Pincer's *shared* token. Whether `notes_app` accepts a per-identity
+ * Pincer JWT is for its owner to confirm; until then `VITE_NOTES_TOKEN` is the
+ * way to give it a credential it knows. `X-Pincer-User` is still
+ * client-asserted. Pilot-grade, not §203-grade (ADR 0001).
  */
 
-import { getAuth, getUserId } from '@/lib/pincerClient';
+import { env } from '@/lib/env';
+import { ensureFreshAuth, getAuth, getUserId } from '@/lib/pincerClient';
 
-const RAW_API_URL = (import.meta.env.VITE_NOTES_API_URL as string | undefined)?.trim();
+const RAW_API_URL = env('VITE_NOTES_API_URL');
 
 /**
  * Whether a base URL was configured at all.
  *
  * An unset `VITE_NOTES_API_URL` is not the same as "same origin": it means the
- * build was never pointed at a Notes service, and every request would go to the
+ * deployment was never pointed at a Notes service, and every request would go to the
  * frontend's own origin and come back as the SPA's HTML. That produces a
  * baffling JSON parse error, so it is reported as the configuration mistake it
  * is. To deploy behind a reverse proxy on the same origin, set the variable to
@@ -38,13 +42,12 @@ export const NOTES_API_URL = (RAW_API_URL ?? '').replace(/\/+$/, '');
  * A token dedicated to the Notes service, for deployments where it does not
  * share Pincer's. Falls back to the Pincer token, which is the normal case.
  */
-const NOTES_TOKEN = (import.meta.env.VITE_NOTES_TOKEN as string | undefined)?.trim();
+const NOTES_TOKEN = env('VITE_NOTES_TOKEN');
 
 export class NotAuthenticatedError extends Error {
   constructor() {
     super(
-      'Not connected to the Notes backend. Connect Pincer (Settings → Integrations) ' +
-        'or set VITE_NOTES_TOKEN.',
+      'Not connected to the Notes backend. Sign in again or set VITE_NOTES_TOKEN.',
     );
   }
 }
@@ -52,10 +55,10 @@ export class NotAuthenticatedError extends Error {
 /** Why the Notes API is unreachable, or null when it is reachable. */
 export function notesApiBlocker(): string | null {
   if (!NOTES_API_CONFIGURED) {
-    return 'VITE_NOTES_API_URL is not set, so this build has no Notes backend to talk to. Set it to the service URL (dev: http://localhost:8000) and reload.';
+    return 'VITE_NOTES_API_URL is not set, so this deployment has no Notes backend to talk to. Set it to the service URL (dev: http://localhost:8000) and restart the app.';
   }
   if (!NOTES_TOKEN && !getAuth()) {
-    return 'Not connected to the Notes backend. Connect Pincer under Settings → Integrations, or set VITE_NOTES_TOKEN for this build.';
+    return 'Not connected to the Notes backend. Sign in again, or set VITE_NOTES_TOKEN for this deployment.';
   }
   return null;
 }
@@ -97,8 +100,11 @@ function authHeadersFor(auth: { token: string }): Record<string, string> {
  * service-relative path (`/v1/notes`), which is prefixed with
  * `VITE_NOTES_API_URL`.
  */
-export function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
+export async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const target = /^https?:\/\//.test(url) ? url : `${NOTES_API_URL}${url}`;
+  // An access token lives for minutes: renew it before it is sent, since the
+  // Notes service's flat 401 could not be told apart from a real refusal.
+  if (!NOTES_TOKEN) await ensureFreshAuth();
   const headers = { ...notesAuthHeaders(), ...(init.headers ?? {}) } as Record<string, string>;
   assertCredentialHeaders(headers, target);
   countForBudget(init.method ?? 'GET', url);
@@ -162,6 +168,6 @@ function assertCredentialHeaders(headers: Record<string, string>, target: string
   console.error(
     `[notes] request to ${target} is missing ${missing.join(' and ')}. ` +
       'The Notes service requires both (ADR 0001) and will answer 401 without saying which. ' +
-      'Check the Pincer token in localStorage (`pincer.web.auth`) or VITE_NOTES_TOKEN.',
+      'Check the Pincer session in storage (`pincer.web.auth`) or VITE_NOTES_TOKEN.',
   );
 }

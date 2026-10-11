@@ -1,6 +1,7 @@
 
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { useSession } from '@/stores/session';
 import {
   Sidebar,
   SidebarContent,
@@ -125,15 +126,13 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
   const isChat = location.pathname === '/chat';
   const [selectedLanguage, setSelectedLanguage] = useState('en');
 
-  const userEmail = localStorage.getItem('userEmail') || '';
+  const identity = useSession((s) => s.identity);
+  const userLabel = identity?.displayName || identity?.email || identity?.id || '';
 
-  const getInitials = (email: string) => email.slice(0, 2).toUpperCase();
+  const getInitials = (label: string) => label.slice(0, 2).toUpperCase();
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userEmail');
-    sessionStorage.removeItem('isAuthenticated');
-    sessionStorage.removeItem('userEmail');
+    useSession.getState().logout();
     navigate('/login');
   };
 
@@ -268,11 +267,11 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
               <Button variant="ghost" className={`flex items-center gap-2 hover:bg-accent px-2 ${state === "collapsed" ? "justify-center w-full" : ""}`}>
                 <Avatar className="h-7 w-7 flex-shrink-0">
                   <AvatarFallback className="bg-[#e9ebef] text-[#14161a] text-xs font-semibold">
-                    {getInitials(userEmail)}
+                    {getInitials(userLabel)}
                   </AvatarFallback>
                 </Avatar>
                 {state === "expanded" && (
-                  <span className="text-sm text-gray-700 truncate max-w-[120px]">{userEmail}</span>
+                  <span className="text-sm text-gray-700 truncate max-w-[120px]">{userLabel}</span>
                 )}
               </Button>
             </DropdownMenuTrigger>

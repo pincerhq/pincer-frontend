@@ -2,131 +2,71 @@
  * Login — split layout: the story on the left, the form on a brand-blue art
  * panel on the right (the reference composition, in our own design language).
  *
- * Both ways in are preserved exactly as they were:
- *   Credentials — the VITE_AUTH_* pair, storing isAuthenticated in local or
- *                 session storage depending on "remember me"
- *   Token       — pings a Pincer backend and stores {apiUrl, token}, which is
- *                 what every platform page reads to talk to the real server
+ * One way in: an identity's name or email plus its password, checked by the
+ * Pincer API (`POST /api/auth/login`). The session store keeps the token pair
+ * — for this tab, or on the device with "remember me" — and every protected
+ * page reads that store.
  */
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
 import '@/styles/marketing.css';
-import { pingStatus, setAuth, PincerError } from '@/lib/pincerClient';
+import { ApiError } from '@/lib/api/client';
+import { loginErrorKind } from '@/lib/api/auth';
+import { SIGNUP_ALLOWED } from '@/lib/signup';
+import { defaultApiUrl, resolveReturnTo, useSession } from '@/stores/session';
+
+function loginErrorMessage(err: unknown): string {
+  switch (loginErrorKind(err)) {
+    case 'invalid':
+      // Never which of the two: that would confirm an account exists.
+      return 'Name/email or password is incorrect.';
+    case 'locked': {
+      const wait = err instanceof ApiError ? err.retryAfter : undefined;
+      return wait
+        ? `Too many failed attempts. Try again in ${Math.ceil(wait / 60)} min.`
+        : 'Too many failed attempts. Try again in a few minutes.';
+    }
+    case 'validation':
+      return 'Enter your name or email and your password.';
+    case 'unreachable':
+      return `The server at ${defaultApiUrl()} cannot be reached.`;
+    default:
+      return err instanceof Error && err.message ? err.message : 'Sign-in failed. Please try again.';
+  }
+}
 
 const Login = () => {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  const [apiUrl, setApiUrl] = useState(
-    (import.meta.env.VITE_PINCER_API_URL as string | undefined) ?? 'http://localhost:8080'
-  );
-  const [token, setToken] = useState('');
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const navigate = useNavigate();
-  const { toast } = useToast();
 
-  // Redirect already-authenticated visitors away from /login. This runs only
-  // on mount — doing it inline during render would re-fire after the
-  // post-connect re-render and clobber a navigate() from a submit handler.
+  // Redirect already-signed-in visitors away from /login. This runs only on
+  // mount — the submit handler does its own navigation after a sign-in.
   useEffect(() => {
-    const isAuth =
-      localStorage.getItem('isAuthenticated') === 'true' ||
-      sessionStorage.getItem('isAuthenticated') === 'true';
-    if (isAuth) navigate('/dashboard', { replace: true });
+    if (useSession.getState().connected) navigate(resolveReturnTo('/dashboard'), { replace: true });
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setIsLoading(true);
-
     try {
-      const validEmail = import.meta.env.VITE_AUTH_EMAIL;
-      const validPassword = import.meta.env.VITE_AUTH_PASSWORD;
-
-      if (email === validEmail && password === validPassword) {
-        const storage = rememberMe ? localStorage : sessionStorage;
-        storage.setItem('isAuthenticated', 'true');
-        storage.setItem('userEmail', email);
-
-        toast({
-          title: "Welcome back!",
-          description: "Successfully logged in to 3Days.ai.",
-        });
-
-        navigate('/dashboard');
-      } else {
-        toast({
-          title: "Invalid credentials",
-          description: "The email or password you entered is incorrect.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      toast({
-        title: "Error",
-        description: "An error occurred during login. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleTokenConnect = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanUrl = apiUrl.trim().replace(/\/+$/, '');
-    const cleanToken = token.trim();
-    if (!cleanUrl || !cleanToken) {
-      toast({
-        title: 'Missing fields',
-        description: 'Enter both the API URL and the bearer token.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    setIsConnecting(true);
-    try {
-      const { version } = await pingStatus(cleanUrl, cleanToken);
-      setAuth({ apiUrl: cleanUrl, token: cleanToken });
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userEmail', 'pincer-token-user');
-
-      toast({
-        title: 'Connected',
-        description: `Pincer server ${version} is reachable.`,
-      });
-
-      // Hard navigation. Don't reset isConnecting — letting React re-render
-      // Login after we've scheduled navigation can race the browser's
-      // location change and leave us stuck on /login.
-      // FE0: the owner app's auth guard sends people here with ?returnTo=;
-      // only same-origin paths are honoured, never a full URL.
-      const returnTo = new URLSearchParams(window.location.search).get('returnTo');
-      window.location.href = returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/chat';
-      return;
+      await useSession.getState().login({ identifier, password, remember: rememberMe });
     } catch (err) {
-      const msg =
-        err instanceof PincerError
-          ? err.status === 401
-            ? 'Token rejected by the server.'
-            : err.message
-          : 'Could not reach the server. Check the URL.';
-      toast({
-        title: 'Connection failed',
-        description: msg,
-        variant: 'destructive',
-      });
-      setIsConnecting(false);
+      setError(loginErrorMessage(err));
+      setIsLoading(false);
+      return;
     }
+    const target = resolveReturnTo('/dashboard');
+    useSession.getState().setReturnTo(null);
+    navigate(target, { replace: true });
   };
 
   const field =
@@ -165,80 +105,87 @@ const Login = () => {
               Enter your account details below
             </p>
 
-            <Tabs defaultValue="credentials" className="mt-7 w-full">
-              <TabsList className="m-switch mb-6 grid h-auto w-full grid-cols-2">
-                <TabsTrigger value="credentials" className="m-switch-item py-2">
-                  Credentials
-                </TabsTrigger>
-                <TabsTrigger value="token" className="m-switch-item py-2">
-                  Token
-                </TabsTrigger>
-              </TabsList>
+            <form onSubmit={handleSubmit} className="mt-7 space-y-4" aria-busy={isLoading}>
+              <div className="space-y-1.5">
+                <Label htmlFor="identifier" className="text-[13px] font-medium text-[color:var(--text-2)]">
+                  Name or email
+                </Label>
+                <Input
+                  id="identifier"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  maxLength={320}
+                  placeholder="Your name or email"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  required
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? 'login-error' : undefined}
+                  className={field}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-[13px] font-medium text-[color:var(--text-2)]">
+                  Password
+                </Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="Your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? 'login-error' : undefined}
+                  className={field}
+                />
+              </div>
 
-              {/* ── Credentials tab ── */}
-              <TabsContent value="credentials">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="email" className="text-[13px] font-medium text-[color:var(--text-2)]">
-                      Email
-                    </Label>
-                    <Input
-                      id="email"
-                      type="text"
-                      placeholder="Your email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className={field}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="password" className="text-[13px] font-medium text-[color:var(--text-2)]">
-                      Password
-                    </Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className={field}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="rememberMe"
-                        checked={rememberMe}
-                        onCheckedChange={(checked) => setRememberMe(checked === true)}
-                      />
-                      <Label
-                        htmlFor="rememberMe"
-                        className="cursor-pointer text-[13px] font-normal text-[color:var(--text-3)]"
-                      >
-                        Remember me
-                      </Label>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="mt-1 h-11 w-full rounded-full bg-[color:var(--ink)] text-[15px] font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-40"
-                  >
-                    {isLoading ? 'Signing in…' : 'Sign in'}
-                  </button>
-                </form>
-
-                <p className="mt-5 text-center text-[13px] text-[color:var(--text-3)]">
-                  Forgot your credentials?{' '}
-                  <Link to="/forgot-password" className="font-semibold text-[color:var(--ink)] underline underline-offset-2">
-                    Reset password
-                  </Link>
+              {error && (
+                <p id="login-error" role="alert" className="text-[13px] text-red-700">
+                  {error}
                 </p>
+              )}
 
+              <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setRememberMe(checked === true)}
+                  />
+                  <Label
+                    htmlFor="rememberMe"
+                    className="cursor-pointer text-[13px] font-normal text-[color:var(--text-3)]"
+                  >
+                    Remember me
+                  </Label>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="mt-1 h-11 w-full rounded-full bg-[color:var(--ink)] text-[15px] font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-40"
+              >
+                {isLoading ? 'Signing in…' : 'Sign in'}
+              </button>
+            </form>
+
+            <p className="mt-5 text-center text-[13px] text-[color:var(--text-3)]">
+              Forgot your credentials?{' '}
+              <Link to="/forgot-password" className="font-semibold text-[color:var(--ink)] underline underline-offset-2">
+                Reset password
+              </Link>
+            </p>
+
+            {SIGNUP_ALLOWED && (
+              <>
                 <div className="my-5 flex items-center gap-4">
                   <span className="h-px flex-1 bg-[color:var(--line)]" />
                   <span className="text-[13px] text-[color:var(--text-4)]">or</span>
@@ -248,56 +195,11 @@ const Login = () => {
                 <p className="text-center text-[13px] text-[color:var(--text-3)]">
                   Don't have an account?{' '}
                   <Link to="/signup" className="font-semibold text-[color:var(--ink)] underline underline-offset-2">
-                    Sign up
+                    Request access
                   </Link>
                 </p>
-              </TabsContent>
-
-              {/* ── Token tab (connects directly to a Pincer backend) ── */}
-              <TabsContent value="token">
-                <form onSubmit={handleTokenConnect} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="apiUrl" className="text-[13px] font-medium text-[color:var(--text-2)]">
-                      Pincer API URL
-                    </Label>
-                    <Input
-                      id="apiUrl"
-                      type="url"
-                      placeholder="https://pincer.example.com"
-                      value={apiUrl}
-                      onChange={(e) => setApiUrl(e.target.value)}
-                      required
-                      className={`${field} font-mono text-xs`}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="token" className="text-[13px] font-medium text-[color:var(--text-2)]">
-                      Bearer token
-                    </Label>
-                    <Input
-                      id="token"
-                      type="password"
-                      placeholder="PINCER_DASHBOARD_TOKEN"
-                      value={token}
-                      onChange={(e) => setToken(e.target.value)}
-                      required
-                      className={`${field} font-mono text-xs`}
-                    />
-                  </div>
-                  <p className="rounded-[10px] bg-[color:var(--blue-100)] p-3.5 text-xs leading-relaxed text-[color:var(--blue-deep)]">
-                    Connects this browser to a Pincer backend with the shared bearer token. No user
-                    account is created — the server keys your chat history by a UUID stored here.
-                  </p>
-                  <button
-                    type="submit"
-                    disabled={isConnecting}
-                    className="h-11 w-full rounded-full bg-[color:var(--ink)] text-[15px] font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-40"
-                  >
-                    {isConnecting ? 'Connecting…' : 'Connect'}
-                  </button>
-                </form>
-              </TabsContent>
-            </Tabs>
+              </>
+            )}
           </div>
         </div>
       </div>

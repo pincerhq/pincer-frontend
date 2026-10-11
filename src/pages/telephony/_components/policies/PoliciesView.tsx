@@ -44,7 +44,7 @@ function Section({
           <Icon className="h-4 w-4 text-[var(--text-5)]" />
           {title}
         </h2>
-        {hint && <span className="text-[11px] text-[var(--text-5)]">{hint}</span>}
+        {hint && <span className="text-[11px] text-[var(--text-3)]">{hint}</span>}
       </div>
       {children}
     </section>
@@ -165,15 +165,15 @@ function DoNotCallSection() {
       </form>
 
       {isLoading ? (
-        <p className="text-xs text-[var(--text-4)]">Loading the list…</p>
+        <p className="text-xs text-[var(--text-3)]">Loading the list…</p>
       ) : isError ? (
-        <p className="text-xs text-[var(--text-4)]">
+        <p className="text-xs text-[var(--text-3)]">
           {error?.status === 404
             ? 'This backend has no do-not-call endpoint yet.'
             : (error?.message ?? 'The list could not be loaded.')}
         </p>
       ) : !entries.length ? (
-        <p className="text-xs text-[var(--text-5)]">
+        <p className="text-xs text-[var(--text-3)]">
           Nobody has opted out. Numbers land here when a caller asks not to be called again, or when
           you add one.
         </p>
@@ -213,7 +213,7 @@ function ConsentSection() {
         value={status?.outbound_enabled ? 'enabled' : 'off'}
         tone={status?.outbound_enabled ? 'plain' : 'warn'}
       />
-      <p className="mt-3 text-[11px] leading-relaxed text-[var(--text-5)]">
+      <p className="mt-3 text-[11px] leading-relaxed text-[var(--text-3)]">
         {twoParty
           ? de
             ? 'Zwei-Parteien-Zustimmung: Der Agent holt zu Beginn des Gesprächs eine Bestätigung ein.'

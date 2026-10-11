@@ -9,7 +9,7 @@
  * Listen-only is a property of the architecture (the server subscribes us to a
  * receive-only media fork), so this client never sends anything but the close.
  */
-import { getAuth } from '@/lib/pincerClient';
+import { authedFetch, getAuth } from '@/lib/pincerClient';
 
 export type ListenState =
   | 'idle'
@@ -43,18 +43,31 @@ export interface ListenClientEvents {
 export const CLOSE_CAPACITY = 4001;
 
 /**
- * The token cannot go in a header: browsers do not let a WebSocket carry one.
- * It rides the subprotocol instead of the query string, because query strings
- * end up in access logs and proxy traces and this one is a bearer token.
+ * A browser cannot set an Authorization header on a WebSocket, and the session
+ * token must not ride a URL that ends up in access logs. So the socket is
+ * opened with a ticket instead: one minute, single call, minted by
+ * `POST /api/voice/listen/{call_sid}/ticket` for the signed-in session.
  */
-export const BEARER_SUBPROTOCOL = 'pincer.bearer';
-
-export function listenUrl(apiUrl: string, callSid: string): string {
-  const base = apiUrl.replace(/^http/i, 'ws');
-  return `${base}/api/voice/listen/${encodeURIComponent(callSid)}`;
+export function listenTicketPath(callSid: string): string {
+  return `/api/voice/listen/${encodeURIComponent(callSid)}/ticket`;
 }
 
-type SocketFactory = (url: string, protocols: string[]) => WebSocket;
+export function listenUrl(apiUrl: string, callSid: string, ticket = ''): string {
+  const base = apiUrl.replace(/^http/i, 'ws');
+  const url = `${base}/api/voice/listen/${encodeURIComponent(callSid)}`;
+  // An empty ticket is what a backend with sign-in switched off hands out.
+  return ticket ? `${url}?token=${encodeURIComponent(ticket)}` : url;
+}
+
+async function fetchListenTicket(callSid: string): Promise<string> {
+  const res = await authedFetch(listenTicketPath(callSid), { method: 'POST' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const body = (await res.json()) as { ticket?: unknown };
+  return typeof body.ticket === 'string' ? body.ticket : '';
+}
+
+type SocketFactory = (url: string) => WebSocket;
+type TicketSource = (callSid: string) => Promise<string>;
 
 export class ListenClient {
   private ws: WebSocket | null = null;
@@ -66,7 +79,8 @@ export class ListenClient {
   constructor(
     private readonly callSid: string,
     private readonly events: ListenClientEvents,
-    private readonly makeSocket: SocketFactory = (url, protocols) => new WebSocket(url, protocols),
+    private readonly makeSocket: SocketFactory = (url) => new WebSocket(url),
+    private readonly getTicket: TicketSource = fetchListenTicket,
   ) {}
 
   get currentState(): ListenState {
@@ -89,13 +103,19 @@ export class ListenClient {
     }
 
     this.setState(this.retried ? 'reconnecting' : 'connecting');
+    void this.open(auth.apiUrl);
+  }
+
+  /** A ticket is single-use, so every attempt (the one retry too) gets its own. */
+  private async open(apiUrl: string): Promise<void> {
     let ws: WebSocket;
     try {
-      ws = this.makeSocket(listenUrl(auth.apiUrl, this.callSid), [
-        BEARER_SUBPROTOCOL,
-        auth.token,
-      ]);
+      const ticket = await this.getTicket(this.callSid);
+      // Stopped while the ticket was on its way: there is nothing to open.
+      if (this.closedByUs) return;
+      ws = this.makeSocket(listenUrl(apiUrl, this.callSid, ticket));
     } catch (err) {
+      if (this.closedByUs) return;
       this.setState('error');
       this.events.onEnd('error', err instanceof Error ? err.message : String(err));
       return;

@@ -21,8 +21,7 @@
  * There is no browser OAuth endpoint, so an unauthorized block hands over the
  * exact command instead of a Connect button that could not work.
  */
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import {
   ArrowUpRight,
@@ -378,16 +377,9 @@ function DetailModal({ slug, onClose }: { slug: string; onClose: () => void }) {
 // ── Page ─────────────────────────────────────────────────────────────
 
 const IntegrationsInner = () => {
-  const navigate = useNavigate();
   const connected = isConnected();
   const { data, isLoading, refetch, isFetching } = useIntegrations();
   const [detailSlug, setDetailSlug] = useState<string | null>(null);
-
-  useEffect(() => {
-    const authed =
-      localStorage.getItem('isAuthenticated') || sessionStorage.getItem('isAuthenticated');
-    if (authed !== 'true') navigate('/login');
-  }, [navigate]);
 
   const groups = groupIntegrations(data?.integrations);
   const connections = toConnections([...groups.connected, ...groups.connectable], groups.mcp);
@@ -423,8 +415,8 @@ const IntegrationsInner = () => {
                 <div className="plat-panel mb-6 flex flex-wrap items-center gap-3 !py-3.5">
                   <Plug className="h-4 w-4 shrink-0" style={{ color: 'var(--text-5)' }} />
                   <p className="flex-1 text-xs" style={{ color: 'var(--text-3)' }}>
-                    Not connected to a Pincer backend — sign in with the shared token to see which
-                    services are authorized.
+                    Not connected to a Pincer backend — sign in again to see which services are
+                    authorized.
                   </p>
                 </div>
               )}

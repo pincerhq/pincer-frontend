@@ -60,7 +60,7 @@ export default function LiveView() {
           <h1 className="mt-1 flex items-center gap-2.5 text-[26px] text-[var(--ink)]">
             Live
             {!!calls?.length && (
-              <span className="flex items-center gap-1.5 rounded-full bg-green-500 px-2.5 py-1 text-xs font-semibold text-white">
+              <span className="flex items-center gap-1.5 rounded-full bg-green-700 px-2.5 py-1 text-xs font-semibold text-white">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
                 {calls.length} in progress
               </span>
@@ -139,7 +139,7 @@ export default function LiveView() {
                           {c.target_name || c.target_number || c.caller_number}
                         </p>
                         <p
-                          className="truncate text-xs text-[var(--text-4)]"
+                          className="truncate text-xs text-[var(--text-3)]"
                           title={c.briefing_task_preview || c.purpose}
                         >
                           {c.briefing_task_preview || c.purpose}
@@ -149,12 +149,12 @@ export default function LiveView() {
                     <Maximize2 className="h-4 w-4 shrink-0 text-[var(--text-5)] transition-colors group-hover:text-[var(--text-4)]" />
                   </div>
                   <div className="mt-3 flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 font-medium text-green-600">
+                    <span className="flex items-center gap-1.5 font-medium text-green-700">
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
                       live · {fmtDuration(c.duration_seconds)}
                     </span>
-                    <span className="text-[var(--text-5)]">{c.engine}</span>
-                    <span className={cn('font-mono text-[var(--text-5)]')}>
+                    <span className="text-[var(--text-3)]">{c.engine}</span>
+                    <span className={cn('font-mono text-[var(--text-3)]')}>
                       {c.direction === 'outbound' ? c.target_number : c.caller_number}
                     </span>
                   </div>

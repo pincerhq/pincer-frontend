@@ -8,6 +8,7 @@
     "src/vite-env.d.ts",
     "src/test/setup.ts",
     "src/lib/api/client.ts",
+    "src/lib/api/auth.ts",
     "src/lib/api/tenant.ts",
     "src/lib/api/generated/schema.d.ts",
     "src/lib/format.ts",

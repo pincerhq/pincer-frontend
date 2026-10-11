@@ -127,7 +127,7 @@ continueAgentTurn(sessionId, signal)              // resume after an approval
 **AI exists in exactly two places** and a CI gate (A17) keeps it that way:
 
 1. `NoteBubbleMenu` — three actions on a text selection.
-2. The ask panel — `Cmd+J`, two tabs (Agent behind `VITE_NOTES_AGENT_CHAT`).
+2. The ask panel — `Cmd+J`, two tabs (Agent behind `VITE_NOTES_AGENT_CHAT=1`, set at container start).
 
 Everything else may *render* AI output; nothing else may *invoke* it. Streaming
 is one implementation — `_lib/sse.ts`, `fetch` + a manual reader, never

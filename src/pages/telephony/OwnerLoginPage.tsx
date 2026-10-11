@@ -2,32 +2,23 @@
  * Owner login (FE1 §1) at /telephony/login — outside the platform's
  * ProtectedRoute, because it is what creates the session.
  *
- * Magic link: `?t=<token>` (optionally `&api=<url>`) is consumed and scrubbed
- * from the address bar before the first render commits, then validated
- * against `GET /api/voice/status`. Manual fallback: paste the key. "Remember
+ * Name or email plus password, checked by `POST /api/auth/login`. "Remember
  * this device" is opt-in and off by default (shared reception PCs).
  */
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ChevronDown, KeyRound, ShieldCheck } from "lucide-react";
+import { KeyRound, ShieldCheck } from "lucide-react";
 import "@/i18n/voice";
 import "@/styles/platform.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ApiError } from "@/lib/api/client";
-import { consumeMagicLink, defaultApiUrl, safeReturnTo, useSession } from "@/stores/session";
+import { loginErrorKind } from "@/lib/api/auth";
+import { defaultApiUrl, resolveReturnTo, useSession } from "@/stores/session";
 import { useVoiceT } from "@/i18n/voice";
 import { ROUTES } from "@/pages/telephony/_lib/routes";
-
-type MagicState = "none" | "checking" | "invalid" | "unreachable";
-
-function readReturnTo(): string {
-  const fromQuery = new URLSearchParams(window.location.search).get("returnTo");
-  return safeReturnTo(fromQuery) ?? useSession.getState().returnTo ?? ROUTES.HOME;
-}
 
 export default function OwnerLoginPage() {
   const t = useVoiceT("voice-auth");
@@ -37,18 +28,13 @@ export default function OwnerLoginPage() {
   const connected = useSession((s) => s.connected);
   const lastDisconnect = useSession((s) => s.lastDisconnect);
 
-  // Consumed synchronously on first render so the token is gone from the
-  // address bar before anything (analytics, a screenshot) can see it.
-  const magic = useRef(consumeMagicLink());
-  const [magicState, setMagicState] = useState<MagicState>(magic.current ? "checking" : "none");
-  const [token, setToken] = useState("");
-  const [apiUrl, setApiUrl] = useState("");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
-  const [advanced, setAdvanced] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  const returnTo = useRef(readReturnTo());
+  const returnTo = useRef(resolveReturnTo(ROUTES.HOME));
 
   const finish = () => {
     setDone(true);
@@ -56,55 +42,44 @@ export default function OwnerLoginPage() {
     navigate(returnTo.current, { replace: true });
   };
 
-  useEffect(() => {
-    const link = magic.current;
-    if (!link) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        await login({ token: link.token, apiUrl: link.apiUrl, remember: false });
-        if (!cancelled) finish();
-      } catch (err) {
-        if (cancelled) return;
-        setMagicState(err instanceof ApiError && err.status === 401 ? "invalid" : "unreachable");
+  const errorText = (err: unknown): string => {
+    switch (loginErrorKind(err)) {
+      case "invalid":
+        // Never which of the two: that would confirm an account exists.
+        return t("form.errorInvalid");
+      case "locked": {
+        const wait = err instanceof ApiError ? err.retryAfter : undefined;
+        return wait ? t("form.errorLockedFor", { minutes: Math.ceil(wait / 60) }) : t("form.errorLocked");
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      case "validation":
+        return t("form.errorValidation");
+      case "unreachable":
+        return t("form.errorUnreachable", { url: defaultApiUrl() });
+      default:
+        return err instanceof Error && err.message ? err.message : tc("errors.network");
+    }
+  };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!token.trim()) {
+    if (!identifier.trim() || !password) {
       setError(t("form.errorEmpty"));
       return;
     }
     setBusy(true);
     try {
-      await login({ token, apiUrl: advanced ? apiUrl : undefined, remember });
+      await login({ identifier, password, remember });
       finish();
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) setError(t("form.errorRejected"));
-      else if (err instanceof ApiError && err.status === 0) setError(t("form.errorUnreachable", { url: apiUrl.trim() || defaultApiUrl() }));
-      else setError(err instanceof Error ? err.message : tc("errors.network"));
+      setError(errorText(err));
     } finally {
       setBusy(false);
     }
   };
 
-  const notice =
-    magicState === "checking"
-      ? t("magic.checking")
-      : magicState === "invalid"
-        ? t("magic.invalid")
-        : magicState === "unreachable"
-          ? t("magic.unreachable")
-          : lastDisconnect === "unauthorized"
-            ? t("sessionExpired")
-            : null;
+  const notice = lastDisconnect === "unauthorized" ? t("sessionExpired") : null;
+  const describedBy = error ? "owner-login-error" : undefined;
 
   return (
     <main className="plat flex min-h-screen items-center justify-center bg-[var(--sand)] px-4 py-10">
@@ -121,17 +96,13 @@ export default function OwnerLoginPage() {
           <p
             role="status"
             aria-live="polite"
-            className={
-              magicState === "checking"
-                ? "mb-4 rounded-[12px] border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm text-[var(--text-2)]"
-                : "mb-4 rounded-[12px] border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-            }
+            className="mb-4 rounded-[12px] border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
           >
             {notice}
           </p>
         )}
 
-        {connected && magicState === "none" && !done && (
+        {connected && !done && (
           <p className="mb-4 text-center text-sm text-[var(--text-3)]">
             <Link to={returnTo.current} className="underline">
               {tc("auth.action")}
@@ -139,37 +110,49 @@ export default function OwnerLoginPage() {
           </p>
         )}
 
-        <form onSubmit={onSubmit} className="rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-5 shadow-sm" aria-busy={busy || magicState === "checking"}>
+        <form onSubmit={onSubmit} className="rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-5 shadow-sm" aria-busy={busy}>
           <div className="space-y-1.5">
-            <Label htmlFor="owner-token">{t("form.tokenLabel")}</Label>
+            <Label htmlFor="owner-identifier">{t("form.identifierLabel")}</Label>
             <Input
-              id="owner-token"
-              type="password"
-              autoComplete="off"
+              id="owner-identifier"
+              name="username"
+              type="text"
+              autoComplete="username"
+              autoCapitalize="none"
               spellCheck={false}
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder={t("form.tokenPlaceholder")}
+              maxLength={320}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               aria-invalid={error ? true : undefined}
-              aria-describedby={error ? "owner-token-error" : undefined}
+              aria-describedby={describedBy}
+              className="rounded-[10px]"
+            />
+          </div>
+
+          <div className="mt-3 space-y-1.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <Label htmlFor="owner-password">{t("form.passwordLabel")}</Label>
+              <Link to="/forgot-password" className="text-xs text-[var(--text-3)] underline-offset-2 hover:underline">
+                {t("form.forgot")}
+              </Link>
+            </div>
+            <Input
+              id="owner-password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={describedBy}
               className="rounded-[10px]"
             />
             {error && (
-              <p id="owner-token-error" role="alert" className="text-xs text-[var(--bad-fg)]">
+              <p id="owner-login-error" role="alert" className="text-xs text-[var(--bad-fg)]">
                 {error}
               </p>
             )}
           </div>
-
-          <Collapsible className="mt-3">
-            <CollapsibleTrigger className="flex items-center gap-1 text-xs text-[var(--text-3)] underline-offset-2 hover:underline">
-              <ChevronDown className="h-3 w-3" aria-hidden="true" />
-              {t("form.whereTitle")}
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <p className="mt-2 text-xs leading-relaxed text-[var(--text-3)]">{t("form.whereBody")}</p>
-            </CollapsibleContent>
-          </Collapsible>
 
           <div className="mt-4 flex items-start justify-between gap-3">
             <div>
@@ -183,29 +166,7 @@ export default function OwnerLoginPage() {
             <Switch id="owner-remember" checked={remember} onCheckedChange={setRemember} aria-describedby="owner-remember-hint" />
           </div>
 
-          <Collapsible className="mt-4" open={advanced} onOpenChange={setAdvanced}>
-            <CollapsibleTrigger className="flex items-center gap-1 text-xs text-[var(--text-3)] underline-offset-2 hover:underline">
-              <ChevronDown className="h-3 w-3" aria-hidden="true" />
-              {t("form.advanced")}
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="mt-2 space-y-1.5">
-                <Label htmlFor="owner-api-url">{t("form.apiUrlLabel")}</Label>
-                <Input
-                  id="owner-api-url"
-                  inputMode="url"
-                  autoComplete="off"
-                  value={apiUrl}
-                  onChange={(e) => setApiUrl(e.target.value)}
-                  placeholder={defaultApiUrl()}
-                  className="rounded-[10px]"
-                />
-                <p className="text-xs text-[var(--text-3)]">{t("form.apiUrlHint")}</p>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-
-          <Button type="submit" disabled={busy || magicState === "checking"} className="mt-5 w-full rounded-[12px]">
+          <Button type="submit" disabled={busy} className="mt-5 w-full rounded-[12px]">
             {busy ? t("form.submitting") : t("form.submit")}
           </Button>
         </form>

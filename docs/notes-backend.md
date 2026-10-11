@@ -20,35 +20,40 @@ npm run dev
 
 Then open `/notes`. If nothing loads, the list panel says why rather than showing
 an empty workspace — the two usual causes are an unset `VITE_NOTES_API_URL` and
-no Pincer token in `localStorage`.
+no signed-in Pincer session.
+
+`VITE_NOTES_API_URL` and `VITE_NOTES_TOKEN` are set at container start (in dev:
+`.env.local`), not baked into the build — see the README's Environment section.
 
 Seed a workspace with `POST /v1/dev/seed` (owner role, 404 in production). The
 client no longer seeds anything.
 
 ## Auth
 
-Per **ADR 0001** there is no Zitadel. The Notes service accepts the same shared
-bearer token Pincer does, plus the per-browser UUID sent as `X-Pincer-User`, and
-rejects a request missing either. `src/auth/apiFetch.ts` is the only place that
-knows this.
+Per **ADR 0001** there is no Zitadel. The Notes service expects a bearer token
+plus the per-browser UUID sent as `X-Pincer-User`, and rejects a request missing
+either. `src/auth/apiFetch.ts` is the only place that knows this.
 
 Token resolution order:
 
 1. `VITE_NOTES_TOKEN`, if set — for deployments where the Notes service has its
    own token.
-2. `getAuth().token` from `src/lib/pincerClient.ts`, i.e. `pincer.web.auth` in
-   `localStorage`. The normal case.
+2. The signed-in Pincer session's access token (`pincer.web.auth`), renewed
+   through `ensureFreshAuth()` before each request so it is never sent expired.
 
-This is pilot-grade and worth saying plainly: the token is shared, so it
-authenticates the deployment rather than a person, and `X-Pincer-User` is
-client-asserted, so a token holder can claim any user id. Any XSS in this app
-exfiltrates the token. Fine for an internal pilot; **not** §203-grade for client
-data.
+**Open question for the Notes service owner.** ADR 0001 was written when Pincer
+had one shared bearer token. Pincer now issues a per-identity JWT that expires
+after minutes. Whether `notes_app` validates that JWT has not been confirmed
+from this repository. If it does not, every Notes request without
+`VITE_NOTES_TOKEN` answers 401 (Notes shows its own dialog; the Pincer session
+is not ended by it).
 
-Unrelated but still open: `Login.tsx` compares `VITE_AUTH_EMAIL` /
-`VITE_AUTH_PASSWORD` in the browser and ~30 files read
-`localStorage.isAuthenticated`. Rotate anything real that was ever in
-`.env.local`.
+Still pilot-grade: `X-Pincer-User` is client-asserted, and any XSS in this app
+exfiltrates the session's tokens. **Not** §203-grade for client data.
+
+The browser-side `VITE_AUTH_EMAIL` / `VITE_AUTH_PASSWORD` login and the
+`localStorage.isAuthenticated` flag are gone (see `docs/app/login.md`). Rotate
+anything real that was ever in `.env.local`, and the old shared Pincer token.
 
 ## Files
 

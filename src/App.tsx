@@ -5,11 +5,13 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import NotFound from './pages/NotFound';
+import { SIGNUP_ALLOWED } from './lib/signup';
 
 // The public site is gone: everything it advertised is either shipped inside
 // the app or was never built, so the only unauthenticated screens left are the
-// three the account flow needs. `/` goes straight to the sign-in form.
-const Signup = lazy(() => import('./pages/Signup'));
+// ones the account flow needs. `/` goes straight to the sign-in form. Signup
+// exists only when SIGNUP_ALLOWED=true; otherwise /signup is a 404.
+const Signup = SIGNUP_ALLOWED ? lazy(() => import('./pages/Signup')) : null;
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 
 // Platform screens that read endpoints the backend actually serves:
@@ -58,10 +60,10 @@ function App() {
         <div className="App">
           <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-gray-400" />}>
           <Routes>
-            {/* Auth screens — no layout wrapper; signup is login's twin */}
+            {/* Auth screens — no layout wrapper; signup (when enabled) is login's twin */}
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
+            {Signup && <Route path="/signup" element={<Signup />} />}
             <Route path="/forgot-password" element={<ForgotPassword />} />
 
             {/* Protected routes — require authentication, use platform layout */}

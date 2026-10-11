@@ -11,9 +11,9 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MULAW_TABLE, base64ToBytes, decodeMulaw, mulawToFloat, peakLevel } from '@/components/voice/listen/mulaw';
 import {
-  BEARER_SUBPROTOCOL,
   CLOSE_CAPACITY,
   ListenClient,
+  listenTicketPath,
   listenUrl,
   type ListenClientEvents,
   type ListenEndReason,
@@ -36,7 +36,7 @@ class FakeSocket {
   closed = false;
   sent: unknown[] = [];
 
-  constructor(public url: string, public protocols: string[]) {
+  constructor(public url: string, public protocols?: string[]) {
     FakeSocket.last = this;
     FakeSocket.made += 1;
   }
@@ -66,14 +66,25 @@ const makeClient = (events: Partial<ListenClientEvents> = {}) => {
       onEnd: (reason, detail) => ends.push({ reason, detail }),
       ...events,
     },
-    (url, protocols) => new FakeSocket(url, protocols) as unknown as WebSocket,
+    (url, ...rest: unknown[]) => new FakeSocket(url, rest[0] as string[] | undefined) as unknown as WebSocket,
+    async (callSid) => {
+      tickets.push(callSid);
+      return `ticket-${tickets.length}`;
+    },
   );
   return { client, states, ends, frames };
 };
 
+/** Every call sid a ticket was asked for, in order. */
+const tickets: string[] = [];
+
+/** The ticket is fetched first, so the socket exists one turn after connect(). */
+const opened = () => vi.waitFor(() => expect(FakeSocket.last).not.toBeNull());
+
 beforeEach(() => {
   FakeSocket.last = null;
   FakeSocket.made = 0;
+  tickets.length = 0;
 });
 
 describe('μ-law decoding', () => {
@@ -121,20 +132,53 @@ describe('μ-law decoding', () => {
 });
 
 describe('listen session', () => {
-  it('connects to the call over WSS, carrying the token out of the URL', () => {
-    const { client } = makeClient();
+  it('connects to the call over WSS with a one-off ticket, never the session token', async () => {
+    const { client, states } = makeClient();
     client.connect();
+    expect(states).toEqual(['connecting']);
+    await opened();
 
-    expect(FakeSocket.last?.url).toBe('wss://pincer.test/api/voice/listen/CA1');
+    expect(tickets).toEqual(['CA1']);
+    expect(FakeSocket.last?.url).toBe('wss://pincer.test/api/voice/listen/CA1?token=ticket-1');
     // A bearer in a query string ends up in every proxy log there is.
     expect(FakeSocket.last?.url).not.toContain('tok_123');
-    expect(FakeSocket.last?.protocols).toEqual([BEARER_SUBPROTOCOL, 'tok_123']);
+    expect(FakeSocket.last?.protocols).toBeUndefined();
+    expect(listenTicketPath('CA 9')).toBe('/api/voice/listen/CA%209/ticket');
+    expect(listenUrl('http://localhost:8080', 'CA9', 'a b')).toBe('ws://localhost:8080/api/voice/listen/CA9?token=a%20b');
+    // A backend with sign-in switched off hands out an empty ticket.
     expect(listenUrl('http://localhost:8080', 'CA9')).toBe('ws://localhost:8080/api/voice/listen/CA9');
   });
 
-  it('plays frames once the server says it started', () => {
+  it('reports an error when no ticket can be had', async () => {
+    const ends: { reason: ListenEndReason; detail?: string }[] = [];
+    const states: ListenState[] = [];
+    const client = new ListenClient(
+      'CA1',
+      { onState: (s) => states.push(s), onFrame: () => {}, onEnd: (reason, detail) => ends.push({ reason, detail }) },
+      (url) => new FakeSocket(url) as unknown as WebSocket,
+      async () => {
+        throw new Error('HTTP 401');
+      },
+    );
+    client.connect();
+    await vi.waitFor(() => expect(ends).toEqual([{ reason: 'error', detail: 'HTTP 401' }]));
+    expect(states.at(-1)).toBe('error');
+    expect(FakeSocket.made).toBe(0);
+  });
+
+  it('opens nothing when stopped before the ticket arrives', async () => {
+    const { client } = makeClient();
+    client.connect();
+    client.close();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(FakeSocket.made).toBe(0);
+  });
+
+  it('plays frames once the server says it started', async () => {
     const { client, states, frames } = makeClient();
     client.connect();
+    await opened();
     FakeSocket.last!.emit({ type: 'start', call_sid: 'CA1', tracks: ['inbound', 'outbound'] });
     FakeSocket.last!.emit({ type: 'media', track: 'inbound', payload: '/4D/AA==', ts: 1 });
     FakeSocket.last!.emit({ type: 'media', track: 'outbound', payload: '//8=', ts: 2 });
@@ -143,9 +187,10 @@ describe('listen session', () => {
     expect(frames.map((f) => f.track)).toEqual(['inbound', 'outbound']);
   });
 
-  it('never sends anything: the architecture is receive-only', () => {
+  it('never sends anything: the architecture is receive-only', async () => {
     const { client } = makeClient();
     client.connect();
+    await opened();
     FakeSocket.last!.emit({ type: 'start' });
     FakeSocket.last!.emit({ type: 'media', track: 'inbound', payload: '//8=' });
     client.close();
@@ -153,18 +198,20 @@ describe('listen session', () => {
     expect(FakeSocket.last!.sent).toEqual([]);
   });
 
-  it('says the listener cap was hit rather than retrying into it', () => {
+  it('says the listener cap was hit rather than retrying into it', async () => {
     const { client, ends } = makeClient();
     client.connect();
+    await opened();
     FakeSocket.last!.drop(CLOSE_CAPACITY);
 
     expect(ends).toEqual([{ reason: 'capacity', detail: undefined }]);
     expect(FakeSocket.made).toBe(1);
   });
 
-  it('ends when the call does, with the reason the server gave', () => {
+  it('ends when the call does, with the reason the server gave', async () => {
     const { client, states, ends } = makeClient();
     client.connect();
+    await opened();
     FakeSocket.last!.emit({ type: 'start' });
     FakeSocket.last!.emit({ type: 'end', reason: 'call_ended' });
 
@@ -173,14 +220,17 @@ describe('listen session', () => {
     expect(FakeSocket.last!.closed).toBe(true);
   });
 
-  it('retries a dropped socket exactly once, then stops', () => {
+  it('retries a dropped socket exactly once, then stops', async () => {
     const { client, states, ends } = makeClient();
     client.connect();
+    await opened();
     FakeSocket.last!.emit({ type: 'start' });
 
     FakeSocket.last!.drop(1006);
-    expect(FakeSocket.made).toBe(2);
     expect(states).toContain('reconnecting');
+    // The retry is a new socket, so it needs a ticket of its own.
+    await vi.waitFor(() => expect(FakeSocket.made).toBe(2));
+    expect(FakeSocket.last!.url).toContain('token=ticket-2');
 
     // The second drop is the end of it — no loop.
     FakeSocket.last!.drop(1006);
@@ -189,19 +239,21 @@ describe('listen session', () => {
     expect(states.at(-1)).toBe('error');
   });
 
-  it('counts listeners when the server reports them', () => {
+  it('counts listeners when the server reports them', async () => {
     const counts: number[] = [];
     const { client } = makeClient({ onListeners: (n) => void counts.push(n) });
     client.connect();
+    await opened();
     FakeSocket.last!.emit({ type: 'start', listener_count: 1 });
     FakeSocket.last!.emit({ type: 'listeners', listener_count: 2 });
 
     expect(counts).toEqual([1, 2]);
   });
 
-  it('ignores a frame it cannot parse instead of dying on it', () => {
+  it('ignores a frame it cannot parse instead of dying on it', async () => {
     const { client, ends } = makeClient();
     client.connect();
+    await opened();
     FakeSocket.last!.emit('not json');
     expect(ends).toEqual([]);
   });

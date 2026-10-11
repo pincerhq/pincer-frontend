@@ -1,6 +1,6 @@
 /**
  * Bottom tabs for phones (FE1 §2, Block I rule 4): Übersicht · Anrufe ·
- * Aufmerksamkeit · Mehr. "Mehr" opens a sheet with every other area, grouped
+ * Nachrichten · Mehr. "Mehr" opens a sheet with every other area, grouped
  * exactly like the desktop rail — one nav model, two shells — plus language
  * and logout at the bottom.
  */

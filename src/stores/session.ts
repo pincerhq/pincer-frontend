@@ -4,32 +4,39 @@
  * zustand holds only session/UI state: the backend connection, the tenant
  * (null until C3), the role (`owner` in phase 1), the per-browser user id,
  * the owner app's locale and where to return after a re-login. Server state
- * stays in TanStack Query.
+ * stays in TanStack Query, and is dropped whenever the signed-in identity
+ * changes: the cache must never show one person another's calls.
  *
- * Token handling (FE1 §1): the token lives in memory + sessionStorage;
+ * Sign-in is an identity's name or email plus password against
+ * `POST /api/auth/login`. The token pair lives in memory + sessionStorage;
  * "remember this device" moves it to localStorage. Both are cleared on
- * logout. It never appears in a URL after load — `consumeMagicLink` scrubs
- * the address bar before anything else runs — and `safeReturnTo` rejects a
- * return path that carries one.
+ * logout. This store is the single source of truth for "is someone signed
+ * in" — the route guards read `connected`, nothing else.
  *
- * A 401 from any request (see `onUnauthorized` in the API client) disconnects
- * the session and records the current owner-app path as `returnTo`, so the
- * auth guard can send the person to the login and the login can bring them
- * back.
+ * When the session is lost (`onAuthLost` in pincerClient: an invalid token or
+ * a rejected refresh) the store disconnects and records the current path as
+ * `returnTo`, so the auth guard can send the person to the login and the
+ * login can bring them back. `safeReturnTo` rejects a return path that is not
+ * a same-origin path or that carries a credential.
  */
 import { create } from "zustand";
 import {
+  AUTH_STORAGE_KEY,
+  authFromTokenPair,
   clearAuth,
+  dropMemoryAuth,
   getAuth,
   getUserId,
   isAuthPersisted,
   normalizeApiUrl,
+  onAuthLost,
   setAuth,
-  type PincerAuth,
 } from "@/lib/pincerClient";
-import { ApiError, onUnauthorized, request } from "@/lib/api/client";
+import { authApi } from "@/lib/api/auth";
+import { queryClient } from "@/lib/queryClient";
 import { setTenantId } from "@/lib/api/tenant";
 import i18n from "@/i18n";
+import { env } from "@/lib/env";
 
 export type VoiceLocale = "de" | "en";
 
@@ -87,6 +94,11 @@ const ROLE_ACTIONS: Record<Role, ReadonlySet<OwnerAction>> = {
   ]),
 };
 
+const LOCALE_KEY = "voice.locale";
+const RETURN_TO_KEY = "voice.returnTo";
+/** Flags of the old browser-side login; nothing reads them any more. */
+const LEGACY_KEYS = ["isAuthenticated", "userEmail"];
+
 /** The wire role names C3 uses → the app's. */
 export function roleFromWire(raw: string | null | undefined): Role | null {
   const k = (raw ?? "").toLowerCase();
@@ -100,18 +112,22 @@ export function canRole(role: Role | null, action: OwnerAction): boolean {
   return ROLE_ACTIONS[role].has(action);
 }
 
-const LOCALE_KEY = "voice.locale";
-const RETURN_TO_KEY = "voice.returnTo";
-const PLATFORM_FLAG = "isAuthenticated";
-const PLATFORM_EMAIL = "userEmail";
-
 export type DisconnectReason = "unauthorized" | "user";
 
 export interface LoginInput {
-  token: string;
-  /** Defaults to the build's `VITE_PINCER_API_URL`, else the page origin. */
-  apiUrl?: string;
+  /** Identity name or email. */
+  identifier: string;
+  password: string;
   remember?: boolean;
+  /** Defaults to `VITE_PINCER_API_URL`, else the page origin. */
+  apiUrl?: string;
+}
+
+/** Who is signed in, from `GET /api/identity/me`. */
+export interface SessionIdentity {
+  id: string;
+  displayName: string | null;
+  email: string | null;
 }
 
 export interface SessionState {
@@ -127,11 +143,12 @@ export interface SessionState {
   locale: VoiceLocale;
   returnTo: string | null;
   lastDisconnect: DisconnectReason | null;
+  /** Null until `/api/identity/me` answered (and when it could not). */
+  identity: SessionIdentity | null;
 
-  /** Validate a token against the backend, then store it. Throws ApiError. */
+  /** Sign in with name/email + password, then store the session. Throws ApiError. */
   login(input: LoginInput): Promise<void>;
-  /** Store an already-validated connection (legacy /login page path). */
-  connect(auth: PincerAuth, opts?: { remember?: boolean }): void;
+  /** Clear the session here, and end it on the server (best effort, not awaited). */
   logout(): void;
   disconnect(reason?: DisconnectReason): void;
   can(action: OwnerAction): boolean;
@@ -143,6 +160,8 @@ export interface SessionState {
   setReturnTo(path: string | null): void;
   /** Re-read the persisted connection (after another tab or the login page changed it). */
   refresh(): void;
+  /** Load `identity` from `/api/identity/me`. Best effort: never throws. */
+  loadIdentity(): Promise<void>;
 }
 
 /** German unless the browser (or an explicit choice) says English. */
@@ -173,66 +192,44 @@ function writeReturnTo(path: string | null) {
   }
 }
 
-/** Only owner-app paths are worth returning to; never a URL with a token in it. */
+/** Only same-origin paths are worth returning to; never a URL with a token in it. */
 export function safeReturnTo(path: string | null | undefined): string | null {
-  if (!path || !path.startsWith("/") || path.startsWith("//")) return null;
+  // Browsers read a backslash as a slash, so "/\host" is another origin too.
+  if (!path || !path.startsWith("/") || path.includes("\\")) return null;
+  try {
+    if (new URL(path, window.location.origin).origin !== window.location.origin) return null;
+  } catch {
+    return null;
+  }
   if (/[?&#](t|token|access_token|key)=/i.test(path)) return null;
   return path;
 }
 
-/** The backend this build talks to when the login does not say otherwise. */
+/** The backend this deployment talks to when the login does not say otherwise. */
 export function defaultApiUrl(): string {
-  const env = (import.meta.env.VITE_PINCER_API_URL as string | undefined)?.trim();
-  if (env) return normalizeApiUrl(env);
+  const configured = env("VITE_PINCER_API_URL");
+  if (configured) return normalizeApiUrl(configured);
   if (typeof window !== "undefined" && window.location?.origin) return normalizeApiUrl(window.location.origin);
   return "";
 }
 
 /**
- * Magic link (FE1 §1.1): read `t` (and an optional `api`) from the address,
- * then rewrite the URL **without them** before anything else can see it —
- * no token in history, referrer, or the address bar. Returns null when the
- * address carries no token.
+ * Where to go after signing in: `?returnTo=` when it is a safe same-origin
+ * path, else the path recorded when the session was lost, else `fallback`.
  */
-export function consumeMagicLink(
-  search: string = typeof window !== "undefined" ? window.location.search : "",
-): { token: string; apiUrl?: string } | null {
-  const params = new URLSearchParams(search);
-  const token = params.get("t")?.trim();
-  if (!token) return null;
-  const apiUrl = params.get("api")?.trim() || undefined;
-  params.delete("t");
-  params.delete("api");
-  if (typeof window !== "undefined" && typeof history?.replaceState === "function") {
-    const rest = params.toString();
-    const clean = window.location.pathname + (rest ? `?${rest}` : "") + window.location.hash;
-    history.replaceState(history.state, "", clean);
-  }
-  return { token, apiUrl };
+export function resolveReturnTo(fallback: string): string {
+  const fromQuery =
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("returnTo") : null;
+  return safeReturnTo(fromQuery) ?? useSession.getState().returnTo ?? fallback;
 }
 
-function setPlatformFlag(remember: boolean) {
-  // The platform's ProtectedRoute gates on this flag; keep it in the same
-  // storage as the token so both expire together.
-  try {
-    const target = remember ? localStorage : sessionStorage;
-    const other = remember ? sessionStorage : localStorage;
-    target.setItem(PLATFORM_FLAG, "true");
-    target.setItem(PLATFORM_EMAIL, "owner");
-    other.removeItem(PLATFORM_FLAG);
-    other.removeItem(PLATFORM_EMAIL);
-  } catch {
-    /* storage unavailable */
-  }
-}
-
-function clearPlatformFlag() {
-  for (const s of [localStorage, sessionStorage]) {
+function purgeLegacyFlags() {
+  for (const kind of ["local", "session"] as const) {
     try {
-      s.removeItem(PLATFORM_FLAG);
-      s.removeItem(PLATFORM_EMAIL);
+      const storage = kind === "local" ? localStorage : sessionStorage;
+      for (const key of LEGACY_KEYS) storage.removeItem(key);
     } catch {
-      /* ignore */
+      /* storage unavailable */
     }
   }
 }
@@ -251,49 +248,44 @@ export const useSession = create<SessionState>((set, get) => {
     locale: resolveVoiceLocale(),
     returnTo: safeReturnTo(readReturnTo()),
     lastDisconnect: null,
+    identity: auth ? { id: auth.userId, displayName: null, email: null } : null,
 
-    async login({ token, apiUrl, remember = false }) {
-      const cleanToken = token.trim();
+    async login({ identifier, password, remember = false, apiUrl }) {
       const url = normalizeApiUrl((apiUrl ?? "").trim() || defaultApiUrl());
-      if (!cleanToken) throw new ApiError("empty token", 0);
-      // Validate before storing anything durable: a rejected token must not
-      // linger in localStorage and bounce every later request.
-      const previous = getAuth();
-      setAuth({ apiUrl: url, token: cleanToken }, { persist: false });
-      try {
-        await request("/api/voice/status");
-      } catch (err) {
-        clearAuth();
-        if (previous) setAuth(previous, { persist: isAuthPersisted() });
-        throw err;
-      }
-      setAuth({ apiUrl: url, token: cleanToken }, { persist: remember });
-      setPlatformFlag(remember);
-      set({ apiUrl: url, connected: true, remembered: remember, role: "owner", lastDisconnect: null });
-    },
-
-    connect(next, opts = {}) {
-      const remember = opts.remember ?? true;
-      setAuth(next, { persist: remember });
-      setPlatformFlag(remember);
-      set({ apiUrl: getAuth()?.apiUrl ?? next.apiUrl, connected: true, remembered: remember, role: "owner", lastDisconnect: null });
+      // Nothing is stored before the server accepted the credentials, so a
+      // failed attempt leaves whatever session there was untouched.
+      const pair = await authApi.login(url, identifier.trim(), password);
+      // Signing in over someone else's session: what they loaded is not this person's.
+      if (get().identity?.id !== pair.pincer_user_id) queryClient.clear();
+      setAuth(authFromTokenPair(url, pair), { persist: remember });
+      set({
+        apiUrl: url,
+        connected: true,
+        remembered: remember,
+        role: "owner",
+        lastDisconnect: null,
+        identity: { id: pair.pincer_user_id, displayName: null, email: null },
+      });
+      await get().loadIdentity();
     },
 
     logout() {
+      const auth = getAuth();
       clearAuth();
-      clearPlatformFlag();
+      queryClient.clear();
       writeReturnTo(null);
-      set({ apiUrl: null, connected: false, remembered: false, role: null, tenantId: null, tenantName: null, impersonating: false, returnTo: null, lastDisconnect: "user" });
+      set({ apiUrl: null, connected: false, remembered: false, role: null, tenantId: null, tenantName: null, impersonating: false, returnTo: null, lastDisconnect: "user", identity: null });
       setTenantId(null);
+      if (auth) void authApi.logout(auth);
     },
 
     disconnect(reason = "user") {
       const here = typeof window !== "undefined" ? window.location.pathname + window.location.search : "";
       const returnTo = reason === "unauthorized" ? safeReturnTo(here) : null;
       clearAuth();
-      clearPlatformFlag();
+      queryClient.clear();
       writeReturnTo(returnTo);
-      set({ apiUrl: null, connected: false, remembered: false, role: null, lastDisconnect: reason, returnTo });
+      set({ apiUrl: null, connected: false, remembered: false, role: null, lastDisconnect: reason, returnTo, identity: null });
     },
 
     can(action) {
@@ -331,13 +323,35 @@ export const useSession = create<SessionState>((set, get) => {
 
     refresh() {
       const current = getAuth();
+      // Another tab signed out or signed in as someone else: the cache is the
+      // previous identity's. Mounted views start over with the new one's data.
+      if (!current) queryClient.clear();
+      else if (get().identity && get().identity?.id !== current.userId) void queryClient.resetQueries();
       set({
         apiUrl: current?.apiUrl ?? null,
         connected: current !== null,
         remembered: isAuthPersisted(),
         role: current ? (get().role ?? "owner") : null,
         lastDisconnect: current !== null ? null : get().lastDisconnect,
+        identity: !current
+          ? null
+          : get().identity?.id === current.userId
+            ? get().identity
+            : { id: current.userId, displayName: null, email: null },
       });
+    },
+
+    async loadIdentity() {
+      const userId = getAuth()?.userId;
+      if (!userId) return;
+      try {
+        const me = await authApi.me();
+        // Signed out, or signed in as someone else, while this was in the air.
+        if (getAuth()?.userId !== userId) return;
+        set({ identity: { id: me.pincer_user_id ?? userId, displayName: me.display_name ?? null, email: me.email ?? null } });
+      } catch {
+        /* the name in the sidebar is a nicety — never fail a sign-in on it */
+      }
     },
   };
 });
@@ -347,7 +361,22 @@ export function useCan(action: OwnerAction): boolean {
   return useSession((s) => canRole(s.role, action));
 }
 
-// One subscription for the life of the app: a rejected token logs out.
-onUnauthorized(() => {
+// One subscription for the life of the app: a lost session logs out.
+onAuthLost(() => {
   if (useSession.getState().connected) useSession.getState().disconnect("unauthorized");
 });
+
+purgeLegacyFlags();
+
+if (typeof window !== "undefined") {
+  // Another tab signed in, refreshed its tokens or signed out: the copy in
+  // memory is stale, so read the record again. Fires for localStorage only —
+  // a session-only tab keeps its own record.
+  window.addEventListener("storage", (e) => {
+    if (e.key !== null && e.key !== AUTH_STORAGE_KEY) return;
+    dropMemoryAuth();
+    useSession.getState().refresh();
+  });
+}
+
+if (useSession.getState().connected) void useSession.getState().loadIdentity();

@@ -343,9 +343,8 @@ today's loaded calls and messages, in the business's time zone, and the badge
 says so. No engine names or latency figures reach the page; `?debug` reveals
 them for founders.
 
-Owners sign in at `/telephony/login` (`docs/app/login.md`): a magic link whose
-token is scrubbed from the address bar before the first render commits, or a
-pasted key; "Dieses Gerät merken" is off by default. The shell gained the final
+Owners sign in at `/telephony/login` (`docs/app/login.md`) with their name or
+email and password; "Dieses Gerät merken" is off by default. The shell gained the final
 navigation (Übersicht · Anrufe · Aufmerksamkeit · Wissen · Berichte · Kampagnen
 · Einrichtung ▸ … · Assistent · Vertrauen, with Betrieb and Erweitert for the
 operator views), a collapsible rail, four bottom tabs, a persistent status
@@ -356,8 +355,8 @@ new surfaces: masked in lists, revealable and copyable for the owner role.
 
 | File | Role |
 |---|---|
-| `src/pages/telephony/OwnerLoginPage.tsx` | Magic link, manual key, remember-device |
-| `src/stores/session.ts` | `login/logout`, `consumeMagicLink`, `can()` role gating |
+| `src/pages/telephony/OwnerLoginPage.tsx` | Name/email + password sign-in, remember-device |
+| `src/stores/session.ts` | `login/logout`, `identity`, `can()` role gating |
 | `_components/shared/StatusBanner.tsx` | The one-line banner and its state machine |
 | `_components/overview/*` | The five cards and the badge they share |
 | `src/lib/api/owner/overview.ts` | Today stats, attention list, residency/doctor/costs/calendar readers |

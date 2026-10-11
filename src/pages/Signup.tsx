@@ -1,57 +1,55 @@
+/**
+ * Request access — the login screen's twin, shown only in builds with
+ * SIGNUP_ALLOWED=true (see `src/lib/signup.ts`).
+ *
+ * Honest about what it can do: the Pincer API has no registration endpoint.
+ * Accounts are created by whoever runs the instance (`pincer identity create`),
+ * so this page collects who is asking, hands the request over as a prefilled
+ * mail draft — like the reset page — and says an administrator will create
+ * the account. It never signs anyone in.
+ */
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { MailCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
 import '@/styles/marketing.css';
+import { useSession } from '@/stores/session';
 
-/**
- * Sign-up is the login screen's twin: same standalone split-screen shell,
- * same hero panel, same field chrome, same auth mechanics (a successful
- * sign-up signs you in) — only the form differs.
- */
+/** Where access requests go. Same address the reset page uses. */
+const ADMIN_CONTACT = 'support@3days.ai';
+
 const Signup = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     company: '',
-    password: '',
-    confirmPassword: ''
   });
 
-  // Mirror Login: already-authenticated visitors skip straight to the app.
+  // Mirror Login: already-signed-in visitors skip straight to the app.
   useEffect(() => {
-    const isAuth =
-      localStorage.getItem('isAuthenticated') === 'true' ||
-      sessionStorage.getItem('isAuthenticated') === 'true';
-    if (isAuth) navigate('/dashboard', { replace: true });
+    if (useSession.getState().connected) navigate('/dashboard', { replace: true });
   }, [navigate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: 'Passwords do not match',
-        description: 'Please re-enter your password.',
-        variant: 'destructive',
-      });
-      return;
-    }
+    // Flip the view first: handing off to `mailto:` is a navigation, and it
+    // must never be able to pre-empt the state update behind it.
+    setSubmitted(true);
 
-    // Same auth mechanics as signing in — a fresh account goes straight to work.
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userEmail', formData.email);
-
-    toast({
-      title: `Welcome, ${formData.firstName}!`,
-      description: 'Your account is ready.',
-    });
-
-    navigate('/dashboard');
+    const subject = encodeURIComponent('Access request');
+    const body = encodeURIComponent(
+      `Please create a platform account for:\n\n` +
+        `Name: ${formData.firstName.trim()} ${formData.lastName.trim()}\n` +
+        `Email: ${formData.email.trim()}\n` +
+        `Company: ${formData.company.trim()}\n\n` +
+        `(Sent from the 3Days.ai request-access page.)`,
+    );
+    window.location.href = `mailto:${ADMIN_CONTACT}?subject=${subject}&body=${body}`;
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,8 +77,8 @@ const Signup = () => {
             Put your first AI employee to work today
           </h1>
           <p className="mt-8 max-w-md text-[17px] leading-relaxed text-[color:var(--text-3)]">
-            Create your account and hand over the repetitive work — free to start, set up in
-            minutes, no credit card required.
+            Tell us who you are and we'll pass the request to whoever runs your 3Days instance.
+            They create your account and send you your sign-in details.
           </p>
         </div>
 
@@ -93,9 +91,31 @@ const Signup = () => {
       <div className="p-4 lg:py-6 lg:pr-6">
         <div className="m-auth-art flex min-h-[560px] items-center justify-center p-6 lg:min-h-full">
           <div className="relative z-10 w-full max-w-[420px] rounded-[20px] bg-white p-7 shadow-[0_30px_60px_-32px_rgba(10,16,60,0.55)] sm:p-9">
-            <h2 className="text-center text-[26px] text-[color:var(--ink)]">Sign up</h2>
+            {submitted ? (
+              <div className="text-center">
+                <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-[14px] bg-[color:var(--sand)]">
+                  <MailCheck className="h-5 w-5 text-[color:var(--ink)]" strokeWidth={1.75} />
+                </span>
+                <h2 className="mt-5 text-[26px] text-[color:var(--ink)]">Request prepared</h2>
+                <p className="mt-2 text-[15px] leading-relaxed text-[color:var(--text-3)]">
+                  A mail draft for <span className="font-semibold text-[color:var(--ink)]">{formData.email}</span>{' '}
+                  was opened in your mail app. Send it and an administrator will create your account.
+                </p>
+                <p className="mt-4 text-[13px] text-[color:var(--text-4)]">
+                  Nothing opened?{' '}
+                  <a
+                    href={`mailto:${ADMIN_CONTACT}`}
+                    className="font-semibold text-[color:var(--ink)] underline underline-offset-2"
+                  >
+                    Write to {ADMIN_CONTACT}
+                  </a>
+                </p>
+              </div>
+            ) : (
+            <>
+            <h2 className="text-center text-[26px] text-[color:var(--ink)]">Request access</h2>
             <p className="mt-2 text-center text-[15px] text-[color:var(--text-3)]">
-              Create your account below
+              Tell us who needs an account
             </p>
 
             <div className="mt-7">
@@ -151,39 +171,22 @@ const Signup = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className={labelCls}>Password</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  required
-                  className={inputCls}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className={labelCls}>Confirm password</Label>
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  required
-                  className={inputCls}
-                />
-              </div>
+              <p className="rounded-[10px] border border-amber-300/70 bg-amber-50/60 p-3.5 text-xs leading-relaxed text-amber-800">
+                This deployment has no self-service sign-up — accounts are created by whoever runs
+                your instance. Sending opens a prefilled request to {ADMIN_CONTACT}; no account is
+                created automatically.
+              </p>
 
               <button
                 type="submit"
                 className="mt-1 h-11 w-full rounded-full bg-[color:var(--ink)] text-[15px] font-semibold text-white transition-opacity hover:opacity-85"
               >
-                Create account
+                Send access request
               </button>
             </form>
+            </div>
+            </>
+            )}
 
             <div className="my-5 flex items-center gap-4">
               <span className="h-px flex-1 bg-[color:var(--line)]" />
@@ -197,7 +200,6 @@ const Signup = () => {
                 Sign in
               </Link>
             </p>
-            </div>
           </div>
         </div>
       </div>

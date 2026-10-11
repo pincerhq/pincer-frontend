@@ -11,7 +11,6 @@
  * proxy for the MCP tools that nobody built, so both rendered demo documents
  * and demo image hits — they are gone rather than badged.
  */
-import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
@@ -100,14 +99,7 @@ function CompanyRail() {
 }
 
 const CompanyHomeInner = () => {
-  const navigate = useNavigate();
   const { pathname } = useLocation();
-
-  useEffect(() => {
-    const isAuthenticated =
-      localStorage.getItem('isAuthenticated') || sessionStorage.getItem('isAuthenticated');
-    if (isAuthenticated !== 'true') navigate('/login');
-  }, [navigate]);
 
   const renderView = () => {
     if (pathname === '/company-brain/memory') return <BrainMemoryView />;
