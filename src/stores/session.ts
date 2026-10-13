@@ -25,6 +25,7 @@ import {
   authFromTokenPair,
   clearAuth,
   dropMemoryAuth,
+  endSession,
   getAuth,
   getUserId,
   isAuthPersisted,
@@ -148,6 +149,8 @@ export interface SessionState {
 
   /** Sign in with name/email + password, then store the session. Throws ApiError. */
   login(input: LoginInput): Promise<void>;
+  /** Change the password and store the token pair that replaces the current one. Throws ApiError. */
+  changePassword(currentPassword: string, newPassword: string): Promise<void>;
   /** Clear the session here, and end it on the server (best effort, not awaited). */
   logout(): void;
   disconnect(reason?: DisconnectReason): void;
@@ -267,6 +270,21 @@ export const useSession = create<SessionState>((set, get) => {
         identity: { id: pair.pincer_user_id, displayName: null, email: null },
       });
       await get().loadIdentity();
+    },
+
+    async changePassword(currentPassword, newPassword) {
+      const before = getAuth();
+      // Nothing is stored on failure: the old pair is still the valid one.
+      const pair = await authApi.changePassword(currentPassword, newPassword);
+      const auth = getAuth();
+      // Signed out, or signed in as someone else, while this was in the air.
+      // Storing the pair would undo that, and it must not stay live either.
+      if (!auth || auth.userId !== before?.userId) {
+        if (before) void endSession(authFromTokenPair(before.apiUrl, pair));
+        return;
+      }
+      // Back where the old pair was: a session-only tab stays session-only.
+      setAuth(authFromTokenPair(auth.apiUrl, pair), { persist: isAuthPersisted() });
     },
 
     logout() {

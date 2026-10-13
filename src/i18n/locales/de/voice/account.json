@@ -1,0 +1,30 @@
+{
+  "menu": "Profil",
+  "title": "Profil",
+  "description": "Ihr Konto und Ihr Passwort.",
+  "account": {
+    "heading": "Konto",
+    "nameLabel": "Name",
+    "emailLabel": "E-Mail",
+    "none": "Nicht hinterlegt"
+  },
+  "password": {
+    "heading": "Passwort ändern",
+    "currentLabel": "Aktuelles Passwort",
+    "newLabel": "Neues Passwort",
+    "confirmLabel": "Neues Passwort bestätigen",
+    "lengthHint": "{{min}} bis {{max}} Zeichen.",
+    "devicesHint": "Wenn Sie Ihr Passwort ändern, werden Sie auf allen anderen Geräten abgemeldet.",
+    "submit": "Passwort ändern",
+    "submitting": "Wird gespeichert …",
+    "success": "Ihr Passwort wurde geändert.",
+    "errorRequired": "Bitte füllen Sie dieses Feld aus.",
+    "errorTooShort": "Das neue Passwort braucht mindestens {{min}} Zeichen.",
+    "errorTooLong": "Das neue Passwort darf höchstens {{max}} Zeichen haben.",
+    "errorMismatch": "Die beiden neuen Passwörter stimmen nicht überein.",
+    "errorWrongCurrent": "Das aktuelle Passwort ist falsch.",
+    "errorLocked": "Zu viele Fehlversuche. Bitte versuchen Sie es in einigen Minuten erneut.",
+    "errorLockedFor": "Zu viele Fehlversuche. Bitte versuchen Sie es in {{minutes}} Min. erneut.",
+    "errorUnreachable": "Der Server ist gerade nicht erreichbar. Bitte versuchen Sie es erneut."
+  }
+}

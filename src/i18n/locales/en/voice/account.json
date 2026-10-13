@@ -1,0 +1,30 @@
+{
+  "menu": "Profile",
+  "title": "Profile",
+  "description": "Your account and your password.",
+  "account": {
+    "heading": "Account",
+    "nameLabel": "Name",
+    "emailLabel": "Email",
+    "none": "Not set"
+  },
+  "password": {
+    "heading": "Change password",
+    "currentLabel": "Current password",
+    "newLabel": "New password",
+    "confirmLabel": "Confirm new password",
+    "lengthHint": "{{min}} to {{max}} characters.",
+    "devicesHint": "Changing your password signs you out on all other devices.",
+    "submit": "Change password",
+    "submitting": "Saving …",
+    "success": "Your password has been changed.",
+    "errorRequired": "Please fill in this field.",
+    "errorTooShort": "The new password needs at least {{min}} characters.",
+    "errorTooLong": "The new password may have at most {{max}} characters.",
+    "errorMismatch": "The two new passwords do not match.",
+    "errorWrongCurrent": "The current password is incorrect.",
+    "errorLocked": "Too many failed attempts. Try again in a few minutes.",
+    "errorLockedFor": "Too many failed attempts. Try again in {{minutes}} min.",
+    "errorUnreachable": "The server cannot be reached right now. Please try again."
+  }
+}

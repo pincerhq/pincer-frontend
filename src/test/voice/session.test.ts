@@ -200,6 +200,62 @@ describe("login", () => {
     expect(getAuth()).toBeNull();
   });
 
+  it("changePassword swaps the token pair and keeps the session where it was", async () => {
+    const next = { ...PAIR, access_token: "access-2", refresh_token: "refresh-2" };
+    fetchMock.mockImplementation(backend({ "/api/auth/login": () => json(PAIR), "/api/identity/me": () => json(ME), "/api/identity/me/password": () => json(next) }));
+    await useSession.getState().login({ identifier: "alice", password: "old password", apiUrl: "http://api.test", remember: true });
+    queryClient.setQueryData(["voice", "calls"], [{ call_sid: "CA-1" }]);
+    await useSession.getState().changePassword("old password", " new password ");
+
+    const [url, init] = fetchMock.mock.calls.find((c) => String(c[0]).endsWith("/api/identity/me/password"))!;
+    expect(url).toBe("http://api.test/api/identity/me/password");
+    expect(init!.method).toBe("PUT");
+    // Passwords are sent exactly as typed.
+    expect(JSON.parse(init!.body as string)).toEqual({ current_password: "old password", new_password: " new password " });
+    expect(getAuth()).toMatchObject({ apiUrl: "http://api.test", token: "access-2", refreshToken: "refresh-2", userId: "alice" });
+    expect(isAuthPersisted()).toBe(true);
+    expect(localStorage.getItem("pincer.web.auth")).toContain("refresh-2");
+    expect(sessionStorage.getItem("pincer.web.auth")).toBeNull();
+    expect(useSession.getState().connected).toBe(true);
+    // Same person: what they loaded is still theirs.
+    expect(queryClient.getQueryData(["voice", "calls"])).toEqual([{ call_sid: "CA-1" }]);
+    queryClient.clear();
+  });
+
+  it("changePassword stores nothing when the server refuses", async () => {
+    fetchMock.mockImplementation(backend({ "/api/auth/login": () => json(PAIR), "/api/identity/me": () => json(ME), "/api/identity/me/password": () => json({ detail: "Current password is incorrect" }, 403) }));
+    await useSession.getState().login({ identifier: "alice", password: "pw", apiUrl: "http://api.test" });
+    await expect(useSession.getState().changePassword("wrong", "new password")).rejects.toMatchObject({ status: 403 });
+    expect(getAuth()).toMatchObject({ token: "access-1", refreshToken: "refresh-1" });
+    expect(useSession.getState().connected).toBe(true);
+  });
+
+  it("changePassword drops the new pair when the session ended while it was in the air", async () => {
+    let answer!: (r: Response) => void;
+    fetchMock.mockImplementation(
+      backend({
+        "/api/auth/login": () => json(PAIR),
+        "/api/identity/me": () => json(ME),
+        "/api/identity/me/password": () => new Promise<Response>((resolve) => (answer = resolve)),
+        "/api/auth/logout": () => new Response(null, { status: 204 }),
+      }),
+    );
+    await useSession.getState().login({ identifier: "alice", password: "pw", apiUrl: "http://api.test" });
+    const change = useSession.getState().changePassword("pw", "new password");
+    await vi.waitFor(() => expect(answer).toBeDefined());
+    useSession.getState().logout();
+    answer(json({ ...PAIR, access_token: "access-2", refresh_token: "refresh-2" }));
+    await change;
+
+    expect(getAuth()).toBeNull();
+    expect(sessionStorage.getItem("pincer.web.auth")).toBeNull();
+    expect(useSession.getState().connected).toBe(false);
+    // The pair nobody holds is ended on the server, not left live.
+    await vi.waitFor(() =>
+      expect(fetchMock.mock.calls.some((c) => String(c[0]).endsWith("/api/auth/logout") && (c[1]!.headers as Record<string, string>).Authorization === "Bearer access-2")).toBe(true),
+    );
+  });
+
   it("falls back to the build's API URL, then the page origin", () => {
     expect(defaultApiUrl()).toBe(window.location.origin);
   });

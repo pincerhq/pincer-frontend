@@ -74,6 +74,8 @@
     "src/test/voice/ownerCalls.test.ts",
     "src/pages/telephony/OwnerLoginPage.tsx",
     "src/components/voice/MaskedNumber.tsx",
+    "src/components/account",
+    "src/test/auth/profilePanel.test.tsx",
     "src/lib/api/owner",
     "src/test/voice/session.test.ts",
     "src/test/voice/maskedNumber.test.tsx",

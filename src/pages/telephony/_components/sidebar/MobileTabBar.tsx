@@ -1,12 +1,13 @@
 /**
  * Bottom tabs for phones (FE1 §2, Block I rule 4): Übersicht · Anrufe ·
  * Nachrichten · Mehr. "Mehr" opens a sheet with every other area, grouped
- * exactly like the desktop rail — one nav model, two shells — plus language
- * and logout at the bottom.
+ * exactly like the desktop rail — one nav model, two shells — plus language,
+ * profile and logout at the bottom.
  */
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, MoreHorizontal } from 'lucide-react';
+import { LogOut, MoreHorizontal, UserRound } from 'lucide-react';
+import { ProfilePanel } from '@/components/account/ProfilePanel';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useSession, type VoiceLocale } from '@/stores/session';
@@ -21,12 +22,14 @@ export default function MobileTabBar() {
   const t = useVoiceT('voice-nav');
   const tc = useVoiceT('voice-common');
   const ta = useVoiceT('voice-auth');
+  const tp = useVoiceT('voice-account');
   const groups = useVisibleNavGroups();
   const { badgeFor } = useNavBadges();
   const locale = useSession((s) => s.locale);
   const setLocale = useSession((s) => s.setLocale);
   const doLogout = useLogout();
   const [open, setOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const primaryKeys = new Set(PRIMARY_ITEMS.map((i) => i.key));
   const locales: VoiceLocale[] = ['de', 'en'];
@@ -141,9 +144,20 @@ export default function MobileTabBar() {
                 type="button"
                 onClick={() => {
                   setOpen(false);
+                  setProfileOpen(true);
+                }}
+                className="mt-4 flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm text-[var(--text-2)] hover:bg-[rgba(20,22,26,0.04)]"
+              >
+                <UserRound className="h-4 w-4 text-[var(--text-4)]" aria-hidden="true" />
+                {tp('menu')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
                   doLogout();
                 }}
-                className="mt-4 flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm text-[var(--bad-fg)] hover:bg-[rgba(179,56,46,0.06)]"
+                className="mt-1 flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm text-[var(--bad-fg)] hover:bg-[rgba(179,56,46,0.06)]"
               >
                 <LogOut className="h-4 w-4" aria-hidden="true" />
                 {ta('logout')}
@@ -152,6 +166,7 @@ export default function MobileTabBar() {
           </div>
         </SheetContent>
       </Sheet>
+      <ProfilePanel open={profileOpen} onOpenChange={setProfileOpen} />
     </>
   );
 }
