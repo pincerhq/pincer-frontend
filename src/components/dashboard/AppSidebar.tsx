@@ -29,6 +29,7 @@ import {
   MessageSquare,
   StickyNote,
   Phone,
+  UserRound,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
+import { ProfilePanel } from '@/components/account/ProfilePanel';
+import { useVoiceT } from '@/i18n/voice';
 
 interface ChatHistoryItem {
   id: string;
@@ -125,6 +128,8 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
   const navigate = useNavigate();
   const isChat = location.pathname === '/chat';
   const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [profileOpen, setProfileOpen] = useState(false);
+  const ta = useVoiceT('voice-account');
 
   const identity = useSession((s) => s.identity);
   const userLabel = identity?.displayName || identity?.email || identity?.id || '';
@@ -276,6 +281,10 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="top" align={state === "expanded" ? "end" : "center"} className="w-64 bg-white border shadow-lg">
+              <DropdownMenuItem onSelect={() => setProfileOpen(true)} className="flex items-center space-x-2 cursor-pointer">
+                <UserRound className="h-4 w-4" />
+                <span>{ta('menu')}</span>
+              </DropdownMenuItem>
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger className="flex items-center space-x-2 cursor-pointer">
                   <Globe className="h-4 w-4" />
@@ -306,6 +315,7 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <ProfilePanel open={profileOpen} onOpenChange={setProfileOpen} />
 
         </div>
       </SidebarFooter>

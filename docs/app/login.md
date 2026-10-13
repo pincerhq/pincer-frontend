@@ -70,6 +70,24 @@ Known limit: a **duplicated tab that is not remembered** copies `sessionStorage`
 | 422 | its own "please check" copy |
 | no answer | "The server at … cannot be reached" |
 
+## Changing the password
+
+The **Profile** entry in the user menu (platform sidebar, owner-app rail and the phone "More" sheet) opens `src/components/account/ProfilePanel.tsx`: name and email read-only, and a form with current password, new password and confirmation.
+
+- `PUT /api/identity/me/password` (Bearer) takes `{current_password, new_password}`. The confirmation is compared in the browser only.
+- The only rule is length, 8 to 256 characters (`PASSWORD_MIN_LENGTH` / `PASSWORD_MAX_LENGTH` in `src/lib/api/auth.ts`, mirroring the API).
+- Success answers a new token pair, and every earlier token stops working, including the one that made the request. `session.changePassword()` stores the pair in the storage the old one was in (session-only stays session-only), so this browser stays signed in and every other device is signed out. If the session ended while the request was in the air, the pair is not stored but ended on the server.
+- Other tabs: remembered tabs pick the new pair up through the `storage` listener; session-only tabs of the same user are signed out.
+
+`passwordChangeErrorKind(err)` picks the message; the copy is in `src/i18n/locales/{de,en}/voice/account.json`.
+
+| Answer | Message |
+|---|---|
+| 403 | "The current password is incorrect", on the current-password field |
+| 422 | the server's `detail` verbatim, on the new-password field |
+| 429 | "Too many failed attempts", with the wait when `Retry-After` is readable. Wrong guesses spend the same budget as failed sign-ins |
+| no answer | "The server cannot be reached right now" |
+
 ## Sign-up and forgotten passwords
 
 - `/forgot-password` opens a prefilled mail to the administrator; there is no self-service reset.

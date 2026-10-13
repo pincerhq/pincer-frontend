@@ -12,6 +12,7 @@ import tseslint from "typescript-eslint";
  * (FE2 calls, FE3 settings, …) and join this list as they land.
  */
 const OWNER_APP_FILES = [
+  "src/components/account/**/*.tsx",
   "src/pages/telephony/_components/owner/**/*.tsx",
   "src/pages/telephony/_components/shared/VoiceAuthGuard.tsx",
   "src/pages/telephony/_components/shared/ViewErrorBoundary.tsx",
