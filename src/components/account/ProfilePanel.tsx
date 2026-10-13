@@ -7,7 +7,7 @@
  * checked here. A successful change replaces the session's token pair
  * (`session.changePassword`) and signs every other device out.
  */
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import "@/i18n/voice";
 import "@/styles/platform.css";
 import { Button } from "@/components/ui/button";
@@ -69,9 +69,13 @@ export function ProfilePanel({ open, onOpenChange }: { open: boolean; onOpenChan
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
 
+  // Counts the times the panel closed, so an answer can tell it is late.
+  const closings = useRef(0);
+
   // A closed panel keeps nothing: no typed password, no stale error.
   useEffect(() => {
     if (open) return;
+    closings.current += 1;
     setCurrent("");
     setNext("");
     setConfirm("");
@@ -81,9 +85,11 @@ export function ProfilePanel({ open, onOpenChange }: { open: boolean; onOpenChan
   const check = (): Errors => {
     const found: Errors = {};
     if (!current) found.current = t("password.errorRequired");
+    // Code points, as the server counts them: an emoji is one character, not two.
+    const nextLength = [...next].length;
     if (!next) found.next = t("password.errorRequired");
-    else if (next.length < PASSWORD_MIN_LENGTH) found.next = t("password.errorTooShort", { min: PASSWORD_MIN_LENGTH });
-    else if (next.length > PASSWORD_MAX_LENGTH) found.next = t("password.errorTooLong", { max: PASSWORD_MAX_LENGTH });
+    else if (nextLength < PASSWORD_MIN_LENGTH) found.next = t("password.errorTooShort", { min: PASSWORD_MIN_LENGTH });
+    else if (nextLength > PASSWORD_MAX_LENGTH) found.next = t("password.errorTooLong", { max: PASSWORD_MAX_LENGTH });
     if (!confirm) found.confirm = t("password.errorRequired");
     else if (confirm !== next) found.confirm = t("password.errorMismatch");
     return found;
@@ -114,13 +120,18 @@ export function ProfilePanel({ open, onOpenChange }: { open: boolean; onOpenChan
     setErrors(found);
     if (Object.keys(found).length) return;
     setBusy(true);
+    // The panel this answer belongs to may be closed, or closed and reopened,
+    // by the time it arrives: then its error is not shown and it closes nothing.
+    const closedBefore = closings.current;
     try {
       await changePassword(current, next);
       toast({ title: t("password.success") });
-      onOpenChange(false);
+      if (closings.current === closedBefore) onOpenChange(false);
     } catch (err) {
-      setErrors(serverErrors(err));
+      if (closings.current === closedBefore) setErrors(serverErrors(err));
     } finally {
+      // `busy` outlives a close on purpose: a second change sent while the
+      // first is in the air would use the token the first one revokes.
       setBusy(false);
     }
   };

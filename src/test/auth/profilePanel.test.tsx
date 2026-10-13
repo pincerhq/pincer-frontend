@@ -131,6 +131,27 @@ describe('profile panel', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('counts characters the way the server does, not UTF-16 units', async () => {
+    backend(() => json(NEW_PAIR));
+    const user = setup();
+    render(<Host />);
+    // Four emoji are eight UTF-16 units, and four characters.
+    await fill(user, 'old password', '😀😀😀😀', '😀😀😀😀');
+    expect(errorOf('New password')).toHaveTextContent('The new password needs at least 8 characters.');
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // 129 emoji are 258 units, and well inside the 256 characters allowed.
+    const long = '😀'.repeat(129);
+    for (const label of ['New password', 'Confirm new password']) {
+      await user.clear(screen.getByLabelText(label));
+      await user.click(screen.getByLabelText(label));
+      await user.paste(long);
+    }
+    await user.click(screen.getByRole('button', { name: 'Change password' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(fetchMock.mock.calls[0]![1]!.body as string)).toEqual({ current_password: 'old password', new_password: long });
+  });
+
   it('refuses a confirmation that differs', async () => {
     const user = setup();
     render(<Host />);
@@ -236,6 +257,39 @@ describe('profile panel', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Saving …' })).toBeDisabled());
     answer(json(NEW_PAIR));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('drops an answer that arrives after it was closed', async () => {
+    let answer!: (r: Response) => void;
+    backend(() => new Promise<Response>((resolve) => (answer = resolve)));
+    const user = setup();
+    const { rerender } = render(<ProfilePanel open onOpenChange={() => {}} />);
+    await fill(user, 'wrong password', 'new password', 'new password');
+    await waitFor(() => expect(answer).toBeDefined());
+    rerender(<ProfilePanel open={false} onOpenChange={() => {}} />);
+    rerender(<ProfilePanel open onOpenChange={() => {}} />);
+    // Still in the air: a second change now would use the token the first revokes.
+    expect(screen.getByRole('button', { name: 'Saving …' })).toBeDisabled();
+    answer(json({ detail: 'Current password is incorrect' }, 403));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Change password' })).toBeEnabled());
+    expect(errorOf('Current password')).toBeNull();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('does not close a panel that was reopened while the change was in the air', async () => {
+    let answer!: (r: Response) => void;
+    backend(() => new Promise<Response>((resolve) => (answer = resolve)));
+    const user = setup();
+    const onOpenChange = vi.fn();
+    const { rerender } = render(<ProfilePanel open onOpenChange={onOpenChange} />);
+    await fill(user, 'old password', 'new password', 'new password');
+    await waitFor(() => expect(answer).toBeDefined());
+    rerender(<ProfilePanel open={false} onOpenChange={onOpenChange} />);
+    rerender(<ProfilePanel open onOpenChange={onOpenChange} />);
+    answer(json(NEW_PAIR));
+    await waitFor(() => expect(getAuth()).toMatchObject({ token: 'access-2' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Change password' })).toBeEnabled());
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 
   it('forgets what was typed when it closes', async () => {
