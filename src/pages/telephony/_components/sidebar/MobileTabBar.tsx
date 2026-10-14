@@ -1,20 +1,33 @@
 /**
  * Bottom tabs for phones (FE1 §2, Block I rule 4): Übersicht · Anrufe ·
  * Nachrichten · Mehr. "Mehr" opens a sheet with every other area, grouped
- * exactly like the desktop rail — one nav model, two shells — plus language,
- * profile and logout at the bottom.
+ * exactly like the desktop rail — one nav model, two shells — plus the other
+ * apps, language, theme, profile and logout at the bottom. On a phone this
+ * sheet is the only way out of telephony: the platform sidebar is not here.
  */
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, MoreHorizontal, UserRound } from 'lucide-react';
+import { Brain, ClipboardCheck, LayoutDashboard, LogOut, MessageCircle, MoreHorizontal, Puzzle, UserRound } from 'lucide-react';
 import { ProfilePanel } from '@/components/account/ProfilePanel';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useSession, type VoiceLocale } from '@/stores/session';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useVoiceT } from '@/i18n/voice';
 import { isNavItemActive, PRIMARY_ITEMS, useVisibleNavGroups, type NavItem } from './telephonyNav';
 import { useNavBadges } from './TelephonyMiniRail';
 import { useLogout } from './UserMenu';
+
+/** The platform apps, as the desktop sidebar lists them. */
+const APP_LINKS = [
+  { key: 'dashboard', path: '/dashboard', icon: LayoutDashboard },
+  { key: 'chat', path: '/chat', icon: MessageCircle },
+  { key: 'tasks', path: '/tasks', icon: ClipboardCheck },
+  { key: 'company', path: '/company-brain', icon: Brain },
+  { key: 'integrations', path: '/integrations', icon: Puzzle },
+] as const;
+
+const THEMES = ['light', 'dark', 'system'] as const;
 
 export default function MobileTabBar() {
   const navigate = useNavigate();
@@ -28,6 +41,7 @@ export default function MobileTabBar() {
   const locale = useSession((s) => s.locale);
   const setLocale = useSession((s) => s.setLocale);
   const doLogout = useLogout();
+  const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -46,6 +60,17 @@ export default function MobileTabBar() {
     if (flat.length) sheetGroups.push({ key: g.key, labelKey: `groups.${g.key}`, items: flat });
   }
   const moreActive = sheetGroups.some((g) => g.items.some((i) => isNavItemActive(i, pathname, hash)));
+
+  const sheetItemClass = (active: boolean) =>
+    cn(
+      'flex items-center gap-2 rounded-[10px] px-3 py-2.5 text-left text-sm',
+      active ? 'bg-[color:color-mix(in_srgb,var(--ink)_7%,transparent)] font-semibold text-[var(--ink)]' : 'text-[var(--text-2)] hover:bg-[color:color-mix(in_srgb,var(--ink)_4%,transparent)]',
+    );
+  const choiceClass = (selected: boolean) =>
+    cn(
+      'rounded-[10px] border px-3 py-1.5 text-sm',
+      selected ? 'border-[var(--ink)] bg-[color:color-mix(in_srgb,var(--ink)_7%,transparent)] font-semibold text-[var(--ink)]' : 'border-[var(--line)] text-[var(--text-2)]',
+    );
 
   const tabClass = (active: boolean) =>
     cn(
@@ -107,10 +132,7 @@ export default function MobileTabBar() {
                           navigate(item.path);
                         }}
                         aria-current={active ? 'page' : undefined}
-                        className={cn(
-                          'flex items-center gap-2 rounded-[10px] px-3 py-2.5 text-left text-sm',
-                          active ? 'bg-[color:color-mix(in_srgb,var(--ink)_7%,transparent)] font-semibold text-[var(--ink)]' : 'text-[var(--text-2)] hover:bg-[color:color-mix(in_srgb,var(--ink)_4%,transparent)]',
-                        )}
+                        className={sheetItemClass(active)}
                       >
                         <Icon className="h-4 w-4 shrink-0 text-[var(--text-4)]" aria-hidden="true" />
                         <span className="min-w-0 flex-1 truncate">{t(`items.${item.labelKey}`)}</span>
@@ -121,6 +143,28 @@ export default function MobileTabBar() {
                 </div>
               </div>
             ))}
+            <div role="group" aria-labelledby="more-sheet-apps">
+              <p id="more-sheet-apps" className="plat-eyebrow !text-[var(--text-3)] mb-2">{t('groups.apps')}</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {APP_LINKS.map((app) => {
+                  const Icon = app.icon;
+                  return (
+                    <button
+                      key={app.key}
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        navigate(app.path);
+                      }}
+                      className={sheetItemClass(false)}
+                    >
+                      <Icon className="h-4 w-4 shrink-0 text-[var(--text-4)]" aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate">{t(`apps.${app.key}`)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div className="border-t border-[var(--line-soft)] pt-4">
               <p className="plat-eyebrow !text-[var(--text-3)] mb-2">{tc('language.label')}</p>
               <div className="flex gap-1.5" role="radiogroup" aria-label={tc('language.label')}>
@@ -131,12 +175,24 @@ export default function MobileTabBar() {
                     role="radio"
                     aria-checked={locale === l}
                     onClick={() => setLocale(l)}
-                    className={cn(
-                      'rounded-[10px] border px-3 py-1.5 text-sm',
-                      locale === l ? 'border-[var(--ink)] bg-[color:color-mix(in_srgb,var(--ink)_7%,transparent)] font-semibold text-[var(--ink)]' : 'border-[var(--line)] text-[var(--text-2)]',
-                    )}
+                    className={choiceClass(locale === l)}
                   >
                     {tc(`language.${l}`)}
+                  </button>
+                ))}
+              </div>
+              <p className="plat-eyebrow !text-[var(--text-3)] mb-2 mt-4">{tp('theme.label')}</p>
+              <div className="flex gap-1.5" role="radiogroup" aria-label={tp('theme.label')}>
+                {THEMES.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    role="radio"
+                    aria-checked={theme === option}
+                    onClick={() => setTheme(option)}
+                    className={choiceClass(theme === option)}
+                  >
+                    {tp(`theme.${option}`)}
                   </button>
                 ))}
               </div>

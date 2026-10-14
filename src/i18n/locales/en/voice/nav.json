@@ -3,7 +3,8 @@
   "groups": {
     "owner": "Your reception",
     "operations": "Operations",
-    "advanced": "Advanced"
+    "advanced": "Advanced",
+    "apps": "Apps"
   },
   "items": {
     "overview": "Overview",
@@ -17,6 +18,13 @@
     "advancedSettings": "Advanced settings",
     "more": "More",
     "callsOps": "Calls (operations view)"
+  },
+  "apps": {
+    "dashboard": "Dashboard",
+    "chat": "Chat",
+    "tasks": "Tasks",
+    "company": "Company",
+    "integrations": "Integrations"
   },
   "badges": {
     "pastDue": "Past due: {{subjects}}",
