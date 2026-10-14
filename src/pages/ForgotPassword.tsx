@@ -109,7 +109,7 @@ const ForgotPassword = () => {
 
                   <button
                     type="submit"
-                    className="mt-1 h-11 w-full rounded-full bg-[color:var(--ink)] text-[15px] font-semibold text-[color:var(--on-ink)] transition-opacity hover:opacity-85"
+                    className="mt-1 h-11 w-full rounded-full bg-[color:var(--brand)] text-[15px] font-semibold text-[color:var(--on-brand)] transition-colors hover:bg-[color:var(--brand-hover)]"
                   >
                     Send reset request
                   </button>

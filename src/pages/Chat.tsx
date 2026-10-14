@@ -550,7 +550,7 @@ const ChatInner = () => {
               aria-label="Send message"
               className={`flex items-center justify-center h-9 w-9 rounded-full transition-all duration-150 ${
                 canSend
-                  ? 'bg-[color:var(--ink)] text-[color:var(--on-ink)] hover:opacity-85'
+                  ? 'bg-[color:var(--brand)] text-[color:var(--on-brand)] hover:bg-[color:var(--brand-hover)]'
                   : 'bg-[color:var(--sand)] text-[color:var(--text-5)] cursor-not-allowed'
               }`}
             >
@@ -963,7 +963,7 @@ function ApprovalStepBody({
         <button
           onClick={() => onDecide(msgId, step.approvalId, true)}
           disabled={locked}
-          className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[color:var(--ink)] text-[color:var(--on-ink)] hover:opacity-85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[color:var(--brand)] text-[color:var(--on-brand)] hover:bg-[color:var(--brand-hover)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Approve
         </button>

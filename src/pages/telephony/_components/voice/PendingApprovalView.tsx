@@ -104,12 +104,12 @@ export default function PendingApprovalView() {
                   <button
                     type="button"
                     onClick={() => navigate('/telephony/calls/live')}
-                    className="flex h-8 items-center gap-1.5 rounded-full bg-[var(--ink)] px-3.5 text-xs font-medium text-[var(--on-ink)] transition-colors hover:opacity-85"
+                    className="flex h-8 items-center gap-1.5 rounded-full bg-[var(--brand)] px-3.5 text-xs font-medium text-[var(--on-brand)] transition-colors hover:bg-[var(--brand-hover)]"
                   >
                     <Radio className="h-3.5 w-3.5" />
                     Watch live calls
                     {!!activeCalls?.length && (
-                      <span className="rounded-full bg-[color:color-mix(in_srgb,var(--on-ink)_70%,transparent)] px-1.5 text-[10px] font-semibold text-[var(--ink)]">
+                      <span className="rounded-full bg-[color:color-mix(in_srgb,var(--on-brand)_70%,transparent)] px-1.5 text-[10px] font-semibold text-[var(--ink)]">
                         {activeCalls.length}
                       </span>
                     )}

@@ -202,7 +202,7 @@ function MessageDrawer({
           onClick={onCallBack}
           disabled={!message.caller_number}
           data-testid="message-call-back"
-          className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[var(--ink)] px-3 py-2 text-xs font-semibold text-[var(--on-ink)] disabled:opacity-40"
+          className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[var(--brand)] hover:bg-[var(--brand-hover)] px-3 py-2 text-xs font-semibold text-[var(--on-brand)] disabled:opacity-40"
           title={message.caller_number ? 'Prefills the call form; it does not dial' : 'No number to call back'}
         >
           <PhoneOutgoing className="h-3.5 w-3.5" />

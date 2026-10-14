@@ -188,7 +188,7 @@ export function ApprovalCard({
           data-testid="voice-approval-approve"
           disabled={!!deciding}
           onClick={() => onDecide('approve')}
-          className="flex-1 rounded-full bg-[var(--ink)] px-3 py-2 text-xs font-semibold text-[var(--on-ink)] disabled:opacity-40"
+          className="flex-1 rounded-full bg-[var(--brand)] hover:bg-[var(--brand-hover)] px-3 py-2 text-xs font-semibold text-[var(--on-brand)] disabled:opacity-40"
         >
           {deciding === 'approve' ? 'Approving…' : 'Approve'}
         </button>

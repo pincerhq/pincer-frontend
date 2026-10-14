@@ -584,17 +584,17 @@ export default function StartCallModal({
                 PlatMenu inside this wrapper, so clipping the wrapper clips the
                 open menu down to the height of the button. The two ends are
                 rounded individually instead. */}
-            <div className="inline-flex items-stretch rounded-full bg-[var(--ink)] text-[var(--on-ink)]">
+            <div className="inline-flex items-stretch rounded-full bg-[var(--brand)] text-[var(--on-brand)]">
               <span className="flex h-8 items-center gap-1.5 rounded-l-full pl-3.5 pr-2.5 text-xs font-medium" data-testid="call-mode">
                 <active.icon className="h-3.5 w-3.5" aria-hidden="true" />
                 {active.label}
               </span>
-              <span className="my-1.5 w-px bg-[color:color-mix(in_srgb,var(--on-ink)_25%,transparent)]" aria-hidden="true" />
+              <span className="my-1.5 w-px bg-[color:color-mix(in_srgb,var(--on-brand)_25%,transparent)]" aria-hidden="true" />
               <PlatMenu
                 ariaLabel="Change call type"
                 align="start"
                 panelClassName="min-w-[304px]"
-                triggerClassName="flex h-8 items-center rounded-r-full px-2 text-[var(--on-ink)] transition-colors hover:bg-[color:color-mix(in_srgb,var(--on-ink)_15%,transparent)]"
+                triggerClassName="flex h-8 items-center rounded-r-full px-2 text-[var(--on-brand)] transition-colors hover:bg-[color:color-mix(in_srgb,var(--on-brand)_15%,transparent)]"
                 trigger={<ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />}
                 sections={[
                   {
@@ -1032,7 +1032,7 @@ export default function StartCallModal({
                 className={cn(
                   'flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium transition-colors',
                   canSubmit && !pending
-                    ? 'bg-[var(--ink)] text-[var(--on-ink)] hover:opacity-85'
+                    ? 'bg-[var(--brand)] text-[var(--on-brand)] hover:bg-[var(--brand-hover)]'
                     : 'cursor-not-allowed bg-[var(--sand-deep)] text-[var(--text-5)]',
                 )}
               >

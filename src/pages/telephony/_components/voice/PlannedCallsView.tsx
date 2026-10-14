@@ -108,7 +108,7 @@ export default function PlannedCallsView() {
                           });
                           setComposerOpen(true);
                         }}
-                        className="flex h-7 items-center gap-1.5 rounded-full bg-[var(--ink)] px-2.5 text-xs font-medium text-[var(--on-ink)] hover:opacity-85"
+                        className="flex h-7 items-center gap-1.5 rounded-full bg-[var(--brand)] px-2.5 text-xs font-medium text-[var(--on-brand)] hover:bg-[var(--brand-hover)]"
                         title="Open in the composer and dial for real"
                       >
                         <PhoneOutgoing className="h-3 w-3" />
@@ -150,7 +150,7 @@ export default function PlannedCallsView() {
               setComposer(null);
               setComposerOpen(true);
             }}
-            className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--ink)] px-3.5 text-xs font-medium text-[var(--on-ink)] transition-colors hover:opacity-85"
+            className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--brand)] px-3.5 text-xs font-medium text-[var(--on-brand)] transition-colors hover:bg-[var(--brand-hover)]"
           >
             <PhoneOutgoing className="h-3.5 w-3.5" />
             New call

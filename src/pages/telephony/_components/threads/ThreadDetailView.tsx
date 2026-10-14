@@ -478,7 +478,7 @@ export default function ThreadDetailView({ threadId }: { threadId: string }) {
                 <button
                   type="button"
                   onClick={() => setFollowUp('now')}
-                  className="flex items-center gap-1.5 rounded-full bg-[var(--ink)] px-3 py-1.5 text-xs font-medium text-[var(--on-ink)] transition-opacity hover:opacity-85"
+                  className="flex items-center gap-1.5 rounded-full bg-[var(--brand)] px-3 py-1.5 text-xs font-medium text-[var(--on-brand)] transition-colors hover:bg-[var(--brand-hover)]"
                 >
                   <PhoneOutgoing className="h-3.5 w-3.5" />
                   Follow-up call

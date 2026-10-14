@@ -164,7 +164,7 @@ export function AssignCallModal({
                   setConfirming(null);
                   run(call);
                 }}
-                className="rounded-full bg-[var(--ink)] px-3 py-1.5 text-xs font-medium text-[var(--on-ink)] hover:opacity-85"
+                className="rounded-full bg-[var(--brand)] px-3 py-1.5 text-xs font-medium text-[var(--on-brand)] hover:bg-[var(--brand-hover)]"
               >
                 Move it here
               </button>
@@ -276,7 +276,7 @@ export function MergeThreadModal({
                 type="button"
                 onClick={run}
                 disabled={merge.isPending}
-                className="rounded-full bg-[var(--ink)] px-4 py-1.5 text-xs font-medium text-[var(--on-ink)] hover:opacity-85 disabled:opacity-50"
+                className="rounded-full bg-[var(--brand)] px-4 py-1.5 text-xs font-medium text-[var(--on-brand)] hover:bg-[var(--brand-hover)] disabled:opacity-50"
               >
                 {merge.isPending ? 'Merging…' : 'Merge threads'}
               </button>

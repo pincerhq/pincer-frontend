@@ -37,7 +37,7 @@ function ConnectPrompt() {
       </p>
       <Link
         to="/login"
-        className="mt-4 inline-block rounded-full bg-[var(--ink)] px-4 py-2 text-xs font-semibold text-[var(--on-ink)] transition-opacity hover:opacity-85"
+        className="mt-4 inline-block rounded-full bg-[var(--brand)] px-4 py-2 text-xs font-semibold text-[var(--on-brand)] transition-colors hover:bg-[var(--brand-hover)]"
       >
         Connect (Login → Token)
       </Link>
@@ -80,7 +80,7 @@ export default function LiveView() {
             <button
               type="button"
               onClick={() => setStartOpen(true)}
-              className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--ink)] px-3.5 text-xs font-medium text-[var(--on-ink)] transition-colors hover:opacity-85"
+              className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--brand)] px-3.5 text-xs font-medium text-[var(--on-brand)] transition-colors hover:bg-[var(--brand-hover)]"
             >
               <PhoneOutgoing className="h-3.5 w-3.5" />
               New call
@@ -105,7 +105,7 @@ export default function LiveView() {
             <button
               type="button"
               onClick={() => setStartOpen(true)}
-              className="mx-auto mt-4 flex items-center gap-1.5 rounded-full bg-[var(--ink)] px-4 py-2 text-xs font-medium text-[var(--on-ink)] hover:opacity-85"
+              className="mx-auto mt-4 flex items-center gap-1.5 rounded-full bg-[var(--brand)] px-4 py-2 text-xs font-medium text-[var(--on-brand)] hover:bg-[var(--brand-hover)]"
             >
               <PhoneOutgoing className="h-3.5 w-3.5" />
               Start a call

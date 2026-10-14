@@ -217,12 +217,14 @@
   }
 
   /* STANDARDIZED BUTTONS — Anthropic style */
+  /* The default (filled) button is the primary action: brand olive, like
+     pincer-sh. Outline / ghost / secondary below stay neutral. */
   .standard-button,
   .pricing-button {
-    background: #141413;
+    background: var(--brand);
     border: none;
     border-radius: 9999px;
-    color: #ffffff;
+    color: var(--on-brand);
     font-weight: 500;
     padding: 10px 22px;
     transition: all 0.2s ease;
@@ -241,7 +243,7 @@
 
   .standard-button:hover,
   .pricing-button:hover {
-    background: #2a2a28;
+    background: var(--brand-hover);
     transform: translateY(-1px);
   }
 

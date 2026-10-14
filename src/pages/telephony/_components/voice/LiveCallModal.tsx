@@ -170,7 +170,7 @@ function LiveApprovals({ callSid }: { callSid: string }) {
                     type="button"
                     disabled={!!busy[a.id]}
                     onClick={() => onDecide(a.id, 'approve')}
-                    className="rounded-full bg-[var(--ink)] px-3 py-1 text-[11px] font-semibold text-[var(--on-ink)] disabled:opacity-40"
+                    className="rounded-full bg-[var(--brand)] hover:bg-[var(--brand-hover)] px-3 py-1 text-[11px] font-semibold text-[var(--on-brand)] disabled:opacity-40"
                   >
                     Approve
                   </button>

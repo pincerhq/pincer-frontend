@@ -178,7 +178,7 @@ export default function CallDetailPage({ callSid }: { callSid: string }) {
             </button>
             <InfoTag kind="local" label={t("detail.handledLocalTag")} title={t("detail.handledLocalHint")} />
             {outboundAllowed && (
-              <button type="button" onClick={() => setCallBack(true)} className="inline-flex items-center gap-1.5 rounded-[10px] bg-[var(--ink)] px-3 py-1.5 text-sm text-[var(--paper)]">
+              <button type="button" onClick={() => setCallBack(true)} className="inline-flex items-center gap-1.5 rounded-[10px] bg-[var(--brand)] hover:bg-[var(--brand-hover)] px-3 py-1.5 text-sm text-[var(--on-brand)]">
                 <CallBackIcon className="h-4 w-4" aria-hidden="true" />
                 {t("detail.callBack")}
               </button>

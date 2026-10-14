@@ -308,7 +308,7 @@ function BlocklistSection() {
           type="button"
           onClick={submit}
           disabled={add.isPending}
-          className="flex items-center gap-1.5 rounded-full bg-[var(--ink)] px-3.5 py-2 text-xs font-semibold text-[var(--on-ink)] disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-full bg-[var(--brand)] hover:bg-[var(--brand-hover)] px-3.5 py-2 text-xs font-semibold text-[var(--on-brand)] disabled:opacity-40"
         >
           <Plus className="h-3.5 w-3.5" />
           Block

@@ -157,7 +157,7 @@ function DoNotCallSection() {
         <button
           type="submit"
           disabled={!number.trim() || add.isPending}
-          className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--ink)] px-3.5 text-xs font-medium text-[var(--on-ink)] transition-opacity hover:opacity-85 disabled:opacity-40"
+          className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--brand)] px-3.5 text-xs font-medium text-[var(--on-brand)] transition-colors hover:bg-[var(--brand-hover)] disabled:opacity-40"
         >
           {add.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
           Add

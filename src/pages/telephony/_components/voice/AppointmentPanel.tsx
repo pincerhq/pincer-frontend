@@ -208,7 +208,7 @@ export default function AppointmentPanel({ appointment }: { appointment: Appoint
           href={appointment.calendar_event_link}
           target="_blank"
           rel="noreferrer"
-          className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-[var(--ink)] px-3 py-2 text-xs font-medium text-[var(--on-ink)] transition-opacity hover:opacity-85"
+          className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-[var(--brand)] px-3 py-2 text-xs font-medium text-[var(--on-brand)] transition-colors hover:bg-[var(--brand-hover)]"
         >
           <ExternalLink className="h-3.5 w-3.5" />
           Open calendar event
