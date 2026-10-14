@@ -11,7 +11,8 @@
 //
 // (`st-` keeps them clear of the retired `--blue-*` palette tokens.)
 //
-// Light values are Tailwind's own, byte for byte, so light mode is unchanged.
+// Light values are Tailwind's own, byte for byte, except a few type shades
+// that fail AA on the light surfaces (LIGHT_TYPE_FLOOR below).
 // Dark values are derived here: type turns light enough to clear WCAG AA on
 // the dark surfaces it sits on, pale surfaces become deep tints of the hue,
 // and saturated fills (400 and up) keep their colour.
@@ -40,6 +41,26 @@ const ON_WHITE_FILL = {
 };
 
 const AA = 4.5;
+
+// Light surfaces status type sits on (src/index.css :root), plus its own -50 chip.
+const LIGHT_PAPER = '#ffffff';
+const LIGHT_BG = '#fafaf7';
+const LIGHT_SAND = '#f4f5ef';
+
+// Light shades the app uses for type (4.5:1) or only for icons (3:1, WCAG
+// 1.4.11) whose Tailwind value falls short. Each is darkened to the first
+// Tailwind step of its hue that clears the floor; surfaces and borders keep
+// Tailwind's value. Which is which comes from the JSX element a class sits on
+// (a lucide icon or <svg> vs anything else); a shade used for both counts as
+// type. Shades not listed already pass (or are not used for type at all).
+const LIGHT_TYPE_FLOOR = {
+  'amber-500': 3, // icon only (TranscriptModal)
+  'amber-600': AA,
+  'green-500': 3, // icons only
+  'green-600': AA,
+  'red-500': AA,
+  'red-600': AA,
+};
 
 const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 const hex = (c) => '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
@@ -78,6 +99,15 @@ function darkText(hue, shade) {
   return colors[hue][50];
 }
 
+/** The first step of the hue, from `shade` down the scale, that clears `floor` on every light ground. */
+function lightText(hue, shade) {
+  const floor = LIGHT_TYPE_FLOOR[`${hue}-${shade}`];
+  if (!floor) return colors[hue][shade];
+  const grounds = [LIGHT_PAPER, LIGHT_BG, LIGHT_SAND, colors[hue][50]];
+  const step = SHADES.filter((s) => s >= shade).find((s) => grounds.every((g) => contrast(colors[hue][s], g) >= floor));
+  return colors[hue][step];
+}
+
 function block(selector, entries) {
   return `${selector} {\n${entries.map(([k, v]) => `  ${k}: ${v};`).join('\n')}\n}\n`;
 }
@@ -87,7 +117,7 @@ const dark = [];
 for (const hue of HUES) {
   for (const shade of SHADES) {
     const base = colors[hue][shade];
-    light.push([`--st-${hue}-${shade}`, triplet(base)], [`--st-${hue}-${shade}-bg`, triplet(base)], [`--st-${hue}-${shade}-line`, triplet(base)]);
+    light.push([`--st-${hue}-${shade}`, triplet(lightText(hue, shade))], [`--st-${hue}-${shade}-bg`, triplet(base)], [`--st-${hue}-${shade}-line`, triplet(base)]);
     dark.push(
       [`--st-${hue}-${shade}`, triplet(darkText(hue, shade))],
       [`--st-${hue}-${shade}-bg`, triplet(darkSurface(hue, shade))],
