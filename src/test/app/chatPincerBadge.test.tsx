@@ -1,0 +1,156 @@
+/**
+ * The Chat header badge follows the /api/health poll. A stored session with a
+ * backend that does not answer is "Pincer offline", never "Pincer connected" —
+ * and while it is offline nothing on the page can start a request: the
+ * composer and pending approvals lock until health recovers, and whatever was
+ * typed stays put.
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import type { StreamEvent } from '@/lib/pincerClient';
+
+const health = vi.fn();
+const streamChat = vi.fn((..._args: unknown[]): AsyncGenerator<StreamEvent> => (async function* () {})());
+const respondApproval = vi.fn(async (..._args: unknown[]) => undefined);
+
+const OK = { status: 'success', data: { status: 'ok' }, isError: false, isSuccess: true };
+const DOWN = { status: 'error', data: { status: 'ok' }, isError: true, isSuccess: false };
+const CHECKING = { status: 'pending', data: undefined, isError: false, isSuccess: false };
+
+vi.mock('@/lib/capabilities', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/capabilities')>();
+  return { ...actual, useHealth: () => health() };
+});
+
+vi.mock('@/lib/pincerClient', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/pincerClient')>();
+  return {
+    ...actual,
+    isConnected: () => true,
+    getAuth: () => ({ apiUrl: 'http://pincer.test', token: 't', refreshToken: 'r', expiresAt: Date.now() + 60_000, userId: 'alice' }),
+    fetchLatestConversation: async () => null,
+    streamChat: (...args: unknown[]) => streamChat(...args),
+    respondApproval: (...args: unknown[]) => respondApproval(...args),
+  };
+});
+
+vi.mock('@/lib/api/conversations', () => ({
+  listConversations: async () => ({ conversations: [], limit: 20, offset: 0 }),
+}));
+
+const { default: Chat } = await import('@/pages/Chat');
+
+// A fresh element each time: re-rendering the identical element object lets
+// React bail out, and the new health state would never be read.
+const ui = () => (
+  <MemoryRouter initialEntries={['/chat']}>
+    <Chat />
+  </MemoryRouter>
+);
+
+function renderChat() {
+  return render(ui());
+}
+
+const OFFLINE_NOTICE = 'Pincer is offline. Chat is unavailable until it reconnects (retrying every 30 s).';
+const composer = () => screen.getByRole('textbox');
+const control = (name: string) => screen.getByRole('button', { name });
+
+describe('chat Pincer badge', () => {
+  beforeEach(() => health.mockReset());
+
+  it('says offline when the health poll fails, even with a stored session', () => {
+    health.mockReturnValue({ status: 'error', data: { status: 'ok' }, isError: true, isSuccess: false });
+    renderChat();
+    expect(screen.getByText('Pincer offline')).toBeInTheDocument();
+    expect(screen.queryByText('Pincer connected')).not.toBeInTheDocument();
+  });
+
+  it('says connected only once the health poll has answered', () => {
+    health.mockReturnValue({ status: 'success', data: { status: 'ok' }, isError: false, isSuccess: true });
+    renderChat();
+    expect(screen.getByText('Pincer connected')).toBeInTheDocument();
+  });
+
+  it('says checking before the first health answer', () => {
+    health.mockReturnValue({ status: 'pending', data: undefined, isError: false, isSuccess: false });
+    renderChat();
+    expect(screen.getByText('Checking Pincer…')).toBeInTheDocument();
+    expect(screen.queryByText('Pincer connected')).not.toBeInTheDocument();
+  });
+});
+
+describe('chat while Pincer is offline', () => {
+  beforeEach(() => {
+    health.mockReset();
+    streamChat.mockReset();
+    respondApproval.mockClear();
+  });
+
+  it('locks every control that would start a request and says why', () => {
+    health.mockReturnValue(DOWN);
+    renderChat();
+    expect(screen.getByText(OFFLINE_NOTICE)).toBeInTheDocument();
+    expect(composer()).toBeDisabled();
+    for (const name of ['Send message', 'Attach file', 'Voice input', 'Mention an agent']) {
+      expect(control(name)).toBeDisabled();
+    }
+  });
+
+  it('keeps the composer usable while the first health check is still pending', () => {
+    health.mockReturnValue(CHECKING);
+    renderChat();
+    expect(screen.queryByText(OFFLINE_NOTICE)).not.toBeInTheDocument();
+    expect(composer()).toBeEnabled();
+    expect(control('Attach file')).toBeEnabled();
+  });
+
+  it('keeps typed text unsent while offline and unlocks by itself on recovery', async () => {
+    const user = userEvent.setup();
+    health.mockReturnValue(OK);
+    const view = renderChat();
+    await user.type(composer(), 'Draft the weekly report');
+
+    health.mockReturnValue(DOWN);
+    view.rerender(ui());
+    expect(composer()).toBeDisabled();
+    expect(composer()).toHaveValue('Draft the weekly report');
+    expect(control('Send message')).toBeDisabled();
+
+    health.mockReturnValue(OK);
+    view.rerender(ui());
+    expect(screen.queryByText(OFFLINE_NOTICE)).not.toBeInTheDocument();
+    expect(composer()).toBeEnabled();
+    expect(composer()).toHaveValue('Draft the weekly report');
+    expect(control('Send message')).toBeEnabled();
+    expect(streamChat).not.toHaveBeenCalled();
+  });
+
+  it('a pending approval cannot be decided while offline', async () => {
+    const user = userEvent.setup();
+    health.mockReturnValue(OK);
+    streamChat.mockImplementation(async function* () {
+      yield { event: 'approval', data: { approval_id: 'ap-1', tool: 'send_email' } } as StreamEvent;
+      yield { event: 'chunk', data: { delta: 'Waiting for your approval.' } } as StreamEvent;
+      yield { event: 'done', data: {} } as StreamEvent;
+    });
+    const view = renderChat();
+    await user.type(composer(), 'Email the team{Enter}');
+    await screen.findByText('Approval required');
+
+    health.mockReturnValue(DOWN);
+    view.rerender(ui());
+    expect(control('Approve')).toBeDisabled();
+    expect(control('Deny')).toBeDisabled();
+    await act(async () => {
+      control('Approve').click();
+    });
+    expect(respondApproval).not.toHaveBeenCalled();
+
+    health.mockReturnValue(OK);
+    view.rerender(ui());
+    expect(control('Approve')).toBeEnabled();
+  });
+});

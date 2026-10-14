@@ -39,19 +39,25 @@ const isToday = (c: CallSummary) => {
 // ── Voice ────────────────────────────────────────────────────────────
 
 export function VoiceWidget() {
-  const { data: status } = useVoiceStatus();
-  const { data: active } = useActiveCalls();
+  const statusQ = useVoiceStatus();
+  const activeQ = useActiveCalls();
+  const status = statusQ.data;
+  // A failed poll keeps its last data; live calls taken from it would be stale.
+  const active = activeQ.isError ? undefined : activeQ.data;
   const { calls } = useCallHistoryAll(200);
 
   const today = useMemo(() => calls.filter(isToday), [calls]);
   const todaySeconds = today.reduce((n, c) => n + (c.duration_seconds ?? 0), 0);
-  const live = active?.length ?? status?.active_call_count ?? 0;
+  const live = active?.length ?? (statusQ.isError ? undefined : status?.active_call_count);
+  const unreachable = live === undefined && (activeQ.isError || statusQ.isError);
 
   return (
     <>
       <WidgetStats
         items={[
-          { label: 'Live now', value: fmtNum(live), sub: live ? 'on the line' : 'line is idle' },
+          unreachable
+            ? { label: 'Live now', value: '—', sub: 'not reachable' }
+            : { label: 'Live now', value: fmtNum(live ?? 0), sub: live ? 'on the line' : 'line is idle' },
           { label: 'Calls today', value: fmtNum(today.length), sub: fmtDuration(todaySeconds) + ' talking' },
           {
             label: 'Engine',

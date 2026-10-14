@@ -7,6 +7,7 @@ import { useMemo } from 'react';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import {
   useAgentStatus,
+  liveAgentStatus,
   useAuditDaily,
   useAuditStats,
   useCostHistory,
@@ -469,7 +470,7 @@ export function ActivityDetail() {
 // ── Agent ────────────────────────────────────────────────────────────
 
 export function AgentDetail() {
-  const { data: st } = useAgentStatus();
+  const { st, unreachable } = liveAgentStatus(useAgentStatus());
   const { data: audit } = useRecentAudit(60);
   const { data: daily } = useAuditDaily(14);
   const { data: stats } = useAuditStats();
@@ -483,8 +484,10 @@ export function AgentDetail() {
     <>
       <DetailStats
         items={[
-          { label: 'Runtime', value: st ? (st.agent_running ? 'Running' : 'Stopped') : '—', sub: st ? `version ${st.version}` : 'waiting for data' },
-          { label: 'Channels on', value: `${online}/${channels.length || 0}`, sub: channels.length ? channels.map(([n]) => n).join(', ') : undefined },
+          unreachable
+            ? { label: 'Runtime', value: 'Not reachable', sub: 'last status check failed' }
+            : { label: 'Runtime', value: st ? (st.agent_running ? 'Running' : 'Stopped') : '—', sub: st ? `version ${st.version}` : 'waiting for data' },
+          { label: 'Channels on', value: unreachable ? '—' : `${online}/${channels.length || 0}`, sub: channels.length ? channels.map(([n]) => n).join(', ') : undefined },
           { label: 'Actions all time', value: fmtNum(stats?.total_entries), sub: `${fmtNum(stats?.failed_actions)} failed` },
           { label: 'Tools available', value: fmtNum(Object.keys(stats?.by_tool ?? {}).length), sub: 'seen in the audit log' },
         ]}
@@ -509,7 +512,7 @@ export function AgentDetail() {
       <DetailTables cols={2}>
         <DataTable
           title="Channels"
-          hint={`${online} online`}
+          hint={unreachable ? 'state unknown' : `${online} online`}
           rows={channels}
           rowKey={([name]) => name}
           columns={[

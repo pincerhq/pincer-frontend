@@ -44,6 +44,7 @@ import { queryClient } from '@/lib/queryClient';
 import { isConnected } from '@/lib/pincerClient';
 import {
   useAgentStatus,
+  liveAgentStatus,
   useAuditStats,
   useCostHistory,
   useCostsByModel,
@@ -285,7 +286,7 @@ function SpendTrendCard() {
 // ── Right rail: agent, quick actions, automation ─────────────────────
 
 function AgentCard() {
-  const { data: st } = useAgentStatus();
+  const { st, unreachable } = liveAgentStatus(useAgentStatus());
   const detail = useDetail('Agent', 'Runtime, channels and what the agent has been doing', <AgentDetail />);
   return (
     <div className="plat-panel">
@@ -297,13 +298,20 @@ function AgentCard() {
           {detail.trigger}
         </span>
       </div>
-      <span className={cn('plat-pill', !st ? 'plat-pill-mute' : st.agent_running ? 'plat-pill-ok' : 'plat-pill-warn')}>
-        <span
-          className="h-1.5 w-1.5 rounded-full"
-          style={{ background: !st ? 'var(--text-5)' : st.agent_running ? 'var(--ok-fg)' : 'var(--warn-fg)' }}
-        />
-        {!st ? 'waiting for data' : st.agent_running ? 'Running' : 'Stopped'}
-      </span>
+      {unreachable ? (
+        <span className="plat-pill plat-pill-warn" title="The last status check failed — retrying">
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--warn-fg)' }} />
+          Not reachable
+        </span>
+      ) : (
+        <span className={cn('plat-pill', !st ? 'plat-pill-mute' : st.agent_running ? 'plat-pill-ok' : 'plat-pill-warn')}>
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ background: !st ? 'var(--text-5)' : st.agent_running ? 'var(--ok-fg)' : 'var(--warn-fg)' }}
+          />
+          {!st ? 'waiting for data' : st.agent_running ? 'Running' : 'Stopped'}
+        </span>
+      )}
       {st && (
         <div className="mt-4 space-y-1.5 border-t pt-3" style={{ borderColor: 'var(--line-soft)' }}>
           <p className="plat-eyebrow mb-2">Channels</p>
