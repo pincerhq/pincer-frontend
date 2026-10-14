@@ -11,10 +11,17 @@ export type PincerBadge = 'demo' | 'checking' | 'connected' | 'offline';
 
 export function pincerBadgeState(
   session: boolean,
-  health: { status: 'pending' | 'error' | 'success' },
+  health: { status: 'pending' | 'error' | 'success'; errorUpdatedAt?: number; dataUpdatedAt?: number },
 ): PincerBadge {
   if (!session) return 'demo';
   if (health.status === 'error') return 'offline';
   if (health.status === 'success') return 'connected';
+  // react-query resets a query that never had data to 'pending' at the start of
+  // every fetch, so a retry after a failure looks like a first load. The last
+  // outcome decides: a failure with no success since stays offline (and locked)
+  // while the retry is in flight. Only a true first load — no outcome yet — is
+  // 'checking'.
+  const failedAt = health.errorUpdatedAt ?? 0;
+  if (failedAt > 0 && failedAt >= (health.dataUpdatedAt ?? 0)) return 'offline';
   return 'checking';
 }

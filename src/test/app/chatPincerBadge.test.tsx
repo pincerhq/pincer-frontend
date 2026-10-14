@@ -154,3 +154,25 @@ describe('chat while Pincer is offline', () => {
     expect(control('Approve')).toBeEnabled();
   });
 });
+
+describe('a health retry in flight after a failure', () => {
+  beforeEach(() => health.mockReset());
+
+  it('keeps chat offline and locked', () => {
+    // What react-query reports while re-fetching a query that never had data:
+    // status back to 'pending', but the last outcome was a failure.
+    health.mockReturnValue({ ...CHECKING, fetchStatus: 'fetching', errorUpdatedAt: Date.now(), dataUpdatedAt: 0 });
+    renderChat();
+    expect(screen.getByText('Pincer offline')).toBeInTheDocument();
+    expect(screen.getByText(OFFLINE_NOTICE)).toBeInTheDocument();
+    expect(composer()).toBeDisabled();
+    expect(control('Send message')).toBeDisabled();
+  });
+
+  it('a true first load (no answer, no error yet) is checking and unlocked', () => {
+    health.mockReturnValue({ ...CHECKING, fetchStatus: 'fetching', errorUpdatedAt: 0, dataUpdatedAt: 0 });
+    renderChat();
+    expect(screen.getByText('Checking Pincer…')).toBeInTheDocument();
+    expect(composer()).toBeEnabled();
+  });
+});

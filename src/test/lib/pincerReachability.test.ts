@@ -19,3 +19,20 @@ describe('pincerBadgeState', () => {
     expect(pincerBadgeState(session, { status })).toBe(badge);
   });
 });
+
+describe('pincerBadgeState while a retry is in flight', () => {
+  // react-query resets a query that has never had data to status 'pending' at
+  // the start of every fetch — so a retry after a failure looks like a first
+  // load. The last outcome (a failure) has to keep it offline.
+  it('stays offline when the last outcome was a failure, even though status is pending again', () => {
+    expect(pincerBadgeState(true, { status: 'pending', errorUpdatedAt: 1_000, dataUpdatedAt: 0 })).toBe('offline');
+  });
+
+  it('is still checking on a true first load (no outcome yet)', () => {
+    expect(pincerBadgeState(true, { status: 'pending', errorUpdatedAt: 0, dataUpdatedAt: 0 })).toBe('checking');
+  });
+
+  it('goes connected as soon as a success lands after failures', () => {
+    expect(pincerBadgeState(true, { status: 'success', errorUpdatedAt: 1_000, dataUpdatedAt: 2_000 })).toBe('connected');
+  });
+});
