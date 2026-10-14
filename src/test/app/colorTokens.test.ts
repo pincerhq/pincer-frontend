@@ -18,7 +18,7 @@ const PLATFORM_TOKENS = [
   '--brand', '--brand-hover', '--brand-100', '--brand-200', '--on-brand', '--on-ink',
   '--text-1', '--text-2', '--text-3', '--text-4', '--text-5',
   '--ok-bg', '--ok-fg', '--warn-bg', '--warn-fg', '--bad-fg',
-  '--line', '--line-soft',
+  '--line', '--line-soft', '--shade',
 ];
 
 function files(dir: string, ext: RegExp): string[] {
@@ -66,11 +66,21 @@ const SHADCN_SOURCE: Record<string, string> = {
   '--sidebar-border': '--line', '--sidebar-ring': '--brand',
 };
 
-/** The light :root block of index.css as name → raw value. */
-function rootValues(): Record<string, string> {
+/** A top-level block of index.css (`:root` or `html.dark`) as name → raw value. */
+function blockValues(selector: ':root' | 'html.dark'): Record<string, string> {
   const css = readFileSync(path.join(SRC, 'index.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-  const body = css.match(/:root\s*\{([^}]*)\}/)![1];
+  const escaped = selector.replace('.', '\\.');
+  const body = css.match(new RegExp(`(?:^|\\s)${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
   return Object.fromEntries([...body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
+}
+
+const rootValues = () => blockValues(':root');
+
+/** Where each token gets a dark value: every rule declaring it under `.dark`. */
+function darkDeclarations(token: string): string[] {
+  return rules()
+    .filter((r) => r.props.includes(token) && r.selector.includes('.dark'))
+    .map((r) => `${r.file} ${r.selector}`);
 }
 
 const hexRgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
@@ -107,6 +117,36 @@ describe('colour tokens', () => {
     expect(hex, `${source} must be a hex colour to derive from`).toMatch(/^#[0-9a-f]{6}$/i);
     const derived = hslRgb(root[shadcn]);
     hexRgb(hex).forEach((channel, i) => expect(Math.abs(derived[i] - channel), `${shadcn} vs ${source} ${hex}`).toBeLessThanOrEqual(1));
+  });
+
+  it.each(PLATFORM_TOKENS)('%s has exactly one dark definition, on html.dark', (token) => {
+    expect(darkDeclarations(token)).toEqual(['index.css html.dark']);
+  });
+
+  it('every root variable, shadcn included, has a dark value (radius aside)', () => {
+    const dark = blockValues('html.dark');
+    const missing = Object.keys(rootValues()).filter((v) => v !== '--radius' && !(v in dark));
+    expect(missing).toEqual([]);
+  });
+
+  it('no scope re-declares any root token in dark mode', () => {
+    const redeclared = Object.keys(rootValues()).flatMap((token) =>
+      darkDeclarations(token).filter((d) => d !== 'index.css html.dark').map((d) => `${token} in ${d}`),
+    );
+    expect(redeclared).toEqual([]);
+  });
+
+  it.each(Object.entries(SHADCN_SOURCE))('dark shadcn %s is derived from dark %s', (shadcn, source) => {
+    const dark = blockValues('html.dark');
+    const hex = dark[source];
+    expect(hex, `dark ${source} must be a hex colour to derive from`).toMatch(/^#[0-9a-f]{6}$/i);
+    const derived = hslRgb(dark[shadcn] ?? '0 0% 0%');
+    hexRgb(hex).forEach((channel, i) => expect(Math.abs(derived[i] - channel), `${shadcn} vs ${source} ${hex}`).toBeLessThanOrEqual(1));
+  });
+
+  it('the page tells the browser it supports both schemes', () => {
+    const html = readFileSync(path.resolve(SRC, '../index.html'), 'utf8');
+    expect(html).toMatch(/<meta name="color-scheme" content="light dark"\s*\/?>/);
   });
 
   it('nothing references the old blue token names', () => {

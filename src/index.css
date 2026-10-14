@@ -43,6 +43,7 @@
 
     --line: #e7e8e0;
     --line-soft: #efefe9;
+    --shade: #262723;                  /* shadow tint: ink in light, black in dark (a light ink would glow) */
 
     /* shadcn: the same palette as HSL triplets, each derived from the token
        named beside it (colorTokens.test pins the conversion). */
@@ -86,46 +87,63 @@
     --sidebar-ring: 71.5 100% 23.5%;            /* --brand #617800 */
   }
 
-  /* Dark mode */
-  .dark {
-    --background: 20 10% 9%;           /* #181512 warm near-black */
-    --foreground: 30 15% 92%;          /* #ede8e3 warm near-white */
+  /* The dark token set: the same names, so pages, portals and the shadcn
+     primitives follow without per-component dark rules. The text ramp stops
+     at #8e9485 (not the #6f7566 first proposed) so every step passes WCAG AA
+     on --bg, --paper and --sand, mirroring the light ramp. */
+  html.dark {
+    --bg: #181b17;
+    --paper: #20241f;
+    --sand: #262b25;
+    --sand-deep: #2d332b;
+    --ink: #f0f2e9;
+    --brand: #c2d76a;
+    --brand-hover: #d0e27f;
+    --brand-100: #2a3218;
+    --brand-200: #3f4b1f;
+    --on-brand: #1d2117;
+    --on-ink: #1d2117;
+    --text-1: #d4d8cb;
+    --text-2: #c2c7ba;
+    --text-3: #b1b6a8;
+    --text-4: #a0a596;
+    --text-5: #8e9485;
+    --ok-bg: #1f2b1c;
+    --ok-fg: #9fd08f;
+    --warn-bg: #33290f;
+    --warn-fg: #e3b65e;
+    --bad-fg: #f0857a;
+    --line: #353933;
+    --line-soft: #2f322d;
+    --shade: #000000;
 
-    --card: 20 8% 12%;
-    --card-foreground: 30 15% 92%;
-
-    --popover: 20 8% 12%;
-    --popover-foreground: 30 15% 92%;
-
-    --primary: 30 15% 92%;
-    --primary-foreground: 20 10% 9%;
-
-    --secondary: 20 8% 18%;
-    --secondary-foreground: 30 15% 92%;
-
-    --muted: 20 8% 18%;
-    --muted-foreground: 30 10% 55%;
-
-    --accent: 20 8% 22%;
-    --accent-foreground: 30 15% 92%;
-
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 20 8% 20%;
-    --input: 20 8% 18%;
-    --ring: 30 15% 75%;
-
-    --radius: 0.75rem;
-
-    --sidebar-background: 20 8% 11%;
-    --sidebar-foreground: 30 12% 80%;
-    --sidebar-primary: 30 15% 92%;
-    --sidebar-primary-foreground: 20 10% 9%;
-    --sidebar-accent: 20 8% 18%;
-    --sidebar-accent-foreground: 30 15% 92%;
-    --sidebar-border: 20 8% 20%;
-    --sidebar-ring: 30 15% 75%;
+    --background: 105 8% 9.8%;                    /* --bg #181b17 */
+    --foreground: 73.3 25.7% 93.1%;               /* --ink #f0f2e9 */
+    --card: 108 7.5% 13.1%;                       /* --paper #20241f */
+    --card-foreground: 73.3 25.7% 93.1%;          /* --ink #f0f2e9 */
+    --popover: 108 7.5% 13.1%;                    /* --paper #20241f */
+    --popover-foreground: 73.3 25.7% 93.1%;       /* --ink #f0f2e9 */
+    --primary: 73.3 25.7% 93.1%;                  /* --ink #f0f2e9 */
+    --primary-foreground: 84 17.9% 11%;           /* --on-ink #1d2117 */
+    --secondary: 110 7.5% 15.7%;                  /* --sand #262b25 */
+    --secondary-foreground: 73.3 25.7% 93.1%;     /* --ink #f0f2e9 */
+    --muted: 110 7.5% 15.7%;                      /* --sand #262b25 */
+    --muted-foreground: 81.4 8.8% 68.6%;          /* --text-3 #b1b6a8 */
+    --accent: 110 7.5% 15.7%;                     /* --sand #262b25 */
+    --accent-foreground: 73.3 25.7% 93.1%;        /* --ink #f0f2e9 */
+    --destructive: 5.6 79.7% 71%;                 /* --bad-fg #f0857a */
+    --destructive-foreground: 84 17.9% 11%;       /* --on-brand #1d2117 */
+    --border: 100 5.6% 21.2%;                     /* --line #353933 */
+    --input: 100 5.6% 21.2%;                      /* --line #353933 */
+    --ring: 71.6 57.7% 62.9%;                     /* --brand #c2d76a */
+    --sidebar-background: 105 8% 9.8%;            /* --bg #181b17 */
+    --sidebar-foreground: 78.5 14.3% 82.2%;       /* --text-1 #d4d8cb */
+    --sidebar-primary: 73.3 25.7% 93.1%;          /* --ink #f0f2e9 */
+    --sidebar-primary-foreground: 84 17.9% 11%;   /* --on-ink #1d2117 */
+    --sidebar-accent: 110 7.5% 15.7%;             /* --sand #262b25 */
+    --sidebar-accent-foreground: 73.3 25.7% 93.1%;/* --ink #f0f2e9 */
+    --sidebar-border: 100 5.6% 21.2%;             /* --line #353933 */
+    --sidebar-ring: 71.6 57.7% 62.9%;             /* --brand #c2d76a */
   }
 }
 
@@ -143,44 +161,6 @@
     position: relative;
     overflow-x: hidden;
     letter-spacing: -0.015em;
-  }
-
-  html.dark body {
-    background-color: #181512;
-    color: #ede8e3;
-  }
-
-  /* Override hardcoded dark text colors across all marketing pages in dark mode */
-  html.dark .text-gray-900,
-  html.dark .text-gray-800 {
-    color: #ede8e3;
-  }
-
-  html.dark .text-gray-700,
-  html.dark .text-gray-600 {
-    color: rgba(237, 232, 227, 0.65);
-  }
-
-  html.dark .text-gray-500,
-  html.dark .text-gray-400 {
-    color: rgba(237, 232, 227, 0.45);
-  }
-
-  html.dark .text-\[\#111111\],
-  html.dark .text-\[\#141413\],
-  html.dark .text-\[\#222222\],
-  html.dark .text-\[\#1b1b1b\] {
-    color: #ede8e3;
-  }
-
-  html.dark .text-\[\#30302e\] {
-    color: #ede8e3;
-  }
-
-  /* Override border colors */
-  html.dark .border-gray-200,
-  html.dark .border-gray-300 {
-    border-color: rgba(255, 255, 255, 0.1);
   }
 
   html {
@@ -328,9 +308,6 @@
     background-color: #f5f5f5;
   }
 
-  .dark .section-with-shapes {
-    background: linear-gradient(160deg, #181512 0%, #1d1814 60%, #161210 100%);
-  }
 
   /* Gradient section backgrounds */
   .gradient-warm {
@@ -373,95 +350,58 @@
     background-color: #f5f5f5;
   }
 
-  .dark .pricing-page-bg {
-    background: linear-gradient(160deg, #181512 0%, #1d1814 100%);
-  }
 
   .pricing-section-bg {
     background-color: #f5f5f5;
   }
 
-  .dark .pricing-section-bg {
-    background-color: #1c1916;
-  }
 
   .pricing-dark-section {
     background-color: #141413;
     color: #ffffff;
   }
 
-  /* Dark mode overrides for CSS utility classes */
-  .dark .pricing-card {
-    background: #1c1916;
-    border-color: rgba(255,255,255,0.1);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+
+  /* Buttons in dark: the same roles on the dark tokens (the light rules
+     above still carry fixed colours until the button restyle lands). Each
+     variant restates its background: the default rule below comes later in
+     the file and would otherwise paint ghost and outline buttons solid. */
+  .dark .standard-button {
+    background: var(--ink);
+    color: var(--on-ink);
   }
 
-  .dark .pricing-card:hover {
-    background: #252220;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.3);
-  }
-
-  .dark .pricing-text {
-    color: rgba(237,232,227,0.6);
-  }
-
-  .dark .pricing-title {
-    color: #ede8e3;
-  }
-
-  .dark .pricing-gradient {
-    background-color: #181512;
-  }
-
-  .dark .gradient-warm {
-    background-color: #181512;
-  }
-
-  .dark .gradient-warm-alt {
-    background-color: #1c1916;
-  }
-
-  .dark .gradient-cool-warm {
-    background-color: #1c1916;
-  }
-
-  .dark .standard-button,
-  .dark .pricing-button {
-    background: #ede8e3;
-    color: #141413;
-  }
-
-  .dark .standard-button:hover,
-  .dark .pricing-button:hover {
-    background: #ffffff;
+  .dark .standard-button:hover {
+    background: color-mix(in srgb, var(--ink) 88%, var(--paper));
   }
 
   .dark .standard-button.variant-outline {
-    border-color: rgba(237,232,227,0.3);
-    color: #ede8e3;
+    background: transparent;
+    border-color: color-mix(in srgb, var(--ink) 30%, transparent);
+    color: var(--ink);
   }
 
   .dark .standard-button.variant-outline:hover {
-    background: #ede8e3;
-    color: #141413;
+    background: var(--ink);
+    color: var(--on-ink);
   }
 
   .dark .standard-button.variant-ghost {
-    color: #ede8e3;
+    background: transparent;
+    color: var(--ink);
   }
 
   .dark .standard-button.variant-ghost:hover {
-    background: rgba(237,232,227,0.08);
+    background: color-mix(in srgb, var(--ink) 8%, transparent);
   }
 
   .dark .standard-button.variant-secondary {
-    background: rgba(237,232,227,0.08);
-    color: #ede8e3;
+    background: color-mix(in srgb, var(--ink) 8%, transparent);
+    color: var(--ink);
   }
 
   .dark .standard-button.variant-secondary:hover {
-    background: rgba(237,232,227,0.14);
+    background: color-mix(in srgb, var(--ink) 14%, transparent);
   }
 
   /* Slider */
@@ -524,13 +464,6 @@
       radial-gradient(at 84% 8%, hsla(18, 45%, 88%, 0.55) 0px, transparent 50%),
       radial-gradient(at 72% 82%, hsla(20, 20%, 86%, 0.6) 0px, transparent 55%);
   }
-  .dark .mesh-warm {
-    background-color: #181512;
-    background-image:
-      radial-gradient(at 16% 18%, hsla(28, 25%, 18%, 0.9) 0px, transparent 55%),
-      radial-gradient(at 84% 8%, hsla(18, 40%, 16%, 0.6) 0px, transparent 50%),
-      radial-gradient(at 72% 82%, hsla(30, 15%, 14%, 0.6) 0px, transparent 55%);
-  }
 
   /* Grain overlay — apply to a position:relative container */
   .grain { position: relative; }
@@ -543,7 +476,6 @@
     z-index: 0;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
-  .dark .grain::after { opacity: 0.06; }
 
   /* Layered dramatic soft shadow */
   .shadow-layered {
@@ -553,22 +485,11 @@
       0 12px 24px rgba(20, 20, 19, 0.06),
       0 32px 64px rgba(20, 20, 19, 0.08);
   }
-  .dark .shadow-layered {
-    box-shadow:
-      0 1px 1px rgba(0, 0, 0, 0.2),
-      0 4px 8px rgba(0, 0, 0, 0.25),
-      0 12px 24px rgba(0, 0, 0, 0.3),
-      0 32px 64px rgba(0, 0, 0, 0.4);
-  }
 
   /* Crafted hairline edge with inner highlight */
   .border-crafted {
     border: 1px solid rgba(20, 20, 19, 0.1);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  }
-  .dark .border-crafted {
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   /* Stronger frosted panel */
@@ -577,10 +498,6 @@
     backdrop-filter: blur(20px) saturate(140%);
     -webkit-backdrop-filter: blur(20px) saturate(140%);
     border: 1px solid rgba(255, 255, 255, 0.6);
-  }
-  .dark .glass-strong {
-    background: rgba(28, 25, 22, 0.6);
-    border-color: rgba(255, 255, 255, 0.08);
   }
 }
 

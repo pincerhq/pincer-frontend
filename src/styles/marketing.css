@@ -104,9 +104,9 @@
   --panel-radius: 32px;
   --tile-radius: 16px;
 
-  --lift: 0 26px 56px -30px color-mix(in srgb, var(--ink) 35%, transparent);
-  --lift-soft: 0 18px 40px -26px color-mix(in srgb, var(--ink) 35%, transparent);
-  --pill-shadow: 0 10px 28px -18px color-mix(in srgb, var(--ink) 32%, transparent);
+  --lift: 0 26px 56px -30px color-mix(in srgb, var(--shade) 35%, transparent);
+  --lift-soft: 0 18px 40px -26px color-mix(in srgb, var(--shade) 35%, transparent);
+  --pill-shadow: 0 10px 28px -18px color-mix(in srgb, var(--shade) 32%, transparent);
 
   background: var(--bg);
   color: var(--ink);
@@ -116,33 +116,16 @@
 }
 
 .dark .site3d {
-  --bg: #101215;
-  --paper: #181b1f;
-  --sand: #1e2227;
-  --sand-deep: #23272d;
-  --ink: #eceef1;
+  /* Every root token already switches on html.dark (src/index.css); only the
+     marketing extras need dark values here. On-dark type sits on --ink, which
+     is light in dark mode, so it turns dark too. */
+  --brand-deep: #d0e27f;
+  --brand-300: #8fa23f;
+  --brand-400: #8fa23f;
 
-  --brand: #93a4f5;
-  --brand-deep: #b9c8f7;
-  --brand-100: #1c2340;
-  --brand-200: #2b3768;
-  --brand-300: #b9c8f7;
-
-  --text-1: #b6bcc4;
-  --text-2: #a3a9b1;
-  --text-3: #8e949b;
-  --text-4: #7a8087;
-  --text-5: #6b7178;
-
-  --ok-bg: #14301f;
-  --warn-bg: #33230f;
-
-  --line: rgba(236, 238, 241, 0.12);
-  --line-soft: rgba(236, 238, 241, 0.08);
-
-  --lift: 0 26px 56px -30px rgba(0, 0, 0, 0.7);
-  --lift-soft: 0 18px 40px -26px rgba(0, 0, 0, 0.6);
-  --pill-shadow: 0 10px 28px -18px rgba(0, 0, 0, 0.8);
+  --on-dark-1: #2d332b;
+  --on-dark-2: #3f4539;
+  --on-dark-3: #575d50;
 }
 
 /* ── Type ─────────────────────────────────────────────────────────────────
@@ -580,14 +563,14 @@
    Sections that sit on --ink need light type and brand-300 numerals. */
 
 .site3d :is([class^="bg-[color:var(--ink)]"], [class*=" bg-[color:var(--ink)]"]) {
-  color: #fff;
+  color: var(--on-ink);
 }
 
 .site3d :is([class^="bg-[color:var(--ink)]"], [class*=" bg-[color:var(--ink)]"]) h1,
 .site3d :is([class^="bg-[color:var(--ink)]"], [class*=" bg-[color:var(--ink)]"]) h2,
 .site3d :is([class^="bg-[color:var(--ink)]"], [class*=" bg-[color:var(--ink)]"]) h3,
 .site3d :is([class^="bg-[color:var(--ink)]"], [class*=" bg-[color:var(--ink)]"]) h4 {
-  color: #fff;
+  color: var(--on-ink);
 }
 
 .site3d :is([class^="bg-[color:var(--ink)]"], [class*=" bg-[color:var(--ink)]"]) p,
@@ -626,8 +609,6 @@
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
-
-.dark .site3d .glass-strong { background: rgba(24, 27, 31, 0.94); }
 
 .site3d .m-on-art .glass-strong,
 .site3d .m-on-art .glass-strong :where(p, span, div) {

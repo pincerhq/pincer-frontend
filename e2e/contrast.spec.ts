@@ -6,9 +6,8 @@
  * are all chrome a reader has to be able to read, in both themes.
  *
  * Light passes since slice 9 (the pincer-sh palette, with its text ramp
- * darkened until every step clears AA). Dark is a known failure until slice 11
- * (dark palette): when it lands, its cases start passing and Playwright
- * reports "expected to fail" — remove the marks then.
+ * darkened until every step clears AA), dark since slice 11 (the dark palette,
+ * whose ramp is lightened the same way).
  */
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
@@ -106,11 +105,6 @@ const ROUTES: Route[] = [
 
 const SCHEMES = ["light", "dark"] as const;
 
-/** Schemes whose checks are still a known failure, and why. */
-const PENDING: Partial<Record<(typeof SCHEMES)[number], string>> = {
-  dark: "slice 11: dark palette",
-};
-
 /**
  * axe cannot resolve a colour behind a background-image or a pseudo-element
  * and reports those nodes as "incomplete" — neither pass nor fail. The app
@@ -200,14 +194,12 @@ for (const scheme of SCHEMES) {
 
       if (scheme === "dark") {
         test(`renders dark in dark mode: ${route.name} (${route.path})`, async ({ page }) => {
-          test.fail(true, PENDING.dark);
           await open(page, route);
           await expectDark(page, route);
         });
       }
 
       test(`contrast: ${route.name} (${route.path}) in ${scheme}`, async ({ page }) => {
-        test.fail(scheme in PENDING, PENDING[scheme]);
         await open(page, route);
         // A light page passing a "dark" contrast check would test nothing.
         if (scheme === "dark") await expectDark(page, route);
