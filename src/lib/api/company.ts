@@ -40,27 +40,24 @@ export function findMemento(entries: IntegrationEntry[] | undefined): Integratio
   return entries?.find((e) => e.source === "mcp" && e.name.toLowerCase().includes("memento")) ?? null;
 }
 
-// ── Chat-mediated brain operations (isolated identity) ──────────────
+// ── Chat-mediated brain operations (isolated conversation) ──────────────
 
 const BRAIN_ID_KEY = "pincer.web.companyBrainId";
 
-function brainUserId(): string {
+function brainConversationId(): string {
   let sid = localStorage.getItem(BRAIN_ID_KEY);
   if (!sid) {
     sid = crypto.randomUUID();
     localStorage.setItem(BRAIN_ID_KEY, sid);
   }
-  return `company-brain-${sid}`;
+  return sid;
 }
 
 async function brainChat(text: string): Promise<string> {
   const res = await authedFetch("/api/chat/message", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Pincer-User": brainUserId(),
-    },
-    body: JSON.stringify({ text }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, conversation_id: brainConversationId() }),
   });
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;

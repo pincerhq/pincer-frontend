@@ -20,6 +20,8 @@ let owner = '';
 // HOLD keeps the stream open until it is aborted, which fails it as fetch does.
 const HOLD = 'hold';
 let scripts: (StreamEvent | typeof HOLD)[][] = [];
+// The conversation id each streamed turn was sent with, in order.
+let sentIds: (string | undefined)[] = [];
 // Lets a test hold or fail a transcript read.
 let getHook: ((ownerId: string, id: string) => Promise<unknown>) | null = null;
 // What `/api/conversations` lists: Pincer's own exchange records.
@@ -48,9 +50,13 @@ vi.mock('@/lib/pincerClient', async (importOriginal) => {
       expiresAt: Date.now() + 3_600_000,
       userId: owner,
     }),
-    resetUserId: () => 'reset',
     sendChat: vi.fn(async () => ({ reply: 'fallback reply' })),
-    streamChat: async function* (_text: string, signal?: AbortSignal): AsyncGenerator<StreamEvent> {
+    streamChat: async function* (
+      _text: string,
+      signal?: AbortSignal,
+      conversationId?: string,
+    ): AsyncGenerator<StreamEvent> {
+      sentIds.push(conversationId);
       const script = scripts.shift();
       if (!script) throw new Error('no script for this turn');
       const aborted = () => new DOMException('The operation was aborted.', 'AbortError');
@@ -148,6 +154,7 @@ const exchange = (tag: string, n: number) =>
 beforeEach(() => {
   owner = crypto.randomUUID();
   scripts = [];
+  sentIds = [];
   getHook = null;
   listHook = null;
   pincerRecords = [];
@@ -241,6 +248,25 @@ describe('chat page history', () => {
 
     const [alpha] = (await listTranscripts(owner)).filter(t => t.messages[0].text === 'alpha question 1');
     expect(alpha.messages.map(m => m.text)).toEqual(exchange('alpha', 3));
+  });
+
+  it('sends each conversation to Pincer as its own, and a reopened one as itself', async () => {
+    renderChat();
+    await send('alpha question 1', 'alpha answer 1');
+    await send('alpha question 2', 'alpha answer 2');
+    fireEvent.click(screen.getAllByRole('button', { name: /new chat/i })[0]);
+    await send('gamma question 1', 'gamma answer 1');
+    fireEvent.click(sidebarChat('alpha question 1'));
+    await main().findByText('alpha answer 2');
+    await send('alpha question 3', 'alpha answer 3');
+
+    const [alpha, alphaAgain, gamma, alphaReopened] = sentIds;
+    const stored = await listTranscripts(owner);
+    expect(alpha).toBe(stored.find(t => t.messages[0].text === 'alpha question 1')?.id);
+    expect(alphaAgain).toBe(alpha);
+    expect(gamma).toBe(stored.find(t => t.messages[0].text === 'gamma question 1')?.id);
+    expect(gamma).not.toBe(alpha);
+    expect(alphaReopened).toBe(alpha);
   });
 
   it('opens a conversation far longer than the old 20-record history page', async () => {

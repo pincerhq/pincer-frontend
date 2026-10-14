@@ -5,7 +5,7 @@
  * it refuses, as a real browser presents them.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getUserId, resetUserId } from "@/lib/pincerClient";
+import { getUserId } from "@/lib/pincerClient";
 
 const denied = () => {
   throw new DOMException("denied", "SecurityError");
@@ -35,14 +35,10 @@ afterEach(() => {
 });
 
 describe("Pincer user id", () => {
-  it("is persisted and stable with working storage, and a reset persists too", () => {
+  it("is persisted and stable with working storage", () => {
     const id = getUserId();
     expect(localStorage.getItem("pincer.web.userId")).toBe(id);
     expect(getUserId()).toBe(id);
-
-    const next = resetUserId();
-    expect(localStorage.getItem("pincer.web.userId")).toBe(next);
-    expect(getUserId()).toBe(next);
   });
 
   it.each(blocks)("is stable for the page when %s", (_, block) => {
@@ -50,14 +46,6 @@ describe("Pincer user id", () => {
     const id = getUserId();
     expect(id).toMatch(/^[0-9a-f-]{36}$/);
     expect(getUserId()).toBe(id);
-  });
-
-  it.each(blocks)("can be reset, and the new id sticks, when %s", (_, block) => {
-    block();
-    const before = getUserId();
-    const after = resetUserId();
-    expect(after).not.toBe(before);
-    expect(getUserId()).toBe(after);
   });
 });
 
