@@ -471,7 +471,7 @@ export default function LiveCallModal({
                       <span
                         className={cn(
                           'w-14 shrink-0 pt-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                          t.speaker === 'agent' ? 'text-[var(--blue)]' : 'text-[var(--text-4)]',
+                          t.speaker === 'agent' ? 'text-[var(--brand)]' : 'text-[var(--text-4)]',
                         )}
                       >
                         {t.speaker}

@@ -19,7 +19,7 @@ function Select({ id, label, value, onChange, children }: { id: string; label: s
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-9 rounded-[10px] border border-[var(--line)] bg-[var(--paper)] px-2 text-sm text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--blue)]"
+        className="h-9 rounded-[10px] border border-[var(--line)] bg-[var(--paper)] px-2 text-sm text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
       >
         {children}
       </select>
@@ -52,7 +52,7 @@ export default function CallFiltersBar({
             aria-checked={filters.period === p}
             onClick={() => onChange({ period: p })}
             className={cn(
-              "rounded-full border px-3 py-1 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--blue)]",
+              "rounded-full border px-3 py-1 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]",
               filters.period === p ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)]" : "border-[var(--line)] text-[var(--text-2)] hover:bg-[var(--sand)]",
             )}
           >

@@ -1552,7 +1552,7 @@ export default function VoicePage() {
               <Inbox className="h-3.5 w-3.5" />
               Messages
               {unreadMessages > 0 && (
-                <span className="ml-0.5 rounded-full bg-[var(--blue)] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                <span className="ml-0.5 rounded-full bg-[var(--brand)] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
                   {unreadMessages}
                 </span>
               )}

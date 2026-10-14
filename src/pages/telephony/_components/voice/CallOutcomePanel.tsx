@@ -199,7 +199,7 @@ function OutcomeCard({
               const mark = state ? APPROVAL_MARK[state] : null;
               return (
                 <li key={i} className="flex items-start gap-1.5 text-xs text-[var(--text-3)]">
-                  <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-[var(--blue)]" />
+                  <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-[var(--brand)]" />
                   <span className="min-w-0">
                     {sugg.reason || sugg.tool}
                     {sugg.reason && sugg.tool && (
@@ -291,7 +291,7 @@ function OutcomeCard({
               <div className="rounded-[10px] border border-[var(--line)] bg-white p-3">
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="plat-eyebrow flex items-center gap-1">
-                    <Sparkles className="h-3 w-3 text-[var(--blue)]" />
+                    <Sparkles className="h-3 w-3 text-[var(--brand)]" />
                     Agent summary
                   </span>
                   <button
@@ -329,9 +329,9 @@ function OutcomeCard({
             </button>
             <button type="button" onClick={onGenerate} disabled={generating} className={summaryBtn}>
               {generating ? (
-                <Loader2 className="h-3 w-3 animate-spin text-[var(--blue)]" />
+                <Loader2 className="h-3 w-3 animate-spin text-[var(--brand)]" />
               ) : (
-                <Sparkles className="h-3 w-3 text-[var(--blue)]" />
+                <Sparkles className="h-3 w-3 text-[var(--brand)]" />
               )}
               {generating ? 'Writing…' : aiSummary ? 'Rewrite with AI' : 'Write it with AI'}
             </button>

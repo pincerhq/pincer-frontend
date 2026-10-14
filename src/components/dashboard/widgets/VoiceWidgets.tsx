@@ -181,7 +181,7 @@ export function PhonesWidget() {
               sub: n.name,
             }))}
             format={(n) => fmtNum(Math.round(n))}
-            color="var(--blue)"
+            color="var(--brand)"
           />
         ) : (
           <WidgetEmpty>No numbers yet — they appear once the line has calls.</WidgetEmpty>

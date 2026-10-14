@@ -83,7 +83,7 @@ export default function PlannedCallsView() {
                         <p className="truncate font-medium text-[var(--ink)]">
                           {label(entry)}
                           {entry.at && (
-                            <span className="ml-2 text-xs font-normal text-[var(--blue)]">
+                            <span className="ml-2 text-xs font-normal text-[var(--brand)]">
                               {fmtWhen(entry.at)}
                               <span className="ml-1.5 text-[var(--text-5)]">
                                 {leadTimeLabel(entry.at)}

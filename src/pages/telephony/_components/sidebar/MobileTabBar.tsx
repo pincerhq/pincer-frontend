@@ -50,7 +50,7 @@ export default function MobileTabBar() {
   const tabClass = (active: boolean) =>
     cn(
       'flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] leading-none transition-colors',
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--blue)]',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--brand)]',
       active ? 'font-semibold text-[var(--ink)]' : 'text-[var(--text-3)]',
     );
 

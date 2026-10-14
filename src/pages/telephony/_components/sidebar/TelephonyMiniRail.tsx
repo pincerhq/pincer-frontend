@@ -41,7 +41,7 @@ function NavRow({ icon: Icon, label, active, onClick, badge, collapsed, depth = 
       title={collapsed ? label : undefined}
       className={cn(
         'mx-2 flex w-[calc(100%-1rem)] items-center gap-3 rounded-[10px] py-2 text-left text-sm transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--blue)]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]',
         collapsed ? 'justify-center px-0' : depth === 1 ? 'pl-9 pr-3' : 'px-3',
         active
           ? 'bg-[rgba(20,22,26,0.07)] font-semibold text-[var(--ink)]'
@@ -221,7 +221,7 @@ export default function TelephonyMiniRail() {
           onClick={() => setCollapsed((c) => !c)}
           aria-label={collapsed ? t('rail.expand') : t('rail.collapse')}
           aria-pressed={collapsed}
-          className="rounded-[8px] p-1 text-[var(--text-4)] hover:bg-[rgba(20,22,26,0.04)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--blue)]"
+          className="rounded-[8px] p-1 text-[var(--text-4)] hover:bg-[rgba(20,22,26,0.04)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
         >
           {collapsed ? <PanelLeftOpen className="h-4 w-4" aria-hidden="true" /> : <PanelLeftClose className="h-4 w-4" aria-hidden="true" />}
         </button>

@@ -10,46 +10,76 @@
 }
 
 @layer base {
+  /* The one light token set. It lives on the document root so Radix portals
+     (dialogs, dropdowns, popovers render into <body>, outside `.platform`)
+     read the same values as the pages. The platform vocabulary is the source;
+     the shadcn HSL variables below are the values the platform pages used. */
   :root {
-    /* Light neutral gray palette */
-    --background: 0 0% 96%;            /* #f5f5f5 light neutral gray */
-    --foreground: 60 3% 8%;            /* #141413 near-black */
+    --bg: #f1f2f4;
+    --paper: #ffffff;
+    --sand: #f4f5f7;
+    --sand-deep: #e9ebef;
+    --ink: #14161a;
+
+    --brand: #3e52d9;
+    --brand-100: #e5eafb;
+    --brand-200: #bfcef8;
+    --on-brand: #ffffff;
+
+    --text-1: #4a5057;
+    --text-2: #5a6067;
+    --text-3: #6b7178;
+    --text-4: #7a8087;
+    --text-5: #9aa0a6;
+
+    --ok-bg: #e6f5ea;
+    --ok-fg: #1e7a3c;
+    --warn-bg: #fdf0e4;
+    --warn-fg: #9a5312;
+    --bad-fg: #b3382e;
+
+    --line: rgba(20, 22, 26, 0.1);
+    --line-soft: rgba(20, 22, 26, 0.07);
+
+    /* shadcn */
+    --background: 30 25% 97%;
+    --foreground: 0 0% 9%;
 
     --card: 0 0% 100%;
-    --card-foreground: 60 3% 8%;
+    --card-foreground: 0 0% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 60 3% 8%;
+    --popover-foreground: 0 0% 9%;
 
-    --primary: 60 3% 8%;              /* #141413 dark */
+    --primary: 0 0% 9%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 42 14% 92%;           /* #f0ede6 light warm */
-    --secondary-foreground: 60 3% 8%;
+    --secondary: 30 18% 93%;
+    --secondary-foreground: 0 0% 9%;
 
-    --muted: 42 14% 92%;
-    --muted-foreground: 30 5% 45%;
+    --muted: 30 18% 93%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 42 8% 95%;
-    --accent-foreground: 60 3% 8%;
+    --accent: 30 8% 95%;
+    --accent-foreground: 0 0% 9%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 42 12% 82%;
-    --input: 42 14% 92%;
-    --ring: 60 3% 8%;
+    --border: 30 15% 88%;
+    --input: 30 18% 93%;
+    --ring: 220 9% 8%;                 /* ink, so no stray blue focus halo */
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 30 20% 98%;
     --sidebar-foreground: 0 0% 20%;
-    --sidebar-primary: 0 0% 7%;
+    --sidebar-primary: 0 0% 9%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 10% 96%;
-    --sidebar-accent-foreground: 0 0% 7%;
-    --sidebar-border: 30 15% 87%;
-    --sidebar-ring: 0 0% 7%;
+    --sidebar-accent: 30 8% 96%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 30 15% 88%;
+    --sidebar-ring: 0 0% 9%;
   }
 
   /* Dark mode */
@@ -92,51 +122,6 @@
     --sidebar-accent-foreground: 30 15% 92%;
     --sidebar-border: 20 8% 20%;
     --sidebar-ring: 30 15% 75%;
-  }
-
-  /* Platform (logged-in) — lighter warm palette matching marketing site */
-  .platform {
-    --background: 30 25% 97%;          /* #f8f3ee light warm beige */
-    --foreground: 0 0% 9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
-
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 30 18% 93%;           /* light warm gray */
-    --secondary-foreground: 0 0% 9%;
-
-    --muted: 30 18% 93%;
-    --muted-foreground: 0 0% 45%;
-
-    --accent: 30 8% 95%;
-    --accent-foreground: 0 0% 9%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 30 15% 88%;              /* warm light border */
-    --input: 30 18% 93%;
-    --ring: 0 0% 9%;
-
-    --radius: 0.75rem;                 /* match marketing site */
-
-    --sidebar-background: 30 20% 98%; /* near-white warm */
-    --sidebar-foreground: 0 0% 20%;
-    --sidebar-primary: 0 0% 9%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 8% 96%;
-    --sidebar-accent-foreground: 0 0% 9%;
-    --sidebar-border: 30 15% 88%;
-    --sidebar-ring: 0 0% 9%;
-
-    background-color: hsl(30, 25%, 97%);
-    color: #171717;
   }
 }
 

@@ -191,7 +191,7 @@ function StatsStrip() {
                       title={`${intentMeta(intent)?.label}: ${n}`}
                       style={{
                         width: `${(n / intentTotal) * 100}%`,
-                        background: `color-mix(in srgb, var(--blue) ${100 - i * 14}%, var(--sand-deep))`,
+                        background: `color-mix(in srgb, var(--brand) ${100 - i * 14}%, var(--sand-deep))`,
                         marginRight: 2,
                       }}
                     />

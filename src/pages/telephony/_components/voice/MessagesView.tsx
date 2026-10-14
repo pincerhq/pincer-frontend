@@ -88,7 +88,7 @@ function MessageRow({
       )}
     >
       <div className="flex items-center gap-2">
-        {unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--blue)]" />}
+        {unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand)]" />}
         <span className={cn('truncate text-sm', unread ? 'font-semibold text-[var(--ink)]' : 'text-[var(--text-2)]')}>
           {message.caller_name || 'Unknown caller'}
           {message.name_unverified && <UnverifiedDot what="Name" />}
@@ -253,7 +253,7 @@ export default function MessagesView() {
         <div className="mt-1 flex items-center gap-3">
           <h1 className="text-[26px] text-[var(--ink)]">Messages</h1>
           {!!data?.unread && (
-            <span className="rounded-full bg-[var(--blue)] px-2 py-0.5 text-[11px] font-bold text-white">
+            <span className="rounded-full bg-[var(--brand)] px-2 py-0.5 text-[11px] font-bold text-white">
               {data.unread} unread
             </span>
           )}

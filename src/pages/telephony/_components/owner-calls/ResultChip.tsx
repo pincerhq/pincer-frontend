@@ -4,7 +4,7 @@ import { useVoiceT } from "@/i18n/voice";
 
 const TONE: Record<ResultGroup, string> = {
   booked: "border-green-200 bg-green-50 text-green-800",
-  message: "border-[var(--blue-200)] bg-[var(--blue-100)] text-[var(--blue)]",
+  message: "border-[var(--brand-200)] bg-[var(--brand-100)] text-[var(--brand)]",
   handoff: "border-[var(--line)] bg-[var(--sand)] text-[var(--text-2)]",
   done: "border-green-200 bg-green-50 text-green-800",
   not_reached: "border-[var(--line)] bg-[var(--sand)] text-[var(--text-2)]",

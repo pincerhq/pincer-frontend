@@ -20,7 +20,7 @@ import { CHIP_TONE_CLASS, fmtMs, latencyTone } from '@/pages/telephony/_lib/voic
 import { cn } from '@/lib/utils';
 
 const STAGES = [
-  { key: 'stt_ms', label: 'STT', bar: 'bg-[var(--blue)]/70' },
+  { key: 'stt_ms', label: 'STT', bar: 'bg-[var(--brand)]/70' },
   { key: 'llm_ttft_ms', label: 'LLM TTFT', bar: 'bg-[var(--ink)]/70' },
   { key: 'tts_ms', label: 'TTS', bar: 'bg-amber-400' },
 ] as const;

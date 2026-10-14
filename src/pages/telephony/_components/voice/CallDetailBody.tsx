@@ -53,7 +53,7 @@ export function CallTranscript({
             <span
               className={cn(
                 'mr-2 text-[10px] font-semibold uppercase tracking-wide',
-                t.speaker === 'agent' ? 'text-[var(--blue)]' : 'text-[var(--text-5)]',
+                t.speaker === 'agent' ? 'text-[var(--brand)]' : 'text-[var(--text-5)]',
               )}
             >
               {t.speaker}

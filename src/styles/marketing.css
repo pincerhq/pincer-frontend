@@ -86,37 +86,15 @@
 }
 
 .site3d {
-  /* neutral surfaces: light grey page, white cards, grey fills inside them */
-  --bg: #f1f2f4;
-  --paper: #ffffff;
-  --sand: #f4f5f7;
-  --sand-deep: #e9ebef;
-  --ink: #14161a;
-
-  --blue: #3e52d9;
-  --blue-deep: #22307f;
-  --blue-100: #e5eafb;
-  --blue-200: #bfcef8;
-  --blue-300: #b9c8f7;
-  --blue-400: #a6baf5;
-
-  --text-1: #4a5057;
-  --text-2: #5a6067;
-  --text-3: #6b7178;
-  --text-4: #7a8087;
-  --text-5: #9aa0a6;
+  /* Colours come from the root token set (src/index.css); only the extras
+     the marketing pages use on top of it are defined here. */
+  --brand-deep: #22307f;
+  --brand-300: #b9c8f7;
+  --brand-400: #a6baf5;
 
   --on-dark-1: #b8bec5;
   --on-dark-2: #a8aeb5;
   --on-dark-3: #8e949b;
-
-  --ok-bg: #e6f5ea;
-  --ok-fg: #1e7a3c;
-  --warn-bg: #fdf0e4;
-  --warn-fg: #9a5312;
-
-  --line: rgba(20, 22, 26, 0.1);
-  --line-soft: rgba(20, 22, 26, 0.07);
 
   --sans: 'Plus Jakarta Sans', 'Excon', system-ui, sans-serif;
   --display: 'Plus Jakarta Sans', 'Excon', system-ui, sans-serif;
@@ -144,11 +122,11 @@
   --sand-deep: #23272d;
   --ink: #eceef1;
 
-  --blue: #93a4f5;
-  --blue-deep: #b9c8f7;
-  --blue-100: #1c2340;
-  --blue-200: #2b3768;
-  --blue-300: #b9c8f7;
+  --brand: #93a4f5;
+  --brand-deep: #b9c8f7;
+  --brand-100: #1c2340;
+  --brand-200: #2b3768;
+  --brand-300: #b9c8f7;
 
   --text-1: #b6bcc4;
   --text-2: #a3a9b1;
@@ -197,7 +175,7 @@
 .site3d h4 { letter-spacing: -0.02em; }
 
 .site3d ::selection {
-  background: var(--blue-200);
+  background: var(--brand-200);
   color: var(--ink);
 }
 
@@ -207,7 +185,7 @@
   font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--blue);
+  color: var(--brand);
 }
 
 .site3d .m-eyebrow-muted {
@@ -256,7 +234,7 @@
   align-items: baseline;
 }
 
-.site3d .m-wordmark span { color: var(--blue); }
+.site3d .m-wordmark span { color: var(--brand); }
 
 /* Wordmark and eyebrows sitting on artwork */
 .site3d .m-wordmark.is-light { color: #fff; }
@@ -335,13 +313,13 @@
 
 /* Pill with the dark circular arrow — the bundle's signature CTA. */
 .site3d .m-btn-primary {
-  background: var(--blue-200);
+  background: var(--brand-200);
   color: var(--ink);
   padding: 6px 6px 6px 22px;
 }
 
 .site3d .m-btn-primary:hover {
-  background: var(--blue-400);
+  background: var(--brand-400);
   color: var(--ink);
   transform: translateY(-1px);
 }
@@ -366,11 +344,11 @@
   justify-content: space-between;
 }
 
-.site3d .m-btn-submit:hover { background: var(--blue); color: #fff; }
+.site3d .m-btn-submit:hover { background: var(--brand); color: #fff; }
 .site3d .m-btn-submit:disabled { opacity: 0.6; cursor: default; }
 
 .site3d .m-btn-submit .m-arrow {
-  background: var(--blue-200);
+  background: var(--brand-200);
   color: var(--ink);
 }
 
@@ -405,7 +383,7 @@
   padding: 14px 26px;
 }
 
-.site3d .m-btn-dark:hover { background: var(--blue); color: var(--paper); }
+.site3d .m-btn-dark:hover { background: var(--brand); color: var(--paper); }
 
 .site3d .m-btn-soft {
   background: var(--paper);
@@ -428,7 +406,7 @@
 .site3d .m-btn-ghost:hover { background: rgba(255, 255, 255, 0.26); color: #fff; }
 
 .site3d .m-btn-light {
-  background: var(--blue-200);
+  background: var(--brand-200);
   color: var(--ink);
   padding: 15px 28px;
 }
@@ -481,7 +459,7 @@
 
 /* ── Hero art ─────────────────────────────────────────────────────────────
    The hero runs an abstract aurora field generated for this brand: an ink
-   ground with blooms in --blue drifting on a 16-second period (every time term
+   ground with blooms in --brand drifting on a 16-second period (every time term
    is periodic, so the loop has no seam), a faint grid for structure and fine
    grain. The poster frame is the element's own background, so it shows while
    the clip loads and stands in whenever the video is suppressed. A soft wash
@@ -599,7 +577,7 @@
 .site3d .m-on-art p { color: rgba(255, 255, 255, 0.9); }
 
 /* ── Dark blocks ──────────────────────────────────────────────────────────
-   Sections that sit on --ink need light type and blue-300 numerals. */
+   Sections that sit on --ink need light type and brand-300 numerals. */
 
 .site3d :is([class^="bg-[color:var(--ink)]"], [class*=" bg-[color:var(--ink)]"]) {
   color: #fff;
@@ -693,7 +671,7 @@
 
 .site3d .standard-button:hover,
 .site3d .pricing-button:hover {
-  background: var(--blue);
+  background: var(--brand);
   transform: none;
 }
 

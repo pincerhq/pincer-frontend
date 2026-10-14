@@ -96,7 +96,7 @@ export function TimeSeries({
   kind = 'area',
   height = 200,
   format = (n) => String(n),
-  color = 'var(--blue)',
+  color = 'var(--brand)',
   emptyLabel = 'No data for this period yet',
   yLabel,
 }: {

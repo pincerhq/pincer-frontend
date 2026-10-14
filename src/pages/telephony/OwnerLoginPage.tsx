@@ -86,7 +86,7 @@ export default function OwnerLoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
           <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[var(--paper)] shadow-sm">
-            <KeyRound className="h-5 w-5 text-[var(--blue)]" aria-hidden="true" />
+            <KeyRound className="h-5 w-5 text-[var(--brand)]" aria-hidden="true" />
           </span>
           <h1 className="text-xl font-semibold tracking-tight text-[var(--ink)]">{t("title")}</h1>
           <p className="mt-1 text-sm text-[var(--text-3)]">{t("subtitle")}</p>

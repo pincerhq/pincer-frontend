@@ -302,7 +302,7 @@ function PurposeField({
         className={cn(
           inputCls,
           'transition-[border-color,box-shadow] duration-300',
-          flash && 'border-[var(--blue)] shadow-[0_0_0_3px_var(--blue-100)]',
+          flash && 'border-[var(--brand)] shadow-[0_0_0_3px_var(--brand-100)]',
           error && 'border-red-300',
         )}
       />
@@ -658,13 +658,13 @@ export default function StartCallModal({
                         optedOut
                           ? 'cursor-not-allowed opacity-45'
                           : active
-                            ? 'bg-[var(--blue)]/50'
+                            ? 'bg-[var(--brand)]/50'
                             : 'hover:bg-white',
                       )}
                     >
                       <span className={cn(
                         'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-                        active && !optedOut ? 'bg-[var(--blue)]' : 'bg-[var(--sand-deep)]',
+                        active && !optedOut ? 'bg-[var(--brand)]' : 'bg-[var(--sand-deep)]',
                       )}>
                         {optedOut ? (
                           <Ban className="h-3.5 w-3.5 text-red-500" />

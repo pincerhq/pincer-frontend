@@ -109,7 +109,7 @@ function TodayRow() {
             className="h-full rounded-full transition-all"
             style={{
               width: `${pct}%`,
-              background: downgraded || pct >= 90 ? 'var(--warn-fg)' : 'var(--blue)',
+              background: downgraded || pct >= 90 ? 'var(--warn-fg)' : 'var(--brand)',
             }}
           />
         </div>
@@ -251,9 +251,9 @@ function SpendTrendCard() {
             <div
               key={d.date}
               className="flex-1 rounded-t-md transition-colors"
-              style={{ height: `${Math.max(4, (d.total_usd / max) * 100)}%`, background: 'var(--blue-200)' }}
-              onMouseEnter={(ev) => ((ev.currentTarget as HTMLDivElement).style.background = 'var(--blue)')}
-              onMouseLeave={(ev) => ((ev.currentTarget as HTMLDivElement).style.background = 'var(--blue-200)')}
+              style={{ height: `${Math.max(4, (d.total_usd / max) * 100)}%`, background: 'var(--brand-200)' }}
+              onMouseEnter={(ev) => ((ev.currentTarget as HTMLDivElement).style.background = 'var(--brand)')}
+              onMouseLeave={(ev) => ((ev.currentTarget as HTMLDivElement).style.background = 'var(--brand-200)')}
               title={`${d.date} · ${fmtUsd(d.total_usd)} · ${d.request_count} requests`}
             />
           ))}

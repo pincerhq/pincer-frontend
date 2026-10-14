@@ -184,7 +184,7 @@ export function SpendDetail() {
                 sub: `${fmtNum(m.request_count)} req`,
               }))}
               format={fmtUsd}
-              color="var(--blue)"
+              color="var(--brand)"
               emptyLabel="No model costs recorded yet"
             />
           </div>
@@ -330,7 +330,7 @@ export function RequestsDetail() {
                 sub: fmtUsd(m.avg_cost_per_request) + ' / req',
               }))}
               format={(n) => fmtNum(Math.round(n))}
-              color="var(--blue)"
+              color="var(--brand)"
               emptyLabel="No requests recorded yet"
             />
           </div>
@@ -445,7 +445,7 @@ export function ActivityDetail() {
             <RankBars
               rows={ranked(allStats?.by_action, 8)}
               format={(n) => fmtNum(Math.round(n))}
-              color="var(--blue)"
+              color="var(--brand)"
               emptyLabel="No actions recorded yet"
             />
           </div>

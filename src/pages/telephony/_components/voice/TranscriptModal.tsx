@@ -398,7 +398,7 @@ export default function TranscriptModal({
                     className={cn(
                       'w-14 shrink-0 pt-0.5 text-[10px] font-semibold uppercase tracking-wide',
                       speakerBucket(t.speaker) === 'agent'
-                        ? 'text-[var(--blue)]'
+                        ? 'text-[var(--brand)]'
                         : speakerBucket(t.speaker) === 'caller'
                           ? 'text-[var(--text-4)]'
                           : 'text-[var(--text-5)]',

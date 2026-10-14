@@ -78,7 +78,7 @@ export function ThreadChip({
 // ── Status ───────────────────────────────────────────────────────────
 
 /** Blue is not in the shared chip palette; threads are the only user of it. */
-const BLUE_CHIP = 'border-[var(--blue-200)] bg-[var(--blue-100)] text-[var(--blue)]';
+const BLUE_CHIP = 'border-[var(--brand-200)] bg-[var(--brand-100)] text-[var(--brand)]';
 
 const STATUS_CLASS: Record<string, string> = {
   open: BLUE_CHIP,

@@ -15,30 +15,11 @@
      .plat-eyebrow  spaced uppercase section label   (P R O D U C T)
    ========================================================================== */
 
-/* Tokens live on :root as well as on the scopes below, because Radix renders
-   dialogs, dropdowns and popovers into document.body — outside `.platform` —
-   where scoped custom properties would not resolve. `.site3d` (marketing)
-   redefines the same names for its own subtree, so nothing leaks there. */
+/* Colour tokens live once, on the document root (src/index.css), so Radix
+   portals rendered into document.body read the same values as the pages.
+   Only the platform's fonts are defined here; `.site3d` (marketing) swaps
+   them for its own subtree. */
 :root {
-  --ink: #14161a;
-  --paper: #ffffff;
-  --sand: #f4f5f7;
-  --sand-deep: #e9ebef;
-  --blue: #3e52d9;
-  --blue-100: #e5eafb;
-  --blue-200: #bfcef8;
-  --text-1: #4a5057;
-  --text-2: #5a6067;
-  --text-3: #6b7178;
-  --text-4: #7a8087;
-  --text-5: #9aa0a6;
-  --ok-bg: #e6f5ea;
-  --ok-fg: #1e7a3c;
-  --warn-bg: #fdf0e4;
-  --warn-fg: #9a5312;
-  --bad-fg: #b3382e;
-  --line: rgba(20, 22, 26, 0.1);
-  --line-soft: rgba(20, 22, 26, 0.07);
   --sans: 'Manrope', system-ui, sans-serif;
   --display: 'Sora', sans-serif;
   --mono: 'IBM Plex Mono', monospace;
@@ -46,35 +27,6 @@
 
 .platform,
 .plat {
-  --bg: #f1f2f4;
-  --paper: #ffffff;
-  --sand: #f4f5f7;
-  --sand-deep: #e9ebef;
-  --ink: #14161a;
-
-  --blue: #3e52d9;
-  --blue-100: #e5eafb;
-  --blue-200: #bfcef8;
-
-  --text-1: #4a5057;
-  --text-2: #5a6067;
-  --text-3: #6b7178;
-  --text-4: #7a8087;
-  --text-5: #9aa0a6;
-
-  --ok-bg: #e6f5ea;
-  --ok-fg: #1e7a3c;
-  --warn-bg: #fdf0e4;
-  --warn-fg: #9a5312;
-  --bad-fg: #b3382e;
-
-  --line: rgba(20, 22, 26, 0.1);
-  --line-soft: rgba(20, 22, 26, 0.07);
-
-  --sans: 'Manrope', system-ui, sans-serif;
-  --display: 'Sora', sans-serif;
-  --mono: 'IBM Plex Mono', monospace;
-
   /* One continuous ambient wash behind sidebar, work area AND the right apps
      rail. `background-attachment: fixed` anchors every layer to the viewport,
      so separate elements painting it line up pixel-for-pixel — no seam. */
@@ -102,7 +54,7 @@
 
 .platform ::selection,
 .plat ::selection {
-  background: var(--blue-200);
+  background: var(--brand-200);
   color: var(--ink);
 }
 
@@ -224,7 +176,7 @@
   width: 12px;
   height: 12px;
   border-radius: 999px;
-  background: var(--blue);
+  background: var(--brand);
   animation: plat-pulse 1.6s ease-in-out infinite;
 }
 
@@ -522,7 +474,7 @@ button.plat-item:hover {
   /* !important because pages carry their own `focus-visible:ring-*` /
      `border-*` utilities that Tailwind emits in a later sheet; the active
      state is a design-system decision, not a per-page one. */
-  border-color: var(--blue) !important;
+  border-color: var(--brand) !important;
   box-shadow: none !important;
   outline: none !important;
 }
@@ -574,18 +526,10 @@ button.plat-item:hover {
   background: var(--sand-deep);
 }
 
-/* Focus rings inherited from shadcn utilities resolve through --ring; point
-   it at ink so no stray blue halo survives anywhere in the platform. */
-.platform,
-[role='dialog'],
-[data-radix-popper-content-wrapper] {
-  --ring: 220 9% 8%;
-}
-
 /* Bare controls hand their focus state to the card around them (the chat
    composer). Same thin blue border, applied on focus-within. */
 .plat-field-shell:focus-within {
-  border-color: var(--blue) !important;
+  border-color: var(--brand) !important;
 }
 
 /* ── Expand-on-demand: affordance, detail view, data tables ─────────── */

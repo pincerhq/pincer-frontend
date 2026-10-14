@@ -37,7 +37,7 @@ export function IntegrationsWidget() {
           <RankBars
             rows={bySource.map(([label, value]) => ({ label, value }))}
             format={(n) => fmtNum(Math.round(n))}
-            color="var(--blue)"
+            color="var(--brand)"
           />
         ) : (
           <WidgetEmpty>Nothing connected yet.</WidgetEmpty>

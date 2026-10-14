@@ -120,7 +120,7 @@ export function DataTable<Row>({
                             onClick={() => toggle(col.key)}
                             aria-label={labels.sortBy(typeof col.header === "string" ? col.header : col.key)}
                             className={cn(
-                              "inline-flex items-center gap-1 rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--blue)]",
+                              "inline-flex items-center gap-1 rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]",
                               col.align === "right" && "flex-row-reverse",
                             )}
                           >
@@ -164,7 +164,7 @@ export function DataTable<Row>({
                       aria-selected={clickable ? active : undefined}
                       className={cn(
                         "border-b border-[var(--line-soft)] last:border-b-0",
-                        clickable && "cursor-pointer hover:bg-[rgba(20,22,26,0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--blue)]",
+                        clickable && "cursor-pointer hover:bg-[rgba(20,22,26,0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--brand)]",
                         active && "bg-[rgba(20,22,26,0.05)]",
                       )}
                     >
@@ -196,8 +196,8 @@ export function DataTable<Row>({
                     aria-pressed={clickable ? active : undefined}
                     className={cn(
                       "block w-full rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-3 text-left",
-                      clickable && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--blue)]",
-                      active && "border-[var(--blue-200)] bg-[var(--blue-100)]/40",
+                      clickable && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]",
+                      active && "border-[var(--brand-200)] bg-[var(--brand-100)]/40",
                     )}
                   >
                     <div className="text-sm font-semibold text-[var(--ink)]">{primary.cell(row)}</div>
