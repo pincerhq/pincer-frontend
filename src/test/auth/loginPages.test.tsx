@@ -135,9 +135,9 @@ describe.each(PAGES)('sign-in at $name', (p) => {
   it('honours a safe returnTo', async () => {
     backend(() => json(PAIR));
     const user = userEvent.setup();
-    renderAt(`${p.url}?returnTo=${encodeURIComponent('/notes/daily?x=1')}`, p.page);
+    renderAt(`${p.url}?returnTo=${encodeURIComponent('/company-brain/memory?x=1')}`, p.page);
     await fill(user);
-    expect(await screen.findByTestId('where')).toHaveTextContent('/notes/daily?x=1');
+    expect(await screen.findByTestId('where')).toHaveTextContent('/company-brain/memory?x=1');
   });
 
   it.each(['https://evil.example/', '//evil.example/', '/x?token=abc'])('ignores the unsafe returnTo %s', async (bad) => {

@@ -1,11 +1,8 @@
 import '@testing-library/jest-dom/vitest';
 
-// idb-keyval uses indexedDB; mock with an in-memory shim for tests
-import 'fake-indexeddb/auto';
-
-// jsdom implements neither of these, and both are used by the primitives the
-// notes UI is built from — cmdk observes its list, Radix its popovers. Without
-// the shims every test that opens the command palette dies in an effect.
+// jsdom implements neither of these, and both are used by the UI primitives —
+// cmdk observes its list, Radix its popovers. Without the shims every test
+// that opens one dies in an effect.
 if (!('ResizeObserver' in globalThis)) {
   class ResizeObserverShim {
     observe() {}
@@ -71,7 +68,7 @@ if (typeof globalThis.localStorage?.setItem !== 'function') {
 }
 
 /**
- * The platform sidebar the notes pages render inside asks for a media query on
+ * The platform sidebar the pages render inside asks for a media query on
  * mount. jsdom has no `matchMedia`, so without this every full-page test fails
  * in a layout component rather than in the thing it is testing.
  */
@@ -87,15 +84,3 @@ if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
     dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
 }
-
-/**
- * Mark the mock era's IndexedDB cleanup as already done.
- *
- * The notes store awaits it once before its first request. It talks to
- * `fake-indexeddb`, which schedules on real timers — so a test that installs
- * `vi.useFakeTimers()` before the first load leaves that promise pending
- * forever, and every later test in the file times out on a bootstrap step none
- * of them is about. No test covers the one-time cleanup; it has its own reason
- * to exist and its own place, outside the notes module.
- */
-localStorage.setItem('notes:legacy-idb-cleared:v1', new Date(0).toISOString());

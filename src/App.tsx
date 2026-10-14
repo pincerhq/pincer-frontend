@@ -22,20 +22,8 @@ const Chat = lazy(() => import('./pages/Chat'));
 const Tasks = lazy(() => import('./pages/Tasks'));
 const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage'));
 
-// Notes — its own backend (pincer_extensions/notes_app).
-const NotesHome = lazy(() => import('./pages/notes/NotesHome'));
-const NotesDaily = lazy(() => import('./pages/notes/NotesDaily'));
-const NotesGraph = lazy(() => import('./pages/notes/NotesGraph'));
-const NotesTrash = lazy(() => import('./pages/notes/NotesTrash'));
-const NotesOpenItems = lazy(() => import('./pages/notes/NotesOpenItems'));
-const NotesSearch = lazy(() => import('./pages/notes/NotesSearch'));
-const NotesMatter = lazy(() => import('./pages/notes/NotesMatter'));
-const NotesSavedView = lazy(() => import('./pages/notes/NotesSavedView'));
-
 const TelephonyHome = lazy(() => import('./pages/telephony/TelephonyHome'));
 
-// Notes — global quick-capture (mounted at root for Cmd+Shift+N from anywhere)
-import QuickCapture from './pages/notes/_components/quick-capture/QuickCapture';
 // Voice — live in-call approvals, mounted at root because the owner is rarely
 // on the Voice page when the agent asks and the callee is on hold (S11 §6.5).
 import VoiceApprovalHost from './components/voice/VoiceApprovalHost';
@@ -76,19 +64,6 @@ function App() {
             <Route path="/tasks" element={<Protected><Tasks /></Protected>} />
             <Route path="/integrations" element={<Protected><IntegrationsPage /></Protected>} />
 
-            {/* AI-Native Notes */}
-            <Route path="/notes" element={<Protected label="Loading notes…"><NotesHome /></Protected>} />
-            <Route path="/notes/daily" element={<Protected><NotesDaily /></Protected>} />
-            <Route path="/notes/graph" element={<Protected label="Loading graph…"><NotesGraph /></Protected>} />
-            <Route path="/notes/search" element={<Protected label="Loading search…"><NotesSearch /></Protected>} />
-            <Route path="/notes/matter/:key" element={<Protected label="Loading matter…"><NotesMatter /></Protected>} />
-            <Route path="/notes/view/:id" element={<Protected label="Loading view…"><NotesSavedView /></Protected>} />
-            <Route path="/notes/open" element={<Protected label="Loading open items…"><NotesOpenItems /></Protected>} />
-            <Route path="/notes/trash" element={<Protected><NotesTrash /></Protected>} />
-            <Route path="/notes/notebook/:id" element={<Protected><NotesHome /></Protected>} />
-            <Route path="/notes/tag/:tag" element={<Protected><NotesHome /></Protected>} />
-            <Route path="/notes/:id" element={<Protected label="Loading note…"><NotesHome /></Protected>} />
-
             {/* Owner login (FE1): creates the session, so it lives outside ProtectedRoute */}
             <Route
               path={VOICE_ROUTES.LOGIN}
@@ -110,7 +85,6 @@ function App() {
           </Routes>
           </Suspense>
           <Toaster />
-          <QuickCapture />
           <VoiceApprovalHost />
         </div>
       </Router>

@@ -27,7 +27,6 @@ import {
   Check,
   Pencil,
   MessageSquare,
-  StickyNote,
   Phone,
   UserRound,
 } from 'lucide-react';
@@ -96,11 +95,6 @@ const navigationItems = [
  * they moved in here where the rest of the navigation already is.
  */
 const appItems = [
-  {
-    title: "Notes",
-    url: "/notes",
-    icon: StickyNote,
-  },
   {
     title: "Telephony",
     url: "/telephony",

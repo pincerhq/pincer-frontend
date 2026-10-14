@@ -1,8 +1,8 @@
 # 3Days.ai — frontend
 
 React + TypeScript + Vite front end for the Pincer platform: a sign-in flow, the
-platform screens (Dashboard, Chat, Tasks, Company Brain, Integrations), the
-Notes app, and the Telephony owner app.
+platform screens (Dashboard, Chat, Tasks, Company Brain, Integrations), and the
+Telephony owner app.
 
 Every screen in here reads an endpoint the backend actually serves. Surfaces
 whose API does not exist were removed rather than left rendering demo data —
@@ -27,16 +27,12 @@ The dev server runs on **:3000** (`strictPort`).
 | --------- | ----------------------------------------- | ------------------------ |
 | Platform  | `pincer` (`/api/*`)                        | `VITE_PINCER_API_URL` (default: same origin) |
 | Telephony | `pincer` (`/api/voice/*`)                  | `VITE_PINCER_API_URL` (default: same origin) |
-| Notes     | `pincer_extensions/notes_app` (`:8000`)    | `VITE_NOTES_API_URL`     |
 
 ### Environment
 
 | Variable              | Default       | What it does |
 | --------------------- | ------------- | ------------ |
 | `VITE_PINCER_API_URL` | page origin   | The Pincer API both login pages sign in against |
-| `VITE_NOTES_API_URL`  | —             | Base URL of the Notes service (required for `/notes`) |
-| `VITE_NOTES_TOKEN`    | —             | A credential for the Notes service, when it does not accept the Pincer session's token |
-| `VITE_NOTES_AGENT_CHAT` | —           | `1` shows the Agent tab in the Notes ask panel |
 | `SIGNUP_ALLOWED`      | `false`       | `true` adds the `/signup` request-access page |
 
 Sign-in is a Pincer identity's name or email plus password — see
@@ -48,10 +44,6 @@ These are set at container start, not at build time: the container writes every
 the bundle, so one image serves every deployment and a restart applies a
 change. In dev the Vite server builds the same file from `.env.local`. Code
 reads them with `env()` from `src/lib/env.ts`, never from `import.meta.env`.
-
-Notes calls are same-origin-proxied in dev: point `VITE_NOTES_API_URL` at
-`/notes-api` in `.env.local` to use the proxy, and override the upstream with
-`NOTES_API_TARGET` if the service is not on `:8000`.
 
 ## Scripts
 

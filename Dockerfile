@@ -29,9 +29,6 @@ ENV PINCER_API_UPSTREAM=http://pincer:8080
 # is written to /config.js, which the page loads before the bundle. They are
 # served to the browser, so none may be a secret; a restart applies a change.
 #   VITE_PINCER_API_URL    unset = same origin; nginx here proxies /api to Pincer
-#   VITE_NOTES_API_URL     base URL of the Notes service; unset = /notes says so
-#   VITE_NOTES_TOKEN       a token for the Notes service, if it has its own
-#   VITE_NOTES_AGENT_CHAT  "1" shows the Agent tab in the Notes ask panel
 #   SIGNUP_ALLOWED         "true" adds the /signup request-access page
 COPY --chmod=755 docker/40-runtime-env.sh /docker-entrypoint.d/
 

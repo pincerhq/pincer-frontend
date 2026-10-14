@@ -7,22 +7,22 @@ afterEach(() => {
 
 describe('env', () => {
   it('is undefined when /config.js never ran', () => {
-    expect(env('VITE_NOTES_API_URL')).toBeUndefined();
+    expect(env('VITE_PINCER_API_URL')).toBeUndefined();
   });
 
   it('is undefined for a variable that is not set', () => {
     window.__ENV__ = { SIGNUP_ALLOWED: 'true' };
-    expect(env('VITE_NOTES_API_URL')).toBeUndefined();
+    expect(env('VITE_PINCER_API_URL')).toBeUndefined();
   });
 
   it.each(['', '   '])('treats %j as unset', (value) => {
-    window.__ENV__ = { VITE_NOTES_API_URL: value };
-    expect(env('VITE_NOTES_API_URL')).toBeUndefined();
+    window.__ENV__ = { VITE_PINCER_API_URL: value };
+    expect(env('VITE_PINCER_API_URL')).toBeUndefined();
   });
 
   it('trims the value', () => {
-    window.__ENV__ = { VITE_NOTES_API_URL: '  /notes-api\n' };
-    expect(env('VITE_NOTES_API_URL')).toBe('/notes-api');
+    window.__ENV__ = { VITE_PINCER_API_URL: '  http://localhost:8100\n' };
+    expect(env('VITE_PINCER_API_URL')).toBe('http://localhost:8100');
   });
 
   it('reads the global on every call', () => {
