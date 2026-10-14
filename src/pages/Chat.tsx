@@ -24,7 +24,7 @@ import {
 import { listConversations, type Conversation } from '@/lib/api/conversations';
 import { cleanAssistantText, renderAssistantText, renderTextWithLinks } from '@/lib/formatChat';
 import { useHealth } from '@/lib/capabilities';
-import { pincerBadgeState, type PincerBadge } from '@/lib/pincerReachability';
+import { pincerBadgeState, useRetryCountdown, type PincerBadge } from '@/lib/pincerReachability';
 import { queryClient } from '@/lib/queryClient';
 
 type ChainStep =
@@ -81,7 +81,7 @@ const PINCER_BADGE: Record<PincerBadge, { label: string; title: string; tone: st
   },
   offline: {
     label: 'Pincer offline',
-    title: 'Checking again every 30 s.',
+    title: '', // set at render: it carries the live retry countdown
     tone: 'bg-[color:var(--warn-bg)] border-[color:color-mix(in_srgb,var(--warn-fg)_25%,transparent)] text-[color:var(--warn-fg)]',
     icon: WifiOff,
   },
@@ -119,6 +119,12 @@ const ChatInner = () => {
   // Offline locks everything that would start a request; "checking" does not,
   // so a slow first health answer never shuts anyone out.
   const offline = badge === 'offline';
+  const retry = useRetryCountdown(
+    offline,
+    Math.max(health.errorUpdatedAt ?? 0, health.dataUpdatedAt ?? 0),
+    health.fetchStatus === 'fetching',
+  );
+  const retryText = retry === 'retrying' ? 'retrying…' : `retrying in ${retry} s.`;
   // Dismissed prompt suggestions survive reloads — "closed" should stay closed.
   const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>(() => {
     try {
@@ -550,7 +556,7 @@ const ChatInner = () => {
           className="mb-2 flex items-center gap-2 rounded-[10px] border border-[color:color-mix(in_srgb,var(--warn-fg)_25%,transparent)] bg-[color:var(--warn-bg)] px-3 py-2 text-xs text-[color:var(--warn-fg)]"
         >
           <WifiOff className="h-3.5 w-3.5 shrink-0" />
-          Pincer is offline. Chat is unavailable until it reconnects (retrying every 30 s).
+          Pincer is offline. Chat is unavailable until it reconnects — {retryText}
         </div>
       )}
 
@@ -613,7 +619,11 @@ const ChatInner = () => {
   const pincerBadge = (
     <span
       className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${badgeView.tone}`}
-      title={badge === 'offline' ? `Pincer did not answer at ${getAuth()?.apiUrl ?? 'its address'}. ${badgeView.title}` : badgeView.title}
+      title={
+        badge === 'offline'
+          ? `Pincer did not answer at ${getAuth()?.apiUrl ?? 'its address'}. ${retry === 'retrying' ? 'Retrying now…' : `Retrying in ${retry} s.`}`
+          : badgeView.title
+      }
     >
       <BadgeIcon className="h-3 w-3" />
       {badgeView.label}

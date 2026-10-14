@@ -16,6 +16,9 @@ import { useQuery } from "@tanstack/react-query";
 import { api, type Schema } from "@/lib/api/client";
 import { useVoiceConnected, useVoiceStatus } from "@/lib/api/voice";
 
+/** How often `useHealth()` polls /api/health; the offline countdown reads it too. */
+export const HEALTH_POLL_MS = 30_000;
+
 export type CapabilityKey =
   | "voice"
   | "outbound"
@@ -72,8 +75,8 @@ export function useHealth() {
     queryFn: () => api.get<HealthInfo>("/api/health"),
     enabled: connected,
     // FE1 §5: ['health'] every 30 s; the banner calls it offline after two misses.
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    staleTime: HEALTH_POLL_MS,
+    refetchInterval: HEALTH_POLL_MS,
     retry: false,
   });
 }
