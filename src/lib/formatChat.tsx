@@ -266,11 +266,12 @@ export function renderAssistantText(raw: string): React.ReactNode {
         i++;
       }
       if (i < lines.length) i++;
-      // Theme exception: fenced code stays a dark surface in both themes.
+      // Theme exception: fenced code stays a dark surface in both themes — a warm
+      // near-black next to the olive palette (text on it ≈ 13.7:1).
       blocks.push(
         <pre
           key={`b-${bk++}`}
-          className="my-2 p-3 rounded-lg bg-gray-900 text-gray-100 text-xs overflow-x-auto font-mono leading-relaxed"
+          className="my-2 p-3 rounded-lg bg-[#22231f] text-[#eeefe8] text-xs overflow-x-auto font-mono leading-relaxed"
         >
           <code>{codeLines.join('\n')}</code>
         </pre>,

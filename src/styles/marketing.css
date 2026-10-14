@@ -88,13 +88,13 @@
 .site3d {
   /* Colours come from the root token set (src/index.css); only the extras
      the marketing pages use on top of it are defined here. */
-  --brand-deep: #22307f;
-  --brand-300: #b9c8f7;
-  --brand-400: #a6baf5;
+  --brand-deep: #3d4b05;
+  --brand-300: #c8d59f;
+  --brand-400: #b3c37c;
 
-  --on-dark-1: #b8bec5;
-  --on-dark-2: #a8aeb5;
-  --on-dark-3: #8e949b;
+  --on-dark-1: #bfc2b5;
+  --on-dark-2: #afb2a5;
+  --on-dark-3: #95998b;
 
   --sans: 'Plus Jakarta Sans', 'Excon', system-ui, sans-serif;
   --display: 'Plus Jakarta Sans', 'Excon', system-ui, sans-serif;
@@ -104,9 +104,9 @@
   --panel-radius: 32px;
   --tile-radius: 16px;
 
-  --lift: 0 26px 56px -30px rgba(20, 22, 26, 0.35);
-  --lift-soft: 0 18px 40px -26px rgba(20, 22, 26, 0.35);
-  --pill-shadow: 0 10px 28px -18px rgba(20, 22, 26, 0.32);
+  --lift: 0 26px 56px -30px color-mix(in srgb, var(--ink) 35%, transparent);
+  --lift-soft: 0 18px 40px -26px color-mix(in srgb, var(--ink) 35%, transparent);
+  --pill-shadow: 0 10px 28px -18px color-mix(in srgb, var(--ink) 32%, transparent);
 
   background: var(--bg);
   color: var(--ink);
@@ -727,23 +727,23 @@ canvas.dots-background {
    The signed-out pages put the form on a large colour panel, the way the
    reference layout does. Built from layered gradients rather than an image:
    it stays crisp at any size, costs nothing to load, and is tinted with the
-   brand blue instead of a stock photograph.
+   brand olive instead of a stock photograph.
 
    The faceted look comes from four overlapping triangles (linear-gradients
-   clipped by their own colour stops) over a deep blue base. */
+   clipped by their own colour stops) over a deep olive base. */
 .site3d .m-auth-art {
   position: relative;
   overflow: hidden;
   border-radius: 26px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 42%),
-    linear-gradient(215deg, rgba(10, 16, 60, 0.42) 0%, rgba(10, 16, 60, 0) 55%),
-    radial-gradient(120% 90% at 18% 12%, #6274ee 0%, rgba(98, 116, 238, 0) 60%),
-    radial-gradient(140% 120% at 88% 92%, #22307f 0%, rgba(34, 48, 127, 0) 62%),
-    linear-gradient(160deg, #4c60e2 0%, #3e52d9 46%, #2f3fae 100%);
+    linear-gradient(215deg, rgba(22, 28, 2, 0.42) 0%, rgba(22, 28, 2, 0) 55%),
+    radial-gradient(120% 90% at 18% 12%, #86a01a 0%, rgba(134, 160, 26, 0) 60%),
+    radial-gradient(140% 120% at 88% 92%, #33400a 0%, rgba(51, 64, 10, 0) 62%),
+    linear-gradient(160deg, #6f8a06 0%, var(--brand) 46%, var(--brand-hover) 100%);
 }
 
-/* Two facets that catch the light. Both are blue-tinted — a white or grey
+/* Two facets that catch the light. Both are olive-tinted — a white or grey
    overlay here reads as a washed-out wedge rather than a lit plane. */
 .site3d .m-auth-art::before,
 .site3d .m-auth-art::after {
@@ -755,14 +755,14 @@ canvas.dots-background {
 
 /* Lit plane, upper left. */
 .site3d .m-auth-art::before {
-  background: linear-gradient(150deg, #7183f2 0%, rgba(113, 131, 242, 0) 70%);
+  background: linear-gradient(150deg, #9ab52c 0%, rgba(154, 181, 44, 0) 70%);
   opacity: 0.55;
   clip-path: polygon(0 0, 58% 0, 22% 100%, 0 100%);
 }
 
 /* Shadowed plane, lower right. */
 .site3d .m-auth-art::after {
-  background: linear-gradient(320deg, #1b2569 0%, rgba(27, 37, 105, 0) 72%);
+  background: linear-gradient(320deg, #2a3406 0%, rgba(42, 52, 6, 0) 72%);
   opacity: 0.7;
   clip-path: polygon(100% 14%, 100% 100%, 30% 100%);
 }

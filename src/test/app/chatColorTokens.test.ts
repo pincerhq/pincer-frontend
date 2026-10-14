@@ -34,7 +34,7 @@ const ON_STATUS_FILL = 'white on a status fill — paired with that fill, retune
 /** Intentional fixed colours: file → exact line fragments allowed to keep them. */
 const EXCEPTIONS: Record<string, string[]> = {
   // Fenced code blocks stay dark in both themes, like every editor and docs site.
-  'lib/formatChat.tsx': ['bg-gray-900 text-gray-100'],
+  'lib/formatChat.tsx': ['bg-[#22231f] text-[#eeefe8]'],
   // ON_STATUS_FILL
   'pages/telephony/_components/sidebar/TelephonyMiniRail.tsx': [
     'bg-green-500 text-[9px] font-bold leading-none text-white',

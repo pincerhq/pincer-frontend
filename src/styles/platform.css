@@ -31,9 +31,9 @@
      rail. `background-attachment: fixed` anchors every layer to the viewport,
      so separate elements painting it line up pixel-for-pixel — no seam. */
   background:
-    radial-gradient(900px 600px at 6% -4%, rgba(62, 82, 217, 0.035), transparent 60%),
-    radial-gradient(1100px 750px at 96% 8%, rgba(191, 206, 248, 0.14), transparent 55%),
-    linear-gradient(165deg, #fcfcfd 0%, #f7f8fa 52%, #f1f3f6 100%);
+    radial-gradient(900px 600px at 6% -4%, color-mix(in srgb, var(--brand) 4%, transparent), transparent 60%),
+    radial-gradient(1100px 750px at 96% 8%, color-mix(in srgb, var(--brand-200) 30%, transparent), transparent 55%),
+    linear-gradient(165deg, var(--paper) 0%, var(--bg) 52%, var(--bg) 100%);
   background-attachment: fixed, fixed, fixed;
   color: var(--ink);
   font-family: var(--sans);
@@ -142,7 +142,7 @@
 }
 
 .plat-row:hover {
-  background: rgba(20, 22, 26, 0.02);
+  background: color-mix(in srgb, var(--ink) 2%, transparent);
 }
 
 .plat-row-icon {
@@ -236,7 +236,7 @@
 }
 
 button.plat-item:hover {
-  background: rgba(20, 22, 26, 0.04);
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
 }
 
 .plat-item-icon {
@@ -274,7 +274,7 @@ button.plat-item:hover {
   padding: 0 20px;
   border-radius: 999px;
   background: var(--ink);
-  color: #ffffff;
+  color: var(--on-ink);
   font-size: 13px;
   font-weight: 600;
   transition: opacity 0.15s ease, transform 0.15s ease;
@@ -360,12 +360,12 @@ button.plat-item:hover {
 }
 
 .platform [data-sidebar='menu-button']:hover {
-  background: rgba(20, 22, 26, 0.05);
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
   color: var(--ink);
 }
 
 .platform [data-sidebar='menu-button'][data-active='true'] {
-  background: rgba(20, 22, 26, 0.07);
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
   color: var(--ink);
   font-weight: 600;
 }
@@ -456,7 +456,7 @@ button.plat-item:hover {
 .platform input:not([type='checkbox']):not([type='radio']):not(.bg-transparent):hover:not(:disabled),
 .platform textarea:not(.bg-transparent):hover:not(:disabled),
 .platform select:not(.bg-transparent):hover:not(:disabled) {
-  border-color: rgba(20, 22, 26, 0.22);
+  border-color: color-mix(in srgb, var(--ink) 22%, transparent);
 }
 
 /* Active field = a thin blue border, nothing else. Same 1px width as the
@@ -502,7 +502,7 @@ button.plat-item:hover {
 [role='dialog'] [role='checkbox'][data-state='checked'] {
   background: var(--ink);
   border-color: var(--ink);
-  color: #ffffff;
+  color: var(--on-ink);
 }
 
 .platform [role='radio'],
@@ -588,7 +588,7 @@ button.plat-item:hover {
 
 .plat-expandable-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 22px -14px rgba(20, 22, 26, 0.35);
+  box-shadow: 0 8px 22px -14px color-mix(in srgb, var(--ink) 35%, transparent);
 }
 
 .plat-expandable-card:focus-visible {
@@ -633,7 +633,7 @@ button.plat-item:hover {
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: rgba(20, 22, 26, 0.34);
+  background: color-mix(in srgb, var(--ink) 34%, transparent);
   backdrop-filter: blur(3px);
 }
 
@@ -654,8 +654,8 @@ button.plat-item:hover {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: #f7f8fa;
-  box-shadow: 0 24px 70px -24px rgba(20, 22, 26, 0.4);
+  background: var(--bg);
+  box-shadow: 0 24px 70px -24px color-mix(in srgb, var(--ink) 40%, transparent);
 }
 
 .plat-detail[data-state='open'] {
@@ -732,7 +732,7 @@ button.plat-item:hover {
 
 .plat-popout {
   min-height: 100vh;
-  background: #f7f8fa;
+  background: var(--bg);
 }
 
 /* No modal frame out here, so the header carries the hairline itself and
@@ -766,7 +766,7 @@ button.plat-item:hover {
   border-radius: 12px;
   border: 1px solid var(--line);
   background: var(--paper);
-  box-shadow: 0 18px 40px -18px rgba(20, 22, 26, 0.34);
+  box-shadow: 0 18px 40px -18px color-mix(in srgb, var(--ink) 34%, transparent);
   animation: plat-menu-in 0.14s ease-out;
 }
 
