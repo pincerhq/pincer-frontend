@@ -14,7 +14,6 @@ import {
   Inbox,
   LayoutDashboard,
   CalendarClock,
-  MessageSquare,
   PhoneCall,
   Radio,
   Settings2,
@@ -64,10 +63,7 @@ export const PRIMARY_ITEMS: NavItem[] = [
 export const NAV_GROUPS: NavGroup[] = [
   {
     key: "owner",
-    items: [
-      ...PRIMARY_ITEMS,
-      { key: "assistant", labelKey: "assistant", path: ROUTES.ASSISTANT, icon: MessageSquare },
-    ],
+    items: [...PRIMARY_ITEMS],
   },
   {
     key: "operations",

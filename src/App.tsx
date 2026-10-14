@@ -73,6 +73,8 @@ function App() {
                 </Suspense>
               }
             />
+            {/* The telephony "Assistant" entry used to re-mount Chat here; old links land on Chat itself. */}
+            <Route path="/telephony/assistant" element={<Navigate to="/chat" replace />} />
             {/* Telephony / owner app — static paths come from _lib/routes.ts (FE0) */}
             {TELEPHONY_STATIC_PATHS.map((path) => (
               <Route key={path} path={path} element={<Protected label="Loading Telephony…"><TelephonyHome /></Protected>} />
