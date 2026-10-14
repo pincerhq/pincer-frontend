@@ -29,7 +29,7 @@ const HARDCODED = new RegExp(
 );
 
 /** White text or a white dot on a status fill: it pairs with the fill, which slices 9/11 retune. */
-const ON_STATUS_FILL = 'white on a status fill — paired with that fill, retuned in slices 9/11';
+const ON_STATUS_FILL = 'white on a status fill — src/styles/status-colors.css deepens the fill under it to 4.5:1';
 
 /** Intentional fixed colours: file → exact line fragments allowed to keep them. */
 const EXCEPTIONS: Record<string, string[]> = {
@@ -53,7 +53,8 @@ const EXCEPTIONS: Record<string, string[]> = {
   'pages/telephony/_components/voice/ReceptionistPanel.tsx': ['bg-[var(--bad-fg)] px-2.5 py-1 text-[10px] font-semibold text-white'],
   // Categorical risk scale R / W / X: W's blue is a rung on the scale, not the brand.
   'pages/telephony/_lib/voiceMeta.ts': ["cls: 'border-blue-200 bg-blue-50 text-blue-700'"],
-  // Categorical sentiment set (positive / neutral / mixed / negative) — retuned as a set in slices 9/11.
+  // Categorical sentiment set (positive / neutral / mixed / negative): themed per role in
+  // src/styles/status-colors.css, so the classes stay and both themes get their own values.
   'components/voice/analytics/sentimentCopy.ts': [
     "dotClass: 'bg-zinc-400'",
     "chipClass: 'border-zinc-200 bg-zinc-50 text-zinc-700'",
@@ -62,8 +63,9 @@ const EXCEPTIONS: Record<string, string[]> = {
     "chipClass: 'border-sky-200 bg-sky-50 text-sky-800'",
     "barClass: 'bg-sky-400'",
   ],
-  // Approval countdown ring: the amber middle stage is a status colour (slices 9/11).
-  'components/voice/ApprovalCard.tsx': ["'#b45309'"],
+  // Approval countdown ring: an SVG stroke can't take a Tailwind class, so the amber middle
+  // stage reads the themed status variable (src/styles/status-colors.css) directly.
+  'components/voice/ApprovalCard.tsx': ["'rgb(var(--st-amber-700))'"],
 };
 void ON_STATUS_FILL;
 

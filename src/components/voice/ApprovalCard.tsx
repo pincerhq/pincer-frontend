@@ -80,7 +80,7 @@ export function ApprovalCard({
   const fraction = Math.max(0, Math.min(1, remaining / windowMs.current));
   const seconds = Math.ceil(remaining / 1000);
 
-  const ringTone = fraction > 0.4 ? 'var(--brand)' : fraction > 0.2 ? '#b45309' : 'var(--bad-fg)';
+  const ringTone = fraction > 0.4 ? 'var(--brand)' : fraction > 0.2 ? 'rgb(var(--st-amber-700))' : 'var(--bad-fg)';
   const args = useMemo(() => Object.entries(approval.args_preview ?? {}), [approval.args_preview]);
 
   if (state !== 'pending') {

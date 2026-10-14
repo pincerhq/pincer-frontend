@@ -99,7 +99,7 @@ const Login = () => {
       {/* ── Right: the form, floating on the brand panel ── */}
       <div className="p-4 lg:py-6 lg:pr-6">
         <div className="m-auth-art flex min-h-[560px] items-center justify-center p-6 lg:min-h-full">
-          <div className="relative z-10 w-full max-w-[420px] rounded-[20px] bg-[color:var(--paper)] p-7 shadow-[0_30px_60px_-32px_rgba(10,16,60,0.55)] sm:p-9">
+          <div className="relative z-10 w-full max-w-[420px] rounded-[20px] bg-[color:var(--paper)] p-7 shadow-[0_30px_60px_-32px_color-mix(in_srgb,var(--shade)_55%,transparent)] sm:p-9">
             <h2 className="text-center text-[26px] text-[color:var(--ink)]">Sign in</h2>
             <p className="mt-2 text-center text-[15px] text-[color:var(--text-3)]">
               Enter your account details below

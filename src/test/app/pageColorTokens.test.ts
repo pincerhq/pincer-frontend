@@ -38,23 +38,17 @@ const HARDCODED = new RegExp(
   'g',
 );
 
-// The auth card's shadow is tinted by the blue brand art it floats on, not the neutral ramp.
-const AUTH_CARD_SHADOW = 'shadow-[0_30px_60px_-32px_rgba(10,16,60,0.55)]';
-// A modal scrim dims whatever is behind it, in either theme; ink would invert in dark.
+// A modal scrim dims whatever is behind it, so it stays black in both themes: --ink
+// turns light in dark mode and a light scrim would brighten the page it should mute.
 const SCRIM = 'bg-black/80';
 
-/**
- * Intentional fixed colours: file → exact line fragments allowed to keep them.
- * All three kinds are slice 11's to revisit with the dark palette.
- */
+/** Intentional fixed colours: file → exact line fragments allowed to keep them. */
 const EXCEPTIONS: Record<string, string[]> = {
   'components/ui/alert-dialog.tsx': [SCRIM],
   'components/ui/dialog.tsx': [SCRIM],
   'components/ui/sheet.tsx': [SCRIM],
-  'pages/Login.tsx': [AUTH_CARD_SHADOW],
-  'pages/Signup.tsx': [AUTH_CARD_SHADOW],
-  'pages/ForgotPassword.tsx': [AUTH_CARD_SHADOW],
-  // Search relevance bar: a data colour, not chrome (nearest token, --brand-200, is ΔE 17.6 away).
+  // Search relevance bar: a data colour, not chrome (nearest token, --brand-200, is ΔE 17.6
+  // away). A mid blue that reads on both the light and the dark track, so it stays fixed.
   'pages/company/_components/BrainSearchView.tsx': ['bg-[#5aacee]'],
 };
 
