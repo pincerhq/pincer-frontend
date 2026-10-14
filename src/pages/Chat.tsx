@@ -26,6 +26,8 @@ import { cleanAssistantText, renderAssistantText, renderTextWithLinks } from '@/
 import { useHealth } from '@/lib/capabilities';
 import { pincerBadgeState, useRetryCountdown, type PincerBadge } from '@/lib/pincerReachability';
 import { queryClient } from '@/lib/queryClient';
+import { useDictation } from '@/lib/dictation';
+import i18n from '@/i18n';
 
 type ChainStep =
   | {
@@ -98,7 +100,6 @@ const ChatInner = () => {
   const { toast } = useToast();
   const [message, setMessage]             = useState('');
   const [messages, setMessages]           = useState<ChatMessage[]>([]);
-  const [isListening, setIsListening]     = useState(false);
   const [attachments, setAttachments]     = useState<File[]>([]);
   const [chatHistory, setChatHistory]     = useState<ChatHistory[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string>('current');
@@ -115,6 +116,16 @@ const ChatInner = () => {
     health.fetchStatus === 'fetching',
   );
   const retryText = retry === 'retrying' ? 'retrying…' : `retrying in ${retry} s.`;
+  const dictation = useDictation({
+    getText: () => message,
+    setText: setMessage,
+    lang: () => i18n.resolvedLanguage ?? i18n.language,
+  });
+  const cancelDictation = dictation.cancel;
+  // Going offline ends a session the lock would otherwise leave running.
+  useEffect(() => {
+    if (offline) cancelDictation();
+  }, [offline, cancelDictation]);
   // Dismissed prompt suggestions survive reloads — "closed" should stay closed.
   const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>(() => {
     try {
@@ -226,6 +237,7 @@ const ChatInner = () => {
   const handleSend = () => {
     if (isStreaming) return;
     if (offline || (!message.trim() && attachments.length === 0)) return;
+    dictation.cancel();
 
     // Typing while viewing a past exchange always continues the live thread.
     if (currentChatId !== 'current') {
@@ -514,14 +526,22 @@ const ChatInner = () => {
           </button>
           {/* Right actions */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsListening(p => !p)}
-              disabled={offline}
-              aria-label="Voice input"
-              className={`flex items-center justify-center h-9 w-9 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent ${isListening ? 'bg-red-100 text-red-500' : 'text-[color:var(--text-5)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--sand)]'}`}
-            >
-              {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-            </button>
+            {dictation.supported && (
+              <button
+                onClick={dictation.listening ? dictation.stop : dictation.start}
+                disabled={offline}
+                aria-label="Voice input"
+                aria-pressed={dictation.listening}
+                title={dictation.listening ? 'Stop dictation' : 'Dictate a message'}
+                className={`flex items-center justify-center h-9 w-9 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent ${
+                  dictation.listening
+                    ? 'bg-[color:color-mix(in_srgb,var(--bad-fg)_10%,transparent)] text-[color:var(--bad-fg)]'
+                    : 'text-[color:var(--text-5)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--sand)]'
+                }`}
+              >
+                {dictation.listening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+              </button>
+            )}
             <button
               onClick={handleSend}
               disabled={!canSend}
@@ -537,6 +557,12 @@ const ChatInner = () => {
           </div>
         </div>
       </div>
+
+      {dictation.error && (
+        <p role="alert" className="mt-2 px-1 text-xs text-[color:var(--bad-fg)]">
+          {dictation.error}
+        </p>
+      )}
 
       <p className="text-center text-[11px] text-[color:var(--text-5)] mt-2">
         AI can make mistakes. Consider checking important information.

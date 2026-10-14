@@ -95,7 +95,8 @@ describe('chat while Pincer is offline', () => {
     renderChat();
     expect(screen.getByText(OFFLINE_NOTICE)).toBeInTheDocument();
     expect(composer()).toBeDisabled();
-    for (const name of ['Send message', 'Attach file', 'Voice input']) {
+    // The mic is hidden without SpeechRecognition (jsdom); chatDictation covers it offline.
+    for (const name of ['Send message', 'Attach file']) {
       expect(control(name)).toBeDisabled();
     }
   });
