@@ -15,7 +15,7 @@ const SRC = path.resolve(__dirname, '../..');
 
 const PLATFORM_TOKENS = [
   '--bg', '--paper', '--sand', '--sand-deep', '--ink',
-  '--brand', '--brand-100', '--brand-200', '--on-brand',
+  '--brand', '--brand-100', '--brand-200', '--on-brand', '--on-ink',
   '--text-1', '--text-2', '--text-3', '--text-4', '--text-5',
   '--ok-bg', '--ok-fg', '--warn-bg', '--warn-fg', '--bad-fg',
   '--line', '--line-soft',

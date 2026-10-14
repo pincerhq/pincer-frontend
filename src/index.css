@@ -25,6 +25,7 @@
     --brand-100: #e5eafb;
     --brand-200: #bfcef8;
     --on-brand: #ffffff;
+    --on-ink: #ffffff;                 /* text on ink surfaces; diverges from --on-brand in dark */
 
     --text-1: #4a5057;
     --text-2: #5a6067;

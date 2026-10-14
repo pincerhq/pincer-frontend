@@ -471,7 +471,7 @@ const Chat = () => {
         <ChevronDown className="h-3 w-3" />
       </button>
       {showAgentMenu && (
-        <div className="absolute bottom-full right-0 mb-2 min-w-[170px] rounded-xl border border-gray-200 bg-white shadow-lg py-1 z-20">
+        <div className="absolute bottom-full right-0 mb-2 min-w-[170px] rounded-xl border border-gray-200 bg-[color:var(--paper)] shadow-lg py-1 z-20">
           <div className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
             Demo roster — inserts text only
           </div>
@@ -512,7 +512,7 @@ const Chat = () => {
 
       {/* Textarea card */}
       <div
-        className="plat-field-shell rounded-[14px] border bg-white transition-colors duration-200"
+        className="plat-field-shell rounded-[14px] border bg-[color:var(--paper)] transition-colors duration-200"
         style={{ borderColor: 'var(--line)' }}
       >
         <textarea
@@ -545,7 +545,7 @@ const Chat = () => {
               disabled={isStreaming || (!message.trim() && attachments.length === 0)}
               className={`flex items-center justify-center h-9 w-9 rounded-full transition-all duration-150 ${
                 !isStreaming && (message.trim() || attachments.length > 0)
-                  ? 'bg-[#14161a] text-white hover:opacity-85'
+                  ? 'bg-[color:var(--ink)] text-[color:var(--on-ink)] hover:opacity-85'
                   : 'bg-gray-100 text-gray-300 cursor-not-allowed'
               }`}
             >
@@ -939,13 +939,13 @@ function ApprovalStepBody({
       <div className="flex gap-1.5">
         <button
           onClick={() => onDecide(msgId, step.approvalId, true)}
-          className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-gray-900 text-white hover:bg-gray-700 transition-colors"
+          className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-gray-900 text-[color:var(--on-ink)] hover:bg-gray-700 transition-colors"
         >
           Approve
         </button>
         <button
           onClick={() => onDecide(msgId, step.approvalId, false)}
-          className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors"
+          className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[color:var(--paper)] text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors"
         >
           Deny
         </button>

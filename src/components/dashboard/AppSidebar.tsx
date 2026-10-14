@@ -146,11 +146,11 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
           className="flex items-center space-x-2 cursor-pointer hover:bg-accent rounded-lg p-2 -m-2 transition-colors"
           onClick={handleLogoClick}
         >
-          <div className="w-6 h-6 bg-[#14161a] rounded-[7px] flex items-center justify-center flex-shrink-0">
-            <Brain className="w-3 h-3 text-white" />
+          <div className="w-6 h-6 bg-[color:var(--ink)] rounded-[7px] flex items-center justify-center flex-shrink-0">
+            <Brain className="w-3 h-3 text-[color:var(--on-ink)]" />
           </div>
           {state === "expanded" && (
-            <span className="plat-display text-[15px] text-[#14161a] truncate">3Days.ai</span>
+            <span className="plat-display text-[15px] text-[color:var(--ink)] truncate">3Days.ai</span>
           )}
         </div>
       </SidebarHeader>
@@ -225,11 +225,11 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
                     onClick={() => onSelectChat?.('current')}
                     className={`w-full text-left px-2 py-1.5 rounded-md transition-colors text-xs flex items-center gap-1.5 ${
                       currentChatId === 'current'
-                        ? 'bg-[rgba(20,22,26,0.06)] font-semibold text-[#14161a]'
-                        : 'hover:bg-[rgba(20,22,26,0.04)] text-[#5a6067]'
+                        ? 'bg-[color:color-mix(in_srgb,var(--ink)_6%,transparent)] font-semibold text-[color:var(--ink)]'
+                        : 'hover:bg-[color:color-mix(in_srgb,var(--ink)_4%,transparent)] text-[color:var(--text-2)]'
                     }`}
                   >
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#14161a] shrink-0" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--ink)] shrink-0" />
                     <span className="truncate">Current Chat</span>
                   </button>
 
@@ -242,8 +242,8 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
                           onClick={() => onSelectChat?.(chat.id)}
                           className={`w-full text-left px-2 py-1.5 rounded-md transition-colors text-xs truncate ${
                             currentChatId === chat.id
-                              ? 'bg-[rgba(20,22,26,0.06)] font-semibold text-[#14161a]'
-                              : 'hover:bg-[rgba(20,22,26,0.04)] text-[#5a6067]'
+                              ? 'bg-[color:color-mix(in_srgb,var(--ink)_6%,transparent)] font-semibold text-[color:var(--ink)]'
+                              : 'hover:bg-[color:color-mix(in_srgb,var(--ink)_4%,transparent)] text-[color:var(--text-2)]'
                           }`}
                         >
                           {chat.title}
@@ -265,7 +265,7 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className={`flex items-center gap-2 hover:bg-accent px-2 ${state === "collapsed" ? "justify-center w-full" : ""}`}>
                 <Avatar className="h-7 w-7 flex-shrink-0">
-                  <AvatarFallback className="bg-[#e9ebef] text-[#14161a] text-xs font-semibold">
+                  <AvatarFallback className="bg-[color:var(--sand-deep)] text-[color:var(--ink)] text-xs font-semibold">
                     {getInitials(userLabel)}
                   </AvatarFallback>
                 </Avatar>
@@ -274,7 +274,7 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align={state === "expanded" ? "end" : "center"} className="w-64 bg-white border shadow-lg">
+            <DropdownMenuContent side="top" align={state === "expanded" ? "end" : "center"} className="w-64 bg-[color:var(--paper)] border shadow-lg">
               <DropdownMenuItem onSelect={() => setProfileOpen(true)} className="flex items-center space-x-2 cursor-pointer">
                 <UserRound className="h-4 w-4" />
                 <span>{ta('menu')}</span>
@@ -287,7 +287,7 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
                     {languages.find(l => l.code === selectedLanguage)?.label}
                   </span>
                 </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="w-44 bg-white border shadow-lg">
+                <DropdownMenuSubContent className="w-44 bg-[color:var(--paper)] border shadow-lg">
                   {languages.map((lang) => (
                     <DropdownMenuItem
                       key={lang.code}
@@ -296,7 +296,7 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
                     >
                       <span>{lang.label}</span>
                       {selectedLanguage === lang.code && (
-                        <Check className="h-3.5 w-3.5 text-[#14161a]" />
+                        <Check className="h-3.5 w-3.5 text-[color:var(--ink)]" />
                       )}
                     </DropdownMenuItem>
                   ))}
