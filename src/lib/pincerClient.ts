@@ -68,6 +68,8 @@ export function authFromTokenPair(apiUrl: string, pair: TokenPair): PincerAuth {
 // In-memory copy of the session-scoped record: survives a storage that throws
 // (private mode, blocked site data) for the life of the page.
 let memoryAuth: PincerAuth | null = null;
+// Same for the anonymous user id: stable for the page when storage refuses it.
+let memoryUserId: string | null = null;
 
 function storageOf(kind: "session" | "local"): Storage | undefined {
   try {
@@ -188,17 +190,27 @@ export function isConnected(): boolean {
 }
 
 export function getUserId(): string {
-  let id = localStorage.getItem(USER_ID_KEY);
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(USER_ID_KEY, id);
+  try {
+    let id = localStorage.getItem(USER_ID_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(USER_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    memoryUserId ??= crypto.randomUUID();
+    return memoryUserId;
   }
-  return id;
 }
 
 export function resetUserId(): string {
   const id = crypto.randomUUID();
-  localStorage.setItem(USER_ID_KEY, id);
+  memoryUserId = id;
+  try {
+    localStorage.setItem(USER_ID_KEY, id);
+  } catch {
+    /* storage unavailable — the in-memory copy serves this page */
+  }
   return id;
 }
 
