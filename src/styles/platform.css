@@ -505,14 +505,16 @@ button.plat-item:hover {
   color: var(--on-ink);
 }
 
-.platform [role='radio'],
-[role='dialog'] [role='radio'] {
+/* Radios: defaults only. Zero specificity (:where) so a radio that sets its
+   own colours — the telephony period chips, the More sheet choices — keeps
+   them; as `.platform [role='radio']` this outranked every utility class and
+   painted ink text on an ink-filled selected chip. */
+:where(.platform, [role='dialog']) :where([role='radio']) {
   border: 1px solid var(--line);
   color: var(--ink);
 }
 
-.platform [role='radio'][data-state='checked'],
-[role='dialog'] [role='radio'][data-state='checked'] {
+:where(.platform, [role='dialog']) :where([role='radio'][data-state='checked']) {
   border-color: var(--ink);
 }
 
