@@ -196,11 +196,6 @@ export function getUserId(): string {
   return id;
 }
 
-export function resetUserId(): string {
-  const id = crypto.randomUUID();
-  localStorage.setItem(USER_ID_KEY, id);
-  return id;
-}
 
 function stripTrailingSlash(s: string): string {
   return s.replace(/\/+$/, "");
@@ -488,10 +483,20 @@ export interface ChatReply {
   model?: string;
 }
 
-export async function sendChat(text: string): Promise<ChatReply> {
+/**
+ * The chat request body. Pincer keys a conversation on whoever the request is
+ * (the signed-in identity, whatever `X-Pincer-User` says), so a chat of its
+ * own is a `conversation_id` under that identity; without one the message
+ * goes to the identity's main web conversation.
+ */
+function chatBody(text: string, conversationId?: string): string {
+  return JSON.stringify(conversationId ? { text, conversation_id: conversationId } : { text });
+}
+
+export async function sendChat(text: string, conversationId?: string): Promise<ChatReply> {
   return request<ChatReply>("/api/chat/message", {
     method: "POST",
-    body: JSON.stringify({ text }),
+    body: chatBody(text, conversationId),
   });
 }
 
@@ -520,6 +525,7 @@ export type StreamEvent =
 export async function* streamChat(
   text: string,
   signal?: AbortSignal,
+  conversationId?: string,
 ): AsyncGenerator<StreamEvent> {
   const res = await authedFetch("/api/chat/stream", {
     method: "POST",
@@ -527,7 +533,7 @@ export async function* streamChat(
       "Content-Type": "application/json",
       Accept: "text/event-stream",
     },
-    body: JSON.stringify({ text }),
+    body: chatBody(text, conversationId),
     signal,
   });
 
