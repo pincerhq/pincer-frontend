@@ -121,7 +121,7 @@ function OutcomeCard({
   const shownFacts = open ? facts : facts.slice(0, 2);
 
   return (
-    <div className="rounded-[10px] border border-[var(--line)] bg-white p-3" data-testid="outcome-card">
+    <div className="rounded-[10px] border border-[var(--line)] bg-[var(--paper)] p-3" data-testid="outcome-card">
       <div className="mb-2 flex items-center gap-2">
         <span
           className={cn(
@@ -288,7 +288,7 @@ function OutcomeCard({
           )}
 
             {aiSummary && (
-              <div className="rounded-[10px] border border-[var(--line)] bg-white p-3">
+              <div className="rounded-[10px] border border-[var(--line)] bg-[var(--paper)] p-3">
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="plat-eyebrow flex items-center gap-1">
                     <Sparkles className="h-3 w-3 text-[var(--brand)]" />
@@ -491,7 +491,7 @@ export default function CallOutcomePanel({ detail }: { detail: CallDetail }) {
 
       {/* The options open upwards: this sits at the foot of a scrolling rail. */}
       {followupsDeclared && (
-      <div className="flex items-center gap-2 rounded-[10px] border border-[var(--line-soft)] bg-white px-3 py-2">
+      <div className="flex items-center gap-2 rounded-[10px] border border-[var(--line-soft)] bg-[var(--paper)] px-3 py-2">
         <p className="plat-eyebrow truncate">Follow up on this call</p>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <PlatMenu

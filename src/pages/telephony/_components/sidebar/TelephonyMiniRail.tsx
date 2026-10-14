@@ -44,8 +44,8 @@ function NavRow({ icon: Icon, label, active, onClick, badge, collapsed, depth = 
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]',
         collapsed ? 'justify-center px-0' : depth === 1 ? 'pl-9 pr-3' : 'px-3',
         active
-          ? 'bg-[rgba(20,22,26,0.07)] font-semibold text-[var(--ink)]'
-          : 'text-[var(--text-2)] hover:bg-[rgba(20,22,26,0.04)]',
+          ? 'bg-[color:color-mix(in_srgb,var(--ink)_7%,transparent)] font-semibold text-[var(--ink)]'
+          : 'text-[var(--text-2)] hover:bg-[color:color-mix(in_srgb,var(--ink)_4%,transparent)]',
       )}
     >
       <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-[var(--ink)]' : 'text-[var(--text-4)]')} aria-hidden="true" />
@@ -221,7 +221,7 @@ export default function TelephonyMiniRail() {
           onClick={() => setCollapsed((c) => !c)}
           aria-label={collapsed ? t('rail.expand') : t('rail.collapse')}
           aria-pressed={collapsed}
-          className="rounded-[8px] p-1 text-[var(--text-4)] hover:bg-[rgba(20,22,26,0.04)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+          className="rounded-[8px] p-1 text-[var(--text-4)] hover:bg-[color:color-mix(in_srgb,var(--ink)_4%,transparent)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
         >
           {collapsed ? <PanelLeftOpen className="h-4 w-4" aria-hidden="true" /> : <PanelLeftClose className="h-4 w-4" aria-hidden="true" />}
         </button>

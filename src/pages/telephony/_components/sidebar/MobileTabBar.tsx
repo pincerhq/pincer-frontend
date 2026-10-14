@@ -109,7 +109,7 @@ export default function MobileTabBar() {
                         aria-current={active ? 'page' : undefined}
                         className={cn(
                           'flex items-center gap-2 rounded-[10px] px-3 py-2.5 text-left text-sm',
-                          active ? 'bg-[rgba(20,22,26,0.07)] font-semibold text-[var(--ink)]' : 'text-[var(--text-2)] hover:bg-[rgba(20,22,26,0.04)]',
+                          active ? 'bg-[color:color-mix(in_srgb,var(--ink)_7%,transparent)] font-semibold text-[var(--ink)]' : 'text-[var(--text-2)] hover:bg-[color:color-mix(in_srgb,var(--ink)_4%,transparent)]',
                         )}
                       >
                         <Icon className="h-4 w-4 shrink-0 text-[var(--text-4)]" aria-hidden="true" />
@@ -133,7 +133,7 @@ export default function MobileTabBar() {
                     onClick={() => setLocale(l)}
                     className={cn(
                       'rounded-[10px] border px-3 py-1.5 text-sm',
-                      locale === l ? 'border-[var(--ink)] bg-[rgba(20,22,26,0.07)] font-semibold text-[var(--ink)]' : 'border-[var(--line)] text-[var(--text-2)]',
+                      locale === l ? 'border-[var(--ink)] bg-[color:color-mix(in_srgb,var(--ink)_7%,transparent)] font-semibold text-[var(--ink)]' : 'border-[var(--line)] text-[var(--text-2)]',
                     )}
                   >
                     {tc(`language.${l}`)}
@@ -146,7 +146,7 @@ export default function MobileTabBar() {
                   setOpen(false);
                   setProfileOpen(true);
                 }}
-                className="mt-4 flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm text-[var(--text-2)] hover:bg-[rgba(20,22,26,0.04)]"
+                className="mt-4 flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm text-[var(--text-2)] hover:bg-[color:color-mix(in_srgb,var(--ink)_4%,transparent)]"
               >
                 <UserRound className="h-4 w-4 text-[var(--text-4)]" aria-hidden="true" />
                 {tp('menu')}
@@ -157,7 +157,7 @@ export default function MobileTabBar() {
                   setOpen(false);
                   doLogout();
                 }}
-                className="mt-1 flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm text-[var(--bad-fg)] hover:bg-[rgba(179,56,46,0.06)]"
+                className="mt-1 flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm text-[var(--bad-fg)] hover:bg-[color:color-mix(in_srgb,var(--bad-fg)_6%,transparent)]"
               >
                 <LogOut className="h-4 w-4" aria-hidden="true" />
                 {ta('logout')}

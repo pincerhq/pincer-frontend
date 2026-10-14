@@ -90,7 +90,7 @@ export function ApprovalCard({
       <div
         data-testid="voice-approval-card"
         data-approval-state={state}
-        className="w-[360px] rounded-[14px] border border-[var(--line)] bg-white p-4 shadow-[0_18px_40px_-18px_rgba(20,22,26,0.34)]"
+        className="w-[360px] rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-4 shadow-[0_18px_40px_-18px_color-mix(in_srgb,var(--ink)_34%,transparent)]"
       >
         <div className="flex items-center gap-2.5">
           <Icon className={cn('h-4 w-4', meta.tone)} />
@@ -107,7 +107,7 @@ export function ApprovalCard({
       data-approval-state="pending"
       role="alertdialog"
       aria-label={`Approval required: ${approval.summary}`}
-      className="w-[360px] rounded-[14px] border border-[var(--line)] bg-white p-4 shadow-[0_18px_40px_-18px_rgba(20,22,26,0.34)]"
+      className="w-[360px] rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-4 shadow-[0_18px_40px_-18px_color-mix(in_srgb,var(--ink)_34%,transparent)]"
     >
       <div className="flex items-start gap-3">
         {/* Countdown ring */}
@@ -188,7 +188,7 @@ export function ApprovalCard({
           data-testid="voice-approval-approve"
           disabled={!!deciding}
           onClick={() => onDecide('approve')}
-          className="flex-1 rounded-full bg-[var(--ink)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+          className="flex-1 rounded-full bg-[var(--ink)] px-3 py-2 text-xs font-semibold text-[var(--on-ink)] disabled:opacity-40"
         >
           {deciding === 'approve' ? 'Approving…' : 'Approve'}
         </button>

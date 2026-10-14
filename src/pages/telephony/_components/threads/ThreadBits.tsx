@@ -109,7 +109,7 @@ export function AttachGlyph({ kind, className }: { kind: string; className?: str
       title={meta.title}
       aria-label={meta.label}
       className={cn(
-        'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--line)] bg-white text-[11px] text-[var(--text-3)]',
+        'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--paper)] text-[11px] text-[var(--text-3)]',
         className,
       )}
     >

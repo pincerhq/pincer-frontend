@@ -38,7 +38,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[14px] border border-[var(--line-soft)] bg-white p-5">
+    <section className="rounded-[14px] border border-[var(--line-soft)] bg-[var(--paper)] p-5">
       <div className="mb-3 flex flex-wrap items-baseline gap-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--ink)]">
           <Icon className="h-4 w-4 text-[var(--text-5)]" />
@@ -145,19 +145,19 @@ function DoNotCallSection() {
           onChange={(e) => setNumber(e.target.value)}
           placeholder="+4930123456"
           aria-label="Phone number to block"
-          className="h-9 w-48 bg-white text-xs"
+          className="h-9 w-48 bg-[var(--paper)] text-xs"
         />
         <Input
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="Reason (optional)"
           aria-label="Reason"
-          className="h-9 w-56 bg-white text-xs"
+          className="h-9 w-56 bg-[var(--paper)] text-xs"
         />
         <button
           type="submit"
           disabled={!number.trim() || add.isPending}
-          className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--ink)] px-3.5 text-xs font-medium text-white transition-opacity hover:opacity-85 disabled:opacity-40"
+          className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--ink)] px-3.5 text-xs font-medium text-[var(--on-ink)] transition-opacity hover:opacity-85 disabled:opacity-40"
         >
           {add.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
           Add
@@ -326,7 +326,7 @@ function LimitsSection({ status }: { status: VoiceStatus | undefined }) {
 
   return (
     <Section icon={Shield} title="Hard limits" hint="rows marked live come from /api/voice/status">
-      <div className="rounded-[10px] border border-[var(--line-soft)] bg-white px-4 py-1">
+      <div className="rounded-[10px] border border-[var(--line-soft)] bg-[var(--paper)] px-4 py-1">
         {knobs.map((spec) => (
           <Knob key={spec.env} spec={spec} />
         ))}
@@ -365,7 +365,7 @@ function RetentionSection() {
 
   return (
     <Section icon={ShieldCheck} title="Retention & approvals" hint="enforced server-side">
-      <div className="rounded-[10px] border border-[var(--line-soft)] bg-white px-4 py-1">
+      <div className="rounded-[10px] border border-[var(--line-soft)] bg-[var(--paper)] px-4 py-1">
         {knobs.map((spec) => (
           <Knob key={spec.env} spec={spec} />
         ))}

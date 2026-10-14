@@ -89,7 +89,7 @@ export default function PolicyPanel() {
         </div>
       )}
 
-      <div className="rounded-[14px] border border-[var(--line-soft)] bg-white p-5">
+      <div className="rounded-[14px] border border-[var(--line-soft)] bg-[var(--paper)] p-5">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-[var(--ink)]">Approval mode</h2>
           <ModeBadge mode={globalMode} />
@@ -116,7 +116,7 @@ export default function PolicyPanel() {
         )}
       </div>
 
-      <div className="rounded-[14px] border border-[var(--line-soft)] bg-white p-5">
+      <div className="rounded-[14px] border border-[var(--line-soft)] bg-[var(--paper)] p-5">
         <h2 className="mb-3 text-sm font-semibold text-[var(--ink)]">Per-tool overrides</h2>
         {!data.overrides?.length ? (
           <p className="text-xs text-[var(--text-5)]">
@@ -146,7 +146,7 @@ export default function PolicyPanel() {
         )}
       </div>
 
-      <div className="rounded-[14px] border border-[var(--line-soft)] bg-white p-5">
+      <div className="rounded-[14px] border border-[var(--line-soft)] bg-[var(--paper)] p-5">
         <h2 className="mb-1 text-sm font-semibold text-[var(--ink)]">Tools by tier</h2>
         <p className="mb-3 text-[11px] text-[var(--text-5)]">
           The tier decides which approvals a tool needs before the overrides apply.

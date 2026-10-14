@@ -93,7 +93,7 @@ export default function PendingApprovalView() {
             {isLoading ? (
               <p className="text-sm text-[var(--text-4)]">Loading…</p>
             ) : !approvals.length ? (
-              <div className="rounded-[14px] border border-[var(--line-soft)] bg-white py-10 text-center">
+              <div className="rounded-[14px] border border-[var(--line-soft)] bg-[var(--paper)] py-10 text-center">
                 <ShieldCheck className="mx-auto mb-3 h-10 w-10 text-green-500" />
                 <p className="text-sm text-[var(--text-3)]">Nothing waiting on you.</p>
                 <p className="mx-auto mt-1 max-w-md text-xs text-[var(--text-3)]">
@@ -104,12 +104,12 @@ export default function PendingApprovalView() {
                   <button
                     type="button"
                     onClick={() => navigate('/telephony/calls/live')}
-                    className="flex h-8 items-center gap-1.5 rounded-full bg-[var(--ink)] px-3.5 text-xs font-medium text-white transition-colors hover:opacity-85"
+                    className="flex h-8 items-center gap-1.5 rounded-full bg-[var(--ink)] px-3.5 text-xs font-medium text-[var(--on-ink)] transition-colors hover:opacity-85"
                   >
                     <Radio className="h-3.5 w-3.5" />
                     Watch live calls
                     {!!activeCalls?.length && (
-                      <span className="rounded-full bg-white/70 px-1.5 text-[10px] font-semibold text-[var(--ink)]">
+                      <span className="rounded-full bg-[color:color-mix(in_srgb,var(--on-ink)_70%,transparent)] px-1.5 text-[10px] font-semibold text-[var(--ink)]">
                         {activeCalls.length}
                       </span>
                     )}

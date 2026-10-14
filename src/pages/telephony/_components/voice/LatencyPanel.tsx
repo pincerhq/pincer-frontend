@@ -95,7 +95,7 @@ export default function LatencyPanel({ latency }: { latency: CallLatency }) {
   };
 
   return (
-    <section className="rounded-[10px] border border-[var(--line)] bg-white p-3">
+    <section className="rounded-[10px] border border-[var(--line)] bg-[var(--paper)] p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="plat-eyebrow flex items-center gap-1.5">
           <Gauge className="h-3.5 w-3.5 text-[var(--text-5)]" />

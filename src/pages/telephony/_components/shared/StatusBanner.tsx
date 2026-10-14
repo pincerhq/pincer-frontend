@@ -49,9 +49,9 @@ export default function StatusBanner() {
 
   const tone =
     state === "offline" || state === "sip"
-      ? "border-[rgba(179,56,46,0.25)] bg-[rgba(179,56,46,0.06)] text-[var(--bad-fg)]"
+      ? "border-[color:color-mix(in_srgb,var(--bad-fg)_25%,transparent)] bg-[color:color-mix(in_srgb,var(--bad-fg)_6%,transparent)] text-[var(--bad-fg)]"
       : state === "inactive"
-        ? "border-[rgba(154,83,18,0.25)] bg-[var(--warn-bg)] text-[var(--warn-fg)]"
+        ? "border-[color:color-mix(in_srgb,var(--warn-fg)_25%,transparent)] bg-[var(--warn-bg)] text-[var(--warn-fg)]"
         : "border-[var(--line-soft)] bg-[var(--ok-bg)] text-[var(--ok-fg)]";
 
   const Icon = state === "offline" ? WifiOff : state === "active" ? CheckCircle2 : AlertTriangle;

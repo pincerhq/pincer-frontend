@@ -86,7 +86,7 @@ export default function BriefingPanel({ call }: { call: CallDetail }) {
   };
 
   return (
-    <section className="mb-3 rounded-[10px] border border-[var(--line)] bg-white p-3">
+    <section className="mb-3 rounded-[10px] border border-[var(--line)] bg-[var(--paper)] p-3">
       <div className="flex flex-wrap items-center gap-2">
         <h4 className="flex items-center gap-1.5 text-[12px] font-semibold text-[var(--ink)]">
           <ClipboardList className="h-3.5 w-3.5 text-[var(--text-4)]" />

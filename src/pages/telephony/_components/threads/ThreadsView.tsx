@@ -48,7 +48,7 @@ function ThreadRow({ thread, onOpen }: { thread: Thread; onOpen: () => void }) {
           onOpen();
         }
       }}
-      className="cursor-pointer border-t border-[var(--line-soft)] text-[var(--text-2)] outline-none hover:bg-[rgba(20,22,26,0.02)] focus-visible:bg-[rgba(20,22,26,0.04)] [&>td]:px-2"
+      className="cursor-pointer border-t border-[var(--line-soft)] text-[var(--text-2)] outline-none hover:bg-[color:color-mix(in_srgb,var(--ink)_2%,transparent)] focus-visible:bg-[color:color-mix(in_srgb,var(--ink)_4%,transparent)] [&>td]:px-2"
     >
       <td className="max-w-[380px] py-2.5">
         <div className="flex items-center gap-1.5">
@@ -118,7 +118,7 @@ export default function ThreadsView({ onShowAllCalls }: { onShowAllCalls?: () =>
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search subject or contact"
-            className="h-8 w-56 bg-white pl-8 text-xs"
+            className="h-8 w-56 bg-[var(--paper)] pl-8 text-xs"
             aria-label="Search threads"
           />
         </div>
@@ -132,7 +132,7 @@ export default function ThreadsView({ onShowAllCalls }: { onShowAllCalls?: () =>
               className={cn(
                 'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
                 filterId === f.id
-                  ? 'border-[var(--ink)] bg-[var(--ink)] text-white'
+                  ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--on-ink)]'
                   : 'border-[var(--line)] text-[var(--text-3)] hover:bg-[var(--sand)]',
               )}
             >

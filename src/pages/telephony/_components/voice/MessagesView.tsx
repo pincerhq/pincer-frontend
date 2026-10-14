@@ -84,7 +84,7 @@ function MessageRow({
       data-unread={unread ? 'true' : 'false'}
       className={cn(
         'flex w-full flex-col gap-1 border-b border-[var(--line-soft)] px-5 py-3 text-left transition-colors',
-        active ? 'bg-[var(--sand)]' : 'hover:bg-[rgba(20,22,26,0.03)]',
+        active ? 'bg-[var(--sand)]' : 'hover:bg-[color:color-mix(in_srgb,var(--ink)_3%,transparent)]',
       )}
     >
       <div className="flex items-center gap-2">
@@ -130,7 +130,7 @@ function MessageDrawer({
   return (
     <aside
       data-testid="message-drawer"
-      className="flex w-[420px] shrink-0 flex-col overflow-hidden border-l border-[var(--line-soft)] bg-white"
+      className="flex w-[420px] shrink-0 flex-col overflow-hidden border-l border-[var(--line-soft)] bg-[var(--paper)]"
     >
       <div className="flex items-center gap-2 border-b border-[var(--line-soft)] px-5 py-4">
         <button
@@ -202,7 +202,7 @@ function MessageDrawer({
           onClick={onCallBack}
           disabled={!message.caller_number}
           data-testid="message-call-back"
-          className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[var(--ink)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+          className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[var(--ink)] px-3 py-2 text-xs font-semibold text-[var(--on-ink)] disabled:opacity-40"
           title={message.caller_number ? 'Prefills the call form; it does not dial' : 'No number to call back'}
         >
           <PhoneOutgoing className="h-3.5 w-3.5" />
@@ -253,7 +253,7 @@ export default function MessagesView() {
         <div className="mt-1 flex items-center gap-3">
           <h1 className="text-[26px] text-[var(--ink)]">Messages</h1>
           {!!data?.unread && (
-            <span className="rounded-full bg-[var(--brand)] px-2 py-0.5 text-[11px] font-bold text-white">
+            <span className="rounded-full bg-[var(--brand)] px-2 py-0.5 text-[11px] font-bold text-[var(--on-brand)]">
               {data.unread} unread
             </span>
           )}

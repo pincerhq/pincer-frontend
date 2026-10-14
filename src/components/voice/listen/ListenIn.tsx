@@ -215,7 +215,7 @@ export default function ListenIn({ call }: { call: ActiveCall }) {
   }
 
   return (
-    <div className="w-full rounded-[10px] border border-[var(--line)] bg-white p-3">
+    <div className="w-full rounded-[10px] border border-[var(--line)] bg-[var(--paper)] p-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--ink)]">
           {busy ? (

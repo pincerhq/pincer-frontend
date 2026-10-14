@@ -98,7 +98,7 @@ export function AssignCallModal({
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search by number, date or current thread"
-              className="h-9 bg-white pl-8 text-xs"
+              className="h-9 bg-[var(--paper)] pl-8 text-xs"
               aria-label="Search calls"
             />
           </div>
@@ -153,7 +153,7 @@ export function AssignCallModal({
               <button
                 type="button"
                 onClick={() => setConfirming(null)}
-                className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--text-3)] hover:bg-white"
+                className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--text-3)] hover:bg-[var(--paper)]"
               >
                 Cancel
               </button>
@@ -164,7 +164,7 @@ export function AssignCallModal({
                   setConfirming(null);
                   run(call);
                 }}
-                className="rounded-full bg-[var(--ink)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-85"
+                className="rounded-full bg-[var(--ink)] px-3 py-1.5 text-xs font-medium text-[var(--on-ink)] hover:opacity-85"
               >
                 Move it here
               </button>
@@ -276,7 +276,7 @@ export function MergeThreadModal({
                 type="button"
                 onClick={run}
                 disabled={merge.isPending}
-                className="rounded-full bg-[var(--ink)] px-4 py-1.5 text-xs font-medium text-white hover:opacity-85 disabled:opacity-50"
+                className="rounded-full bg-[var(--ink)] px-4 py-1.5 text-xs font-medium text-[var(--on-ink)] hover:opacity-85 disabled:opacity-50"
               >
                 {merge.isPending ? 'Merging…' : 'Merge threads'}
               </button>
@@ -291,7 +291,7 @@ export function MergeThreadModal({
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   placeholder="Search threads"
-                  className="h-9 bg-white pl-8 text-xs"
+                  className="h-9 bg-[var(--paper)] pl-8 text-xs"
                   aria-label="Search threads to merge"
                 />
               </div>

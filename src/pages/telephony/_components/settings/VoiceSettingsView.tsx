@@ -33,7 +33,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[14px] border border-[var(--line-soft)] bg-white p-5">
+    <section className="rounded-[14px] border border-[var(--line-soft)] bg-[var(--paper)] p-5">
       <div className="mb-3 flex flex-wrap items-baseline gap-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--ink)]">
           <Icon className="h-4 w-4 text-[var(--text-5)]" />

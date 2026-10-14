@@ -25,7 +25,7 @@ const TRIGGER_VARIANTS = {
     'h-10 w-full rounded-[10px] border border-[var(--line)] bg-[var(--sand)] px-3 text-sm text-[var(--ink)] hover:border-[var(--text-5)]',
   /** Filter pill — the history toolbar. */
   pill:
-    'h-8 rounded-full border border-[var(--line)] bg-white pl-3 pr-2 text-[11px] font-medium text-[var(--text-3)] hover:text-[var(--ink)]',
+    'h-8 rounded-full border border-[var(--line)] bg-[var(--paper)] pl-3 pr-2 text-[11px] font-medium text-[var(--text-3)] hover:text-[var(--ink)]',
   /** Inline, chromeless — sits inside another control's border. */
   bare: 'bg-transparent text-[10px] text-[var(--text-2)] max-w-[190px]',
 } as const;
@@ -144,8 +144,8 @@ export default function PlatSelect({
           // `plat` so the tokens resolve: this renders in document.body.
           className={cn(
             'plat z-[90] max-h-[320px] min-w-[var(--radix-select-trigger-width)] overflow-hidden',
-            'rounded-[12px] border border-[var(--line)] bg-white p-1',
-            'shadow-[0_18px_40px_-18px_rgba(20,22,26,0.34)]',
+            'rounded-[12px] border border-[var(--line)] bg-[var(--paper)] p-1',
+            'shadow-[0_18px_40px_-18px_color-mix(in_srgb,var(--ink)_34%,transparent)]',
             'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
           )}
         >
