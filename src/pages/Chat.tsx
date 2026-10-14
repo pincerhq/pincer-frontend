@@ -13,14 +13,18 @@ import {
   isConnected as pincerConnected,
   streamChat,
   sendChat,
-  fetchLatestConversation,
   resetUserId,
   respondApproval,
   PincerError,
-  type PincerMessage,
   getAuth,
 } from '@/lib/pincerClient';
-import { listConversations, type Conversation } from '@/lib/api/conversations';
+import {
+  getTranscript,
+  listTranscripts,
+  saveMessages,
+  type ChatTranscript,
+  type StoredChatMessage,
+} from '@/lib/chatTranscripts';
 import { cleanAssistantText, renderAssistantText, renderTextWithLinks } from '@/lib/formatChat';
 
 type ChainStep =
@@ -40,11 +44,12 @@ type ChainStep =
     };
 
 interface ChatMessage {
-  id: number;
+  id: string;
   text: string;
   sender: 'user' | 'assistant';
   timestamp: Date;
-  attachments?: Array<{ name: string; type: string; size: number; url: string }>;
+  // `url` is a blob URL that dies with the page, so stored messages have none.
+  attachments?: Array<{ name: string; type: string; size: number; url?: string }>;
   streaming?: boolean;
   chain?: ChainStep[];
 }
@@ -71,8 +76,11 @@ const AGENTS = [
   { label: 'Maya',  color: '#ede9fe', dot: '#a78bfa' },
 ];
 
+// The sidebar's "Current Chat": a new conversation nothing has been sent in yet.
+const NEW_CHAT = 'current';
+
 const WELCOME_MESSAGE: ChatMessage = {
-  id: 1,
+  id: 'welcome',
   text: "Hello! Welcome to 3days.ai. I'm your AI assistant. Try asking me to help you with tasks like 'Create a marketing plan for my new product' or 'Analyze my sales data'. How can I help you today?",
   sender: 'assistant',
   timestamp: new Date(),
@@ -85,8 +93,11 @@ const Chat = () => {
   const [isListening, setIsListening]     = useState(false);
   const [attachments, setAttachments]     = useState<File[]>([]);
   const [chatHistory, setChatHistory]     = useState<ChatHistory[]>([]);
-  const [currentChatId, setCurrentChatId] = useState<string>('current');
+  const [currentChatId, setCurrentChatId] = useState<string>(NEW_CHAT);
   const [isStreaming, setIsStreaming]     = useState(false);
+  const [loadingChat, setLoadingChat]     = useState(false);
+  const [loadError, setLoadError]         = useState<string | null>(null);
+  const [historyError, setHistoryError]   = useState(false);
   const [pincerOn, setPincerOn]           = useState<boolean>(() => pincerConnected());
   const [showAgentMenu, setShowAgentMenu] = useState(false);
   // Dismissed prompt suggestions survive reloads — "closed" should stay closed.
@@ -120,69 +131,77 @@ const Chat = () => {
   const agentMenuRef   = useRef<HTMLDivElement>(null);
 
   const hasStarted = messages.some(m => m.sender === 'user');
+  // Nothing is sent into a conversation that has not finished opening.
+  const inputBlocked = isStreaming || loadingChat || loadError !== null;
 
-  // Real conversation history from /api/conversations (the memory backend's
-  // stored exchanges). Kept in a ref keyed by id so selecting one renders
-  // instantly without a second request.
-  const convByIdRef = useRef<Map<string, Conversation>>(new Map());
-  const liveMessagesRef = useRef<ChatMessage[] | null>(null);
+  // Transcripts live in this browser (src/lib/chatTranscripts.ts): the
+  // backend keeps single exchanges and a trimmed model context, not threads.
+  // The conversation the person last wrote in — what "Current Chat" opens.
+  const liveChatIdRef = useRef<string>(NEW_CHAT);
+  // Bumped on every switch, so a load that lands after the next one is dropped.
+  const loadSeqRef = useRef(0);
+  const saveFailedRef = useRef(false);
 
-  const refreshHistory = async () => {
-    if (!pincerConnected()) {
+  const ownerId = () => (pincerConnected() ? getAuth()?.userId ?? null : null);
+
+  const refreshHistory = async (): Promise<ChatTranscript[] | null> => {
+    const owner = ownerId();
+    if (!owner) {
       setChatHistory([]);
-      return;
+      return null;
     }
     try {
-      const { conversations } = await listConversations(getAuth()?.userId ?? '', 20);
-      convByIdRef.current = new Map(conversations.map(c => [c.id, c]));
-      setChatHistory(
-        conversations.map(c => {
-          const user = c.messages.find(m => m.role === 'user')?.content ?? c.preview;
-          const assistant = c.messages.find(m => m.role === 'assistant')?.content ?? '';
-          return {
-            id: c.id,
-            title: user.length > 44 ? `${user.slice(0, 44)}…` : user || 'Conversation',
-            lastMessage: assistant.length > 60 ? `${assistant.slice(0, 60)}…` : assistant,
-            timestamp: new Date(c.created_at),
-            messageCount: c.messages.length,
-          };
-        }),
-      );
+      const list = await listTranscripts(owner);
+      setChatHistory(list.map(toHistoryItem));
+      setHistoryError(false);
+      return list;
     } catch {
-      /* history is a nicety — never block the chat on it */
+      setHistoryError(true);
+      return null;
     }
   };
 
-  // Boot: show welcome and, if Pincer is connected, hydrate past thread.
+  const persist = async (convId: string, msgs: ChatMessage[]) => {
+    const owner = ownerId();
+    if (!owner || convId === NEW_CHAT) return;
+    try {
+      await saveMessages(owner, convId, msgs.map(toStored));
+      saveFailedRef.current = false;
+    } catch {
+      if (!saveFailedRef.current) {
+        saveFailedRef.current = true;
+        toast({
+          title: 'Chat not saved',
+          description: 'This browser refused to store the conversation, so it will be incomplete when you reopen it.',
+          variant: 'destructive',
+        });
+      }
+      return;
+    }
+    void refreshHistory();
+  };
+
+  // Boot: show welcome, then reopen the conversation the person left off in.
   useEffect(() => {
     setMessages([WELCOME_MESSAGE]);
-    void refreshHistory();
-
-    if (!pincerConnected()) return;
-
+    const seq = loadSeqRef.current;
     let cancelled = false;
     (async () => {
-      try {
-        const history = await fetchLatestConversation();
-        if (cancelled || !history || history.length === 0) return;
-        const hydrated = mapHistory(history);
-        if (hydrated.length > 0) setMessages(hydrated);
-      } catch (err) {
-        if (err instanceof PincerError && err.status === 401) {
-          setPincerOn(false);
-          toast({
-            title: 'Session expired',
-            description: 'Sign in again to continue.',
-            variant: 'destructive',
-          });
-        }
-      }
+      const list = await refreshHistory();
+      // Someone who already opened or started a chat has moved on.
+      if (cancelled || !list?.length || loadSeqRef.current !== seq) return;
+      const latest = list[0];
+      liveChatIdRef.current = latest.id;
+      setCurrentChatId(latest.id);
+      setMessages(latest.messages.map(fromStored));
     })();
     return () => {
       cancelled = true;
       abortRef.current?.abort();
     };
-  }, [toast]);
+    // Once per mount: later refreshes come from the handlers that change history.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (hasStarted) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -219,17 +238,23 @@ const Chat = () => {
   };
 
   const handleSend = () => {
-    if (isStreaming) return;
+    if (inputBlocked) return;
     if (!message.trim() && attachments.length === 0) return;
 
-    // Typing while viewing a past exchange always continues the live thread.
-    if (currentChatId !== 'current') {
-      setCurrentChatId('current');
-      liveMessagesRef.current = null;
+    // Writing in a conversation continues it; the first message of a new one
+    // gives it the id it is stored under.
+    let convId = currentChatId;
+    if (pincerOn) {
+      if (convId === NEW_CHAT) {
+        convId = crypto.randomUUID();
+        loadSeqRef.current++;
+        setCurrentChatId(convId);
+      }
+      liveChatIdRef.current = convId;
     }
     const atts = attachments.map(f => ({ name: f.name, type: f.type, size: f.size, url: URL.createObjectURL(f) }));
     const userText = message;
-    const userMsg: ChatMessage = { id: messages.length + 1, text: userText, sender: 'user', timestamp: new Date(), attachments: atts.length ? atts : undefined };
+    const userMsg: ChatMessage = { id: crypto.randomUUID(), text: userText, sender: 'user', timestamp: new Date(), attachments: atts.length ? atts : undefined };
     setMessages(p => [...p, userMsg]);
     setMessage('');
     setAttachments([]);
@@ -237,14 +262,15 @@ const Chat = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
 
     if (pincerOn) {
-      void dispatchToPincer(userText);
+      void persist(convId, [userMsg]);
+      void dispatchToPincer(convId, userText);
     } else {
       // No backend, no answer. The old fallback echoed the question back as if
       // the agent had replied, which reads as a working assistant and is not.
       setMessages(p => [
         ...p,
         {
-          id: Date.now(),
+          id: crypto.randomUUID(),
           text: 'Not connected to a Pincer backend — nothing was sent and there is no reply.',
           sender: 'assistant',
           timestamp: new Date(),
@@ -257,12 +283,13 @@ const Chat = () => {
   // assistant bubble. Tool starts/dones and approval requests are merged
   // into a single `chain` timeline on that bubble so the user sees one
   // vertical sequence of steps. Falls back to POST /api/chat/message on
-  // stream failure.
-  const dispatchToPincer = async (userText: string) => {
-    const assistantId = Date.now();
+  // stream failure. Only the settled reply is stored, once, under `convId`.
+  const dispatchToPincer = async (convId: string, userText: string) => {
+    const assistantId = crypto.randomUUID();
+    const startedAt = new Date();
     setMessages(p => [
       ...p,
-      { id: assistantId, text: '', sender: 'assistant', timestamp: new Date(), streaming: true },
+      { id: assistantId, text: '', sender: 'assistant', timestamp: startedAt, streaming: true },
     ]);
 
     const controller = new AbortController();
@@ -270,7 +297,9 @@ const Chat = () => {
     abortRef.current = controller;
     setIsStreaming(true);
 
+    let streamed = '';
     const appendDelta = (delta: string) => {
+      streamed += delta;
       setMessages(p =>
         p.map(m => (m.id === assistantId ? { ...m, text: m.text + delta } : m)),
       );
@@ -282,15 +311,16 @@ const Chat = () => {
         ),
       );
     };
-    const finish = (finalText?: string) => {
+    const settle = (text: string) => {
       setMessages(p =>
-        p.map(m =>
-          m.id === assistantId
-            ? { ...m, text: finalText && finalText.length > m.text.length ? finalText : m.text, streaming: false }
-            : m,
-        ),
+        p.map(m => (m.id === assistantId ? { ...m, text, streaming: false } : m)),
       );
+      if (text) {
+        void persist(convId, [{ id: assistantId, text, sender: 'assistant', timestamp: startedAt }]);
+      }
     };
+    const finish = (finalText?: string) =>
+      settle(finalText && finalText.length > streamed.length ? finalText : streamed);
 
     try {
       let gotChunk = false;
@@ -358,9 +388,7 @@ const Chat = () => {
       // Fall back to the non-streaming endpoint so the user still gets a reply.
       try {
         const { reply } = await sendChat(userText);
-        setMessages(p =>
-          p.map(m => (m.id === assistantId ? { ...m, text: reply, streaming: false } : m)),
-        );
+        settle(reply);
       } catch (fallbackErr) {
         const msg =
           fallbackErr instanceof PincerError
@@ -368,22 +396,15 @@ const Chat = () => {
             : streamErr instanceof Error
               ? streamErr.message
               : 'Unknown error';
-        setMessages(p =>
-          p.map(m =>
-            m.id === assistantId
-              ? { ...m, text: `⚠️ ${msg}`, streaming: false }
-              : m,
-          ),
-        );
+        settle(`⚠️ ${msg}`);
         if (fallbackErr instanceof PincerError && fallbackErr.status === 401) {
           setPincerOn(false);
         }
       }
     } finally {
       setIsStreaming(false);
-      abortRef.current = null;
-      // The finished exchange is now in memory — pick it up for the sidebar.
-      void refreshHistory();
+      // A newer turn may already own the ref; only clear our own controller.
+      if (abortRef.current === controller) abortRef.current = null;
     }
   };
 
@@ -391,7 +412,7 @@ const Chat = () => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  const handleApproval = async (msgId: number, approvalId: string, approved: boolean) => {
+  const handleApproval = async (msgId: string, approvalId: string, approved: boolean) => {
     const setDecision = (decision: 'approved' | 'denied' | 'error', error?: string) => {
       setMessages(p =>
         p.map(m => {
@@ -418,37 +439,48 @@ const Chat = () => {
     }
   };
 
+  const showNewChat = () => {
+    setCurrentChatId(NEW_CHAT);
+    setLoadingChat(false);
+    setLoadError(null);
+    setMessages([WELCOME_MESSAGE]);
+  };
+
   const startNewChat = () => {
     abortRef.current?.abort();
     if (pincerOn) resetUserId();
-    liveMessagesRef.current = null;
-    setCurrentChatId('current');
-    setMessages([WELCOME_MESSAGE]);
+    loadSeqRef.current++;
+    liveChatIdRef.current = NEW_CHAT;
+    showNewChat();
     void refreshHistory();
   };
 
-  const selectChat = (id: string) => {
-    if (id === currentChatId) return;
-    if (id === 'current') {
-      setCurrentChatId('current');
-      setMessages(liveMessagesRef.current ?? [WELCOME_MESSAGE]);
-      liveMessagesRef.current = null;
+  // Switching stops a reply still streaming (what arrived is kept) and always
+  // reads the whole transcript from the store, never a cached copy.
+  const selectChat = async (id: string) => {
+    const target = id === NEW_CHAT ? liveChatIdRef.current : id;
+    if (target === currentChatId && !loadError) return;
+    abortRef.current?.abort();
+    const seq = ++loadSeqRef.current;
+    if (target === NEW_CHAT) {
+      showNewChat();
       return;
     }
-    const conv = convByIdRef.current.get(id);
-    if (!conv) return;
-    // Park the live thread so "Current chat" restores it untouched.
-    if (currentChatId === 'current') liveMessagesRef.current = messages;
-    setCurrentChatId(id);
-    const at = new Date(conv.created_at);
-    setMessages(
-      conv.messages.map((m, i) => ({
-        id: i + 1,
-        text: m.content,
-        sender: m.role === 'assistant' ? ('assistant' as const) : ('user' as const),
-        timestamp: at,
-      })),
-    );
+    setCurrentChatId(target);
+    setLoadError(null);
+    setLoadingChat(true);
+    setMessages([]);
+    try {
+      const owner = ownerId();
+      const transcript = owner ? await getTranscript(owner, target) : null;
+      if (seq !== loadSeqRef.current) return;
+      if (!transcript) throw new Error('Conversation not found');
+      setMessages(transcript.messages.map(fromStored));
+    } catch {
+      if (seq === loadSeqRef.current) setLoadError(target);
+    } finally {
+      if (seq === loadSeqRef.current) setLoadingChat(false);
+    }
   };
 
   const getFileIcon = (type: string) => type.startsWith('image/') ? Image : FileText;
@@ -522,7 +554,7 @@ const Chat = () => {
           onKeyDown={handleKeyDown}
           placeholder={isStreaming ? 'Generating reply…' : 'Message AI assistant… (Shift+Enter for new line)'}
           rows={1}
-          disabled={isStreaming}
+          disabled={inputBlocked}
           className="w-full resize-none bg-transparent text-base text-gray-800 placeholder-gray-400 px-5 pt-5 pb-2 focus:outline-none leading-relaxed disabled:opacity-60"
           style={{ minHeight: '88px', maxHeight: '240px' }}
         />
@@ -542,9 +574,9 @@ const Chat = () => {
             </button>
             <button
               onClick={handleSend}
-              disabled={isStreaming || (!message.trim() && attachments.length === 0)}
+              disabled={inputBlocked || (!message.trim() && attachments.length === 0)}
               className={`flex items-center justify-center h-9 w-9 rounded-full transition-all duration-150 ${
-                !isStreaming && (message.trim() || attachments.length > 0)
+                !inputBlocked && (message.trim() || attachments.length > 0)
                   ? 'bg-[#14161a] text-white hover:opacity-85'
                   : 'bg-gray-100 text-gray-300 cursor-not-allowed'
               }`}
@@ -588,7 +620,17 @@ const Chat = () => {
         {/* ────────────── Main chat column ────────────── */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
 
-          {!hasStarted ? (
+          {historyError && (
+            <div role="alert" className="flex items-center justify-center gap-2 px-4 py-2 text-xs text-red-600 bg-red-50 border-b border-red-100">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              <span>Could not load your saved chats from this browser.</span>
+              <button type="button" onClick={() => void refreshHistory()} className="font-medium underline">
+                Retry
+              </button>
+            </div>
+          )}
+
+          {!hasStarted && !loadingChat && loadError === null ? (
             /* ── Empty / welcome state ── */
             <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto px-6 py-16">
               <div className="w-full max-w-2xl flex flex-col items-center gap-8">
@@ -684,6 +726,21 @@ const Chat = () => {
               {/* Messages */}
               <div className="flex-1 overflow-y-auto">
                 <div className="max-w-2xl mx-auto py-10 px-4 space-y-8">
+                  {loadError !== null && (
+                    <div role="alert" className="flex flex-col items-center gap-2 py-10 text-sm text-gray-600">
+                      <AlertCircle className="h-5 w-5 text-red-400" />
+                      <span>This conversation could not be loaded, so nothing of it is shown.</span>
+                      <button type="button" onClick={() => void selectChat(loadError)} className="plat-btn-ghost !h-8">
+                        Try again
+                      </button>
+                    </div>
+                  )}
+                  {loadingChat && (
+                    <div className="flex items-center justify-center gap-2 py-10 text-sm text-gray-400">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Loading conversation…</span>
+                    </div>
+                  )}
                   {messages.map(msg => (
                     <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
                       {/* Content */}
@@ -778,9 +835,9 @@ function ChainTimeline({
   onDecide,
 }: {
   steps: ChainStep[];
-  msgId: number;
+  msgId: string;
   streaming: boolean;
-  onDecide: (msgId: number, approvalId: string, approved: boolean) => void;
+  onDecide: (msgId: string, approvalId: string, approved: boolean) => void;
 }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2.5">
@@ -810,8 +867,8 @@ function ChainRow({
   step: ChainStep;
   isLast: boolean;
   streaming: boolean;
-  msgId: number;
-  onDecide: (msgId: number, approvalId: string, approved: boolean) => void;
+  msgId: string;
+  onDecide: (msgId: string, approvalId: string, approved: boolean) => void;
 }) {
   // Active = the latest in-flight thing the agent is doing right now; this
   // controls the dot accent so the chain reads like a progress indicator.
@@ -902,8 +959,8 @@ function ApprovalStepBody({
   onDecide,
 }: {
   step: Extract<ChainStep, { kind: 'approval' }>;
-  msgId: number;
-  onDecide: (msgId: number, approvalId: string, approved: boolean) => void;
+  msgId: string;
+  onDecide: (msgId: string, approvalId: string, approved: boolean) => void;
 }) {
   if (step.decision === 'approved' || step.decision === 'denied') {
     const approved = step.decision === 'approved';
@@ -954,21 +1011,36 @@ function ApprovalStepBody({
   );
 }
 
-// Turn Pincer's stored message log into local ChatMessage bubbles.
-function mapHistory(history: PincerMessage[]): ChatMessage[] {
-  const out: ChatMessage[] = [];
-  let counter = 1;
-  for (const m of history) {
-    if (m.role !== 'user' && m.role !== 'assistant') continue;
-    if (!m.content || !m.content.trim()) continue;
-    out.push({
-      id: counter++,
-      text: m.content,
-      sender: m.role,
-      timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
-    });
-  }
-  return out;
+function toStored(m: ChatMessage): StoredChatMessage {
+  return {
+    id: m.id,
+    role: m.sender,
+    text: m.text,
+    at: m.timestamp.toISOString(),
+    attachments: m.attachments?.map(({ name, type, size }) => ({ name, type, size })),
+  };
+}
+
+function fromStored(m: StoredChatMessage): ChatMessage {
+  return {
+    id: m.id,
+    text: m.text,
+    sender: m.role,
+    timestamp: new Date(m.at),
+    attachments: m.attachments?.map(a => ({ ...a })),
+  };
+}
+
+function toHistoryItem(t: ChatTranscript): ChatHistory {
+  const user = t.messages.find(m => m.role === 'user')?.text ?? '';
+  const assistant = [...t.messages].reverse().find(m => m.role === 'assistant')?.text ?? '';
+  return {
+    id: t.id,
+    title: user.length > 44 ? `${user.slice(0, 44)}…` : user || 'Conversation',
+    lastMessage: assistant.length > 60 ? `${assistant.slice(0, 60)}…` : assistant,
+    timestamp: new Date(t.updatedAt),
+    messageCount: t.messages.length,
+  };
 }
 
 export default Chat;
