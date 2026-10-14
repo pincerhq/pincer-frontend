@@ -48,7 +48,7 @@ export default function TelephonyHome() {
   // it is mounted outside the telephony layout rather than nested inside it.
   if (path === ROUTES.ASSISTANT) {
     return (
-      <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-gray-400" />}>
+      <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-[var(--text-5)]" />}>
         <ChatPage />
       </Suspense>
     );
