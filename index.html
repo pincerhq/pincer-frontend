@@ -4,6 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>3Days.ai</title>
+    <!-- Applies the theme before first paint, so a dark reload never flashes white.
+         Must resolve exactly as src/contexts/ThemeContext.tsx does: stored choice, else the OS. -->
+    <script data-theme-bootstrap>
+      (function () {
+        var theme = 'system';
+        try {
+          var stored = localStorage.getItem('theme');
+          if (stored === 'light' || stored === 'dark' || stored === 'system') theme = stored;
+        } catch (e) {}
+        var dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var root = document.documentElement;
+        root.classList.toggle('dark', dark);
+        root.style.colorScheme = dark ? 'dark' : 'light';
+      })();
+    </script>
     <meta name="description" content="AI employees that take on the repeatable work — reclaim three workdays a week." />
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
