@@ -177,10 +177,10 @@ export default function BrainSearchView() {
                           <span className="text-xs text-[var(--text-5)]">—</span>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100">
+                            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[color:var(--sand)]">
                               <div className="h-full rounded-full bg-[#5aacee]" style={{ width: `${pct}%` }} />
                             </div>
-                            <span className="font-mono text-[10px] text-gray-500">
+                            <span className="font-mono text-[10px] text-[color:var(--text-3)]">
                               {r.distance!.toFixed(3)}
                             </span>
                           </div>
