@@ -342,7 +342,7 @@ function AgentCard() {
 function QuickActions() {
   const navigate = useNavigate();
   const actions = [
-    { label: 'Open Chat', sub: 'Talk to your agents', icon: MessageSquare, onClick: () => navigate('/chat') },
+    { label: 'Open Chat', sub: 'Talk to your agent', icon: MessageSquare, onClick: () => navigate('/chat') },
     { label: 'Voice Calls', sub: 'Start or schedule calls', icon: Phone, onClick: () => navigate('/telephony') },
   ];
   return (
@@ -445,7 +445,7 @@ const Dashboard = () => {
                   <div>
                     <p className="plat-crumb">3days.dashboard</p>
                     <p className="mt-1 text-sm" style={{ color: 'var(--text-4)' }}>
-                      What your AI workforce is doing, at a glance
+                      What your agent is doing, at a glance
                     </p>
                   </div>
                 </div>

@@ -86,8 +86,8 @@ const Login = () => {
             An AI workforce that starts before you do
           </h1>
           <p className="mt-8 max-w-md text-[17px] leading-relaxed text-[color:var(--text-3)]">
-            Sign in to review what your AI employees handled, approve what needs a human,
-            and see the hours they gave back this week.
+            Sign in to chat with your Pincer agent, see what it handled on calls and tasks, and
+            approve anything that needs you.
           </p>
         </div>
 

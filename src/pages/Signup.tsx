@@ -74,7 +74,7 @@ const Signup = () => {
 
         <div className="py-14 lg:py-0">
           <h1 className="max-w-[13ch] text-[clamp(2.4rem,4.6vw,4.1rem)] text-[color:var(--ink)]">
-            Put your first AI employee to work today
+            Put your Pincer agent to work today
           </h1>
           <p className="mt-8 max-w-md text-[17px] leading-relaxed text-[color:var(--text-3)]">
             Tell us who you are and we'll pass the request to whoever runs your 3Days instance.

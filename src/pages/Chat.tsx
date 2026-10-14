@@ -611,7 +611,7 @@ const ChatInner = () => {
                 <div className="flex flex-col items-center gap-3 text-center">
                   <p className="plat-crumb">3days.chat</p>
                   <h1 className="text-[2rem] text-[color:var(--ink)]">How can I help you today?</h1>
-                  <p className="text-sm text-[color:var(--text-3)]">Chat with your AI employees or ask anything</p>
+                  <p className="text-sm text-[color:var(--text-3)]">Chat with your Pincer agent or ask anything</p>
                   {pincerBadge}
                 </div>
 

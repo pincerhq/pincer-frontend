@@ -64,7 +64,7 @@ const ForgotPassword = () => {
           </h1>
           <p className="mt-8 max-w-md text-[17px] leading-relaxed text-[color:var(--text-3)]">
             Tell us the address on your account and we'll pass the request to whoever runs your
-            3Days instance. Your AI employees keep working in the meantime.
+            3Days instance. Your agent keeps working in the meantime.
           </p>
         </div>
 
