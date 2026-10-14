@@ -17,6 +17,7 @@ import { Link } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
+import { MobileMenuBar } from '@/components/dashboard/MobileMenuBar';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -780,6 +781,7 @@ const TasksInner = () => {
         <div className="flex w-full flex-1">
           <AppSidebar />
           <SidebarInset className="flex flex-1 flex-col bg-transparent">
+            <MobileMenuBar />
             <main className="mx-auto w-full max-w-6xl flex-1 p-6 pb-20 lg:p-8">
               <div className="mb-6 flex items-center justify-between">
                 <div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
+import { MobileMenuBar } from '@/components/dashboard/MobileMenuBar';
 import {
   Send, Mic,
   Paperclip, X, FileText, Image, Plus, Link2, Unlink, WifiOff,
@@ -599,6 +600,7 @@ const ChatInner = () => {
 
         {/* ────────────── Main chat column ────────────── */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <MobileMenuBar />
 
           {!hasStarted ? (
             /* ── Empty / welcome state ── */

@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
+import { MobileMenuBar } from '@/components/dashboard/MobileMenuBar';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { queryClient } from '@/lib/queryClient';
 import { isConnected } from '@/lib/pincerClient';
@@ -391,6 +392,7 @@ const IntegrationsInner = () => {
         <div className="flex w-full flex-1">
           <AppSidebar />
           <SidebarInset className="flex flex-1 flex-col bg-transparent">
+            <MobileMenuBar />
             <main className="mx-auto w-full max-w-5xl flex-1 p-6 lg:p-8">
               <div className="mb-8 flex items-start justify-between gap-4">
                 <div>

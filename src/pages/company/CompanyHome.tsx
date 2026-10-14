@@ -15,6 +15,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
+import { MobileMenuBar } from '@/components/dashboard/MobileMenuBar';
 import {
   Brain,
   Database,
@@ -113,6 +114,7 @@ const CompanyHomeInner = () => {
         <div className="flex min-h-0 w-full flex-1 overflow-hidden">
           <AppSidebar />
           <SidebarInset className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
+            <MobileMenuBar />
             <div className="flex min-h-0 flex-1 overflow-hidden">
               <CompanyRail />
               <div className="flex min-h-0 flex-1 overflow-hidden">{renderView()}</div>
