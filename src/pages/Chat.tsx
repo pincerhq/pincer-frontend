@@ -3,7 +3,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import {
-  Send, Mic, MicOff,
+  Send, Mic,
   Paperclip, X, FileText, Image, Plus, Link2, Unlink, WifiOff,
   ShieldAlert, Check, AlertCircle, Loader2, Wrench,
   Megaphone, BarChart3, CalendarRange, Wallet,
@@ -27,6 +27,7 @@ import { useHealth } from '@/lib/capabilities';
 import { pincerBadgeState, useRetryCountdown, type PincerBadge } from '@/lib/pincerReachability';
 import { queryClient } from '@/lib/queryClient';
 import { useDictation } from '@/lib/dictation';
+import { VoiceBars } from '@/components/VoiceBars';
 import i18n from '@/i18n';
 
 type ChainStep =
@@ -539,7 +540,7 @@ const ChatInner = () => {
                     : 'text-[color:var(--text-5)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--sand)]'
                 }`}
               >
-                {dictation.listening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                {dictation.listening ? <VoiceBars /> : <Mic className="h-5 w-5" />}
               </button>
             )}
             <button
