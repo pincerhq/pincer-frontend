@@ -164,8 +164,8 @@ export function DataTable<Row>({
                       aria-selected={clickable ? active : undefined}
                       className={cn(
                         "border-b border-[var(--line-soft)] last:border-b-0",
-                        clickable && "cursor-pointer hover:bg-[rgba(20,22,26,0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--brand)]",
-                        active && "bg-[rgba(20,22,26,0.05)]",
+                        clickable && "cursor-pointer hover:bg-[color-mix(in_srgb,var(--ink)_3%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--brand)]",
+                        active && "bg-[color-mix(in_srgb,var(--ink)_5%,transparent)]",
                       )}
                     >
                       {columns.map((col) => (

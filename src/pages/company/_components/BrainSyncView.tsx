@@ -55,7 +55,7 @@ export default function BrainSyncView() {
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
-          <Card className="rounded-[14px] border-[var(--line-soft)] bg-white p-5 shadow-none lg:col-span-2">
+          <Card className="rounded-[14px] border-[var(--line-soft)] bg-[color:var(--paper)] p-5 shadow-none lg:col-span-2">
             <p className="plat-eyebrow mb-2.5 flex items-center gap-1.5">
               <TerminalSquare className="h-3.5 w-3.5" />
               sync_status {checkedAt && <span className="normal-case text-[var(--text-5)]">· checked {checkedAt}</span>}
@@ -74,7 +74,7 @@ export default function BrainSyncView() {
             )}
           </Card>
 
-          <Card className="rounded-[14px] border-[var(--line-soft)] bg-white p-5 shadow-none">
+          <Card className="rounded-[14px] border-[var(--line-soft)] bg-[color:var(--paper)] p-5 shadow-none">
             <p className="plat-eyebrow mb-3">How sync works</p>
             <div className="space-y-2 text-xs leading-relaxed text-[var(--text-2)]">
               <p>· Initial full scan on startup, then a diff of the documents folder every <span style={{ fontFamily: 'var(--mono)' }}>30s</span>.</p>

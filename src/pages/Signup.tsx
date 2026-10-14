@@ -60,7 +60,7 @@ const Signup = () => {
   };
 
   const inputCls =
-    'h-11 rounded-[10px] border-[color:var(--line)] bg-white text-[color:var(--ink)] placeholder:text-[color:var(--text-5)]';
+    'h-11 rounded-[10px] border-[color:var(--line)] bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--text-5)]';
   const labelCls = 'text-[13px] font-medium text-[color:var(--text-2)]';
 
   return (
@@ -90,7 +90,7 @@ const Signup = () => {
       {/* ── Right: the form, floating on the brand panel ── */}
       <div className="p-4 lg:py-6 lg:pr-6">
         <div className="m-auth-art flex min-h-[560px] items-center justify-center p-6 lg:min-h-full">
-          <div className="relative z-10 w-full max-w-[420px] rounded-[20px] bg-white p-7 shadow-[0_30px_60px_-32px_rgba(10,16,60,0.55)] sm:p-9">
+          <div className="relative z-10 w-full max-w-[420px] rounded-[20px] bg-[color:var(--paper)] p-7 shadow-[0_30px_60px_-32px_rgba(10,16,60,0.55)] sm:p-9">
             {submitted ? (
               <div className="text-center">
                 <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-[14px] bg-[color:var(--sand)]">
@@ -179,7 +179,7 @@ const Signup = () => {
 
               <button
                 type="submit"
-                className="mt-1 h-11 w-full rounded-full bg-[color:var(--ink)] text-[15px] font-semibold text-white transition-opacity hover:opacity-85"
+                className="mt-1 h-11 w-full rounded-full bg-[color:var(--ink)] text-[15px] font-semibold text-[color:var(--on-ink)] transition-opacity hover:opacity-85"
               >
                 Send access request
               </button>

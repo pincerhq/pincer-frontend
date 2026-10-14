@@ -86,7 +86,7 @@ function CommandRow({ command }: { command: string }) {
           setTimeout(() => setCopied(false), 1500);
           toast({ title: 'Command copied', description: 'Run it where the agent is installed.' });
         }}
-        className="shrink-0 rounded-md p-1 transition-colors hover:bg-[rgba(20,22,26,0.06)]"
+        className="shrink-0 rounded-md p-1 transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
         style={{ color: copied ? 'var(--ok-fg)' : 'var(--text-4)' }}
         aria-label="Copy command"
       >

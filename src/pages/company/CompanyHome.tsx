@@ -63,8 +63,8 @@ function CompanyRail() {
                 className={cn(
                   'flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2 text-left text-[13.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink)]/25',
                   active
-                    ? 'bg-[rgba(20,22,26,0.07)] font-semibold text-[var(--ink)]'
-                    : 'font-medium text-[var(--text-2)] hover:bg-[rgba(20,22,26,0.04)] hover:text-[var(--ink)]',
+                    ? 'bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] font-semibold text-[var(--ink)]'
+                    : 'font-medium text-[var(--text-2)] hover:bg-[color-mix(in_srgb,var(--ink)_4%,transparent)] hover:text-[var(--ink)]',
                 )}
               >
                 <Icon className={cn('h-4 w-4', active ? 'text-[var(--ink)]' : 'text-[var(--text-4)]')} />
