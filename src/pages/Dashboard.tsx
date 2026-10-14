@@ -24,10 +24,9 @@
  * workforce/teams API, so its headcount and productivity figures were demo
  * numbers with nothing behind them.
  */
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   ArrowUpRight,
-  Bot,
   CalendarClock,
   Check,
   CircleAlert,
@@ -35,14 +34,12 @@ import {
   MessageSquare,
   Phone,
   Plug,
-  Plus,
   Sparkles,
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
-import CreateAgentWizard from '@/components/dashboard/CreateAgentWizard';
 import { queryClient } from '@/lib/queryClient';
 import { isConnected } from '@/lib/pincerClient';
 import {
@@ -333,10 +330,9 @@ function AgentCard() {
 }
 
 /** Squircle-icon list rows, straight from the reference nav screen. */
-function QuickActions({ onDeploy }: { onDeploy: () => void }) {
+function QuickActions() {
   const navigate = useNavigate();
   const actions = [
-    { label: 'Create AI Worker', sub: 'Deploy a new agent', icon: Bot, onClick: onDeploy },
     { label: 'Open Chat', sub: 'Talk to your agents', icon: MessageSquare, onClick: () => navigate('/chat') },
     { label: 'Voice Calls', sub: 'Start or schedule calls', icon: Phone, onClick: () => navigate('/telephony') },
   ];
@@ -419,7 +415,6 @@ function AutomationCard() {
 // ── Page ─────────────────────────────────────────────────────────────
 
 const Dashboard = () => {
-  const [wizardOpen, setWizardOpen] = useState(false);
   const connected = isConnected();
   const activityDetail = useDetail(
     'Activity',
@@ -443,10 +438,6 @@ const Dashboard = () => {
                       What your AI workforce is doing, at a glance
                     </p>
                   </div>
-                  <button type="button" onClick={() => setWizardOpen(true)} className="plat-btn">
-                    <Plus className="h-4 w-4" />
-                    Deploy Agent
-                  </button>
                 </div>
 
                 {!connected && <ConnectStrip />}
@@ -475,7 +466,7 @@ const Dashboard = () => {
                       <SectionHeader label="Your agent" />
                       <div className="space-y-4">
                         <AgentCard />
-                        <QuickActions onDeploy={() => setWizardOpen(true)} />
+                        <QuickActions />
                         <AutomationCard />
                       </div>
                     </section>
@@ -489,11 +480,6 @@ const Dashboard = () => {
             </SidebarInset>
           </div>
         </SidebarProvider>
-        <CreateAgentWizard
-          open={wizardOpen}
-          onClose={() => setWizardOpen(false)}
-          onComplete={() => setWizardOpen(false)}
-        />
       </div>
     </QueryClientProvider>
   );

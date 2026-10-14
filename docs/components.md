@@ -33,7 +33,6 @@ src/components/
 |-----------|-------------|
 | `AppSidebar.tsx` | Main sidebar navigation for the authenticated dashboard |
 | `AgentsNavbar.tsx` | Top navbar within the Agents section |
-| `CreateAgentWizard.tsx` | Multi-step wizard for creating AI agents |
 | `AIEmployeeConnections.tsx` | Graph/network view of AI agent relationships |
 | `EnhancedActivityLog.tsx` | Detailed, filterable activity feed |
 | `MetricCard.tsx` | Single KPI metric display card |
