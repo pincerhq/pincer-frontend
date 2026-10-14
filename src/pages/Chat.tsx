@@ -13,7 +13,6 @@ import {
   isConnected as pincerConnected,
   streamChat,
   sendChat,
-  resetUserId,
   respondApproval,
   PincerError,
   getAuth,
@@ -324,7 +323,7 @@ const Chat = () => {
 
     try {
       let gotChunk = false;
-      for await (const ev of streamChat(userText, controller.signal)) {
+      for await (const ev of streamChat(userText, controller.signal, convId)) {
         if (ev.event === 'chunk') {
           gotChunk = true;
           appendDelta(ev.data.delta);
@@ -387,7 +386,7 @@ const Chat = () => {
       }
       // Fall back to the non-streaming endpoint so the user still gets a reply.
       try {
-        const { reply } = await sendChat(userText);
+        const { reply } = await sendChat(userText, convId);
         settle(reply);
       } catch (fallbackErr) {
         const msg =
@@ -448,7 +447,6 @@ const Chat = () => {
 
   const startNewChat = () => {
     abortRef.current?.abort();
-    if (pincerOn) resetUserId();
     loadSeqRef.current++;
     liveChatIdRef.current = NEW_CHAT;
     showNewChat();

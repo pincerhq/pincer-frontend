@@ -541,12 +541,11 @@ export function useLiveCallDetail(callSid: string | null) {
 /**
  * Ask the agent for a call summary WITHOUT touching the user's chat thread.
  *
- * /api/chat/message is stateful per X-Pincer-User: sent as the browser's own
- * user, the agent answers inside the ongoing conversation (memory and all) —
- * which produced replies about *previous* chat context instead of the
- * transcript. So summaries run under a dedicated per-browser summarizer
- * identity: clean context in, and the exchange is stored under that side
- * identity instead of polluting the user's history.
+ * /api/chat/message is stateful per conversation: in the user's own chat, the
+ * agent answers inside the ongoing conversation (memory and all) — which
+ * produced replies about *previous* chat context instead of the transcript.
+ * So summaries run in a dedicated per-browser summarizer conversation: clean
+ * context in, and the exchange stays out of the user's chat.
  */
 const SUMMARIZER_ID_KEY = "pincer.web.summarizerId";
 
@@ -568,11 +567,8 @@ export async function generateCallSummary(transcript: string): Promise<string> {
 
   const res = await authedFetch("/api/chat/message", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Pincer-User": `call-summarizer-${sid}`,
-    },
-    body: JSON.stringify({ text: prompt }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: prompt, conversation_id: sid }),
   });
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
