@@ -211,7 +211,7 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
                 <button
                   onClick={onNewChat}
                   title="New chat"
-                  className="flex items-center justify-center h-5 w-5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                  className="flex items-center justify-center h-5 w-5 rounded text-[color:var(--text-5)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--sand)] transition-colors"
                 >
                   <Pencil className="h-3 w-3" />
                 </button>
@@ -220,7 +220,7 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
             <SidebarGroupContent className="flex-1 min-h-0">
               <ScrollArea className="h-full max-h-64">
                 <div className="px-1 space-y-0.5">
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 pt-1 pb-1.5">Today</p>
+                  <p className="text-[10px] font-semibold text-[color:var(--text-5)] uppercase tracking-widest px-2 pt-1 pb-1.5">Today</p>
                   <button
                     onClick={() => onSelectChat?.('current')}
                     className={`w-full text-left px-2 py-1.5 rounded-md transition-colors text-xs flex items-center gap-1.5 ${
@@ -235,7 +235,7 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
 
                   {chatHistory && chatHistory.length > 0 && (
                     <>
-                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 pt-3 pb-1">Earlier</p>
+                      <p className="text-[10px] font-semibold text-[color:var(--text-5)] uppercase tracking-widest px-2 pt-3 pb-1">Earlier</p>
                       {chatHistory.map(chat => (
                         <button
                           key={chat.id}
@@ -270,7 +270,7 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
                   </AvatarFallback>
                 </Avatar>
                 {state === "expanded" && (
-                  <span className="text-sm text-gray-700 truncate max-w-[120px]">{userLabel}</span>
+                  <span className="text-sm text-[color:var(--text-1)] truncate max-w-[120px]">{userLabel}</span>
                 )}
               </Button>
             </DropdownMenuTrigger>
@@ -283,7 +283,7 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
                 <DropdownMenuSubTrigger className="flex items-center space-x-2 cursor-pointer">
                   <Globe className="h-4 w-4" />
                   <span>Language</span>
-                  <span className="ml-auto text-xs text-gray-400 mr-1">
+                  <span className="ml-auto text-xs text-[color:var(--text-5)] mr-1">
                     {languages.find(l => l.code === selectedLanguage)?.label}
                   </span>
                 </DropdownMenuSubTrigger>

@@ -157,7 +157,7 @@ function renderInline(line: string, keyPrefix: string): React.ReactNode[] {
         out.push(
           <code
             key={`${keyPrefix}-c-${key++}`}
-            className="px-1 py-0.5 rounded bg-gray-100 text-[0.85em] font-mono text-gray-800"
+            className="px-1 py-0.5 rounded bg-[color:var(--sand)] text-[0.85em] font-mono text-[color:var(--ink)]"
           >
             {line.slice(i + 1, end)}
           </code>,
@@ -203,7 +203,7 @@ function renderInline(line: string, keyPrefix: string): React.ReactNode[] {
               href={line.slice(closeBracket + 2, closeParen)}
               target="_blank"
               rel="noreferrer"
-              className="text-blue-600 hover:underline break-all"
+              className="text-[color:var(--brand)] hover:underline break-all"
             >
               {line.slice(i + 1, closeBracket)}
             </a>,
@@ -224,7 +224,7 @@ function renderInline(line: string, keyPrefix: string): React.ReactNode[] {
             href={matched.url.replace(/\s+/g, '%20')}
             target="_blank"
             rel="noreferrer"
-            className="text-blue-600 hover:underline break-all"
+            className="text-[color:var(--brand)] hover:underline break-all"
           >
             {matched.url}
           </a>,
@@ -266,6 +266,7 @@ export function renderAssistantText(raw: string): React.ReactNode {
         i++;
       }
       if (i < lines.length) i++;
+      // Theme exception: fenced code stays a dark surface in both themes.
       blocks.push(
         <pre
           key={`b-${bk++}`}
@@ -282,10 +283,10 @@ export function renderAssistantText(raw: string): React.ReactNode {
       const level = heading[1].length;
       const cls =
         level === 1
-          ? 'text-base font-semibold mt-3 mb-1 text-gray-900'
+          ? 'text-base font-semibold mt-3 mb-1 text-[color:var(--ink)]'
           : level === 2
-            ? 'text-sm font-semibold mt-2.5 mb-1 text-gray-900'
-            : 'text-sm font-medium mt-2 mb-0.5 text-gray-800';
+            ? 'text-sm font-semibold mt-2.5 mb-1 text-[color:var(--ink)]'
+            : 'text-sm font-medium mt-2 mb-0.5 text-[color:var(--ink)]';
       const Tag = (level === 1 ? 'h2' : level === 2 ? 'h3' : 'h4') as 'h2' | 'h3' | 'h4';
       blocks.push(
         <Tag key={`b-${bk++}`} className={cls}>
@@ -409,7 +410,7 @@ function linkifyPlain(line: string, keyPrefix: string): React.ReactNode[] {
             href={matched.url.replace(/\s+/g, '%20')}
             target="_blank"
             rel="noreferrer"
-            className="text-blue-700 hover:underline break-all"
+            className="text-[color:var(--brand)] hover:underline break-all"
           >
             {matched.url}
           </a>,

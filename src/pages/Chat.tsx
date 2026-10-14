@@ -64,6 +64,8 @@ const SUGGESTIONS = [
   { title: 'Prepare a budget overview', sub: 'for Q2 planning session',          icon: Wallet        },
 ];
 
+// Theme exception: categorical identity colours, one per agent — not chrome, so
+// they are not theme tokens. Check their contrast in dark mode (slice 11).
 const AGENTS = [
   { label: 'Emma',  color: '#fce7f3', dot: '#f472b6' },
   { label: 'Aria',  color: '#dbeafe', dot: '#60a5fa' },
@@ -462,8 +464,8 @@ const Chat = () => {
         onClick={() => setShowAgentMenu(p => !p)}
         className={`flex items-center gap-1 h-9 px-2 rounded-lg transition-colors ${
           showAgentMenu
-            ? 'bg-gray-100 text-gray-700'
-            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+            ? 'bg-[color:var(--sand)] text-[color:var(--text-1)]'
+            : 'text-[color:var(--text-5)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--sand)]'
         }`}
         title="Mention an agent"
       >
@@ -471,7 +473,7 @@ const Chat = () => {
         <ChevronDown className="h-3 w-3" />
       </button>
       {showAgentMenu && (
-        <div className="absolute bottom-full right-0 mb-2 min-w-[170px] rounded-xl border border-gray-200 bg-[color:var(--paper)] shadow-lg py-1 z-20">
+        <div className="absolute bottom-full right-0 mb-2 min-w-[170px] rounded-xl border border-[color:var(--line)] bg-[color:var(--paper)] shadow-lg py-1 z-20">
           <div className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
             Demo roster — inserts text only
           </div>
@@ -480,7 +482,7 @@ const Chat = () => {
               key={a.label}
               type="button"
               onClick={() => pickAgent(a.label)}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs font-medium text-[color:var(--text-1)] hover:bg-[color:var(--sand)] transition-colors"
             >
               <span className="h-2 w-2 rounded-full" style={{ backgroundColor: a.dot }} />
               <span>{a.label}</span>
@@ -500,10 +502,10 @@ const Chat = () => {
           {attachments.map((f, i) => {
             const Icon = getFileIcon(f.type);
             return (
-              <div key={i} className="flex items-center gap-1.5 bg-gray-100 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-700">
-                <Icon className="h-3.5 w-3.5 text-gray-400" />
+              <div key={i} className="flex items-center gap-1.5 bg-[color:var(--sand)] px-2.5 py-1.5 rounded-lg border border-[color:var(--line)] text-xs text-[color:var(--text-1)]">
+                <Icon className="h-3.5 w-3.5 text-[color:var(--text-5)]" />
                 <span className="truncate max-w-[8rem]">{f.name}</span>
-                <button onClick={() => setAttachments(p => p.filter((_, j) => j !== i))} className="ml-0.5 text-gray-400 hover:text-gray-600"><X className="h-3 w-3" /></button>
+                <button onClick={() => setAttachments(p => p.filter((_, j) => j !== i))} className="ml-0.5 text-[color:var(--text-5)] hover:text-[color:var(--text-1)]"><X className="h-3 w-3" /></button>
               </div>
             );
           })}
@@ -523,12 +525,12 @@ const Chat = () => {
           placeholder={isStreaming ? 'Generating reply…' : 'Message AI assistant… (Shift+Enter for new line)'}
           rows={1}
           disabled={isStreaming}
-          className="w-full resize-none bg-transparent text-base text-gray-800 placeholder-gray-400 px-5 pt-5 pb-2 focus:outline-none leading-relaxed disabled:opacity-60"
+          className="w-full resize-none bg-transparent text-base text-[color:var(--ink)] placeholder:text-[color:var(--text-5)] px-5 pt-5 pb-2 focus:outline-none leading-relaxed disabled:opacity-60"
           style={{ minHeight: '88px', maxHeight: '240px' }}
         />
         <div className="flex items-center justify-between px-4 pb-4">
           {/* Left actions */}
-          <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center h-9 w-9 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+          <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center h-9 w-9 rounded-lg text-[color:var(--text-5)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--sand)] transition-colors">
             <Paperclip className="h-5 w-5" />
           </button>
           {/* Right actions */}
@@ -536,7 +538,7 @@ const Chat = () => {
             {agentDropdown}
             <button
               onClick={() => setIsListening(p => !p)}
-              className={`flex items-center justify-center h-9 w-9 rounded-lg transition-colors ${isListening ? 'bg-red-100 text-red-500' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+              className={`flex items-center justify-center h-9 w-9 rounded-lg transition-colors ${isListening ? 'bg-red-100 text-red-500' : 'text-[color:var(--text-5)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--sand)]'}`}
             >
               {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
             </button>
@@ -546,7 +548,7 @@ const Chat = () => {
               className={`flex items-center justify-center h-9 w-9 rounded-full transition-all duration-150 ${
                 !isStreaming && (message.trim() || attachments.length > 0)
                   ? 'bg-[color:var(--ink)] text-[color:var(--on-ink)] hover:opacity-85'
-                  : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                  : 'bg-[color:var(--sand)] text-[color:var(--text-5)] cursor-not-allowed'
               }`}
             >
               <Send className="h-4 w-4" />
@@ -555,7 +557,7 @@ const Chat = () => {
         </div>
       </div>
 
-      <p className="text-center text-[11px] text-gray-400 mt-2">
+      <p className="text-center text-[11px] text-[color:var(--text-5)] mt-2">
         AI can make mistakes. Consider checking important information.
       </p>
     </div>
@@ -566,7 +568,7 @@ const Chat = () => {
       className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${
         pincerOn
           ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-          : 'bg-gray-50 border-gray-200 text-gray-500'
+          : 'bg-[color:var(--sand)] border-[color:var(--line)] text-[color:var(--text-3)]'
       }`}
       title={pincerOn ? 'Connected to Pincer' : 'Demo mode — sign in again to connect'}
     >
@@ -596,8 +598,8 @@ const Chat = () => {
                 {/* Greeting */}
                 <div className="flex flex-col items-center gap-3 text-center">
                   <p className="plat-crumb">3days.chat</p>
-                  <h1 className="text-[2rem] text-gray-900">How can I help you today?</h1>
-                  <p className="text-sm text-gray-500">Chat with your AI employees or ask anything</p>
+                  <h1 className="text-[2rem] text-[color:var(--ink)]">How can I help you today?</h1>
+                  <p className="text-sm text-[color:var(--text-3)]">Chat with your AI employees or ask anything</p>
                   {pincerBadge}
                 </div>
 
@@ -611,7 +613,7 @@ const Chat = () => {
                   <button
                     type="button"
                     onClick={restoreSuggestions}
-                    className="text-xs text-gray-400 transition-colors hover:text-gray-600"
+                    className="text-xs text-[color:var(--text-5)] transition-colors hover:text-[color:var(--text-1)]"
                   >
                     Show suggestions
                   </button>
@@ -625,7 +627,7 @@ const Chat = () => {
                       <button
                         type="button"
                         onClick={() => dismissSuggestion('ALL')}
-                        className="text-[11px] text-gray-400 transition-colors hover:text-gray-600"
+                        className="text-[11px] text-[color:var(--text-5)] transition-colors hover:text-[color:var(--text-1)]"
                       >
                         Hide all
                       </button>
@@ -651,7 +653,7 @@ const Chat = () => {
                             <button
                               type="button"
                               onClick={() => dismissSuggestion(item.title)}
-                              className="mr-2 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-gray-300 opacity-0 transition-all hover:bg-gray-200/60 hover:text-gray-600 group-hover:opacity-100"
+                              className="mr-2 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-[color:var(--text-5)] opacity-0 transition-all hover:bg-[color:color-mix(in_srgb,var(--sand-deep)_60%,transparent)] hover:text-[color:var(--text-1)] group-hover:opacity-100"
                               aria-label={`Dismiss suggestion: ${item.title}`}
                               title="Dismiss"
                             >
@@ -704,18 +706,18 @@ const Chat = () => {
                                     onDecide={handleApproval}
                                   />
                                 )}
-                                <div className="text-sm text-gray-800 leading-relaxed">
+                                <div className="text-sm text-[color:var(--ink)] leading-relaxed">
                                   {showTyping ? (
-                                    <span className="inline-flex items-center gap-1 text-gray-400">
-                                      <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:-0.3s]" />
-                                      <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:-0.15s]" />
-                                      <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce" />
+                                    <span className="inline-flex items-center gap-1 text-[color:var(--text-5)]">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--text-5)] animate-bounce [animation-delay:-0.3s]" />
+                                      <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--text-5)] animate-bounce [animation-delay:-0.15s]" />
+                                      <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--text-5)] animate-bounce" />
                                     </span>
                                   ) : hasText ? (
                                     <>
                                       {renderAssistantText(msg.text)}
                                       {msg.streaming && (
-                                        <span className="inline-block w-1.5 h-3.5 ml-0.5 bg-gray-400 animate-pulse align-middle" />
+                                        <span className="inline-block w-1.5 h-3.5 ml-0.5 bg-[color:var(--text-5)] animate-pulse align-middle" />
                                       )}
                                     </>
                                   ) : null}
@@ -734,16 +736,16 @@ const Chat = () => {
                             {msg.attachments.map((att, i) => {
                               const Icon = getFileIcon(att.type);
                               return (
-                                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg border border-gray-200">
-                                  <Icon className="h-3.5 w-3.5 text-gray-500" />
-                                  <span className="text-xs text-gray-700 truncate max-w-48">{att.name}</span>
+                                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-[color:var(--sand)] rounded-lg border border-[color:var(--line)]">
+                                  <Icon className="h-3.5 w-3.5 text-[color:var(--text-3)]" />
+                                  <span className="text-xs text-[color:var(--text-1)] truncate max-w-48">{att.name}</span>
                                 </div>
                               );
                             })}
                           </div>
                         )}
 
-                        <span className="text-[11px] text-gray-400 mt-1.5 px-0.5">{fmt(msg.timestamp)}</span>
+                        <span className="text-[11px] text-[color:var(--text-5)] mt-1.5 px-0.5">{fmt(msg.timestamp)}</span>
                       </div>
                     </div>
                   ))}
@@ -783,7 +785,7 @@ function ChainTimeline({
   onDecide: (msgId: number, approvalId: string, approved: boolean) => void;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2.5">
+    <div className="rounded-xl border border-[color:var(--line)] bg-[color:color-mix(in_srgb,var(--sand)_60%,transparent)] px-3 py-2.5">
       <ol className="flex flex-col">
         {steps.map((step, i) => (
           <ChainRow
@@ -826,7 +828,7 @@ function ChainRow({
       {/* Dot + connector */}
       <div className="flex flex-col items-center pt-1">
         <ChainDot step={step} isActive={isActive} />
-        {!isLast && <div className="flex-1 w-px bg-gray-200 mt-1 min-h-[14px]" />}
+        {!isLast && <div className="flex-1 w-px bg-[color:var(--sand-deep)] mt-1 min-h-[14px]" />}
       </div>
 
       {/* Content */}
@@ -844,17 +846,17 @@ function ChainRow({
 function ChainDot({ step, isActive }: { step: ChainStep; isActive: boolean }) {
   if (step.kind === 'approval') {
     if (step.decision === 'approved') {
-      return <span className="h-2 w-2 rounded-full bg-gray-700 ring-2 ring-gray-100" />;
+      return <span className="h-2 w-2 rounded-full bg-[color:var(--ink)] ring-2 ring-[color:var(--line)]" />;
     }
     if (step.decision === 'denied') {
-      return <span className="h-2 w-2 rounded-full bg-gray-300 ring-2 ring-gray-100" />;
+      return <span className="h-2 w-2 rounded-full bg-[color:var(--sand-deep)] ring-2 ring-[color:var(--line)]" />;
     }
     if (step.decision === 'error') {
       return <span className="h-2 w-2 rounded-full bg-red-400 ring-2 ring-red-50" />;
     }
     return (
       <span
-        className={`h-2 w-2 rounded-full bg-gray-500 ring-2 ring-gray-100 ${
+        className={`h-2 w-2 rounded-full bg-[color:var(--text-3)] ring-2 ring-[color:var(--line)] ${
           isActive ? 'animate-pulse' : ''
         }`}
       />
@@ -864,22 +866,22 @@ function ChainDot({ step, isActive }: { step: ChainStep; isActive: boolean }) {
   if (step.status === 'running') {
     return (
       <span
-        className={`h-2 w-2 rounded-full bg-[#8fc4e4] ring-2 ring-[#bdd8ec]/40 ${
+        className={`h-2 w-2 rounded-full bg-[color:var(--brand-200)] ring-2 ring-[color:color-mix(in_srgb,var(--brand-100)_40%,transparent)] ${
           isActive ? 'animate-pulse' : ''
         }`}
       />
     );
   }
-  return <span className="h-2 w-2 rounded-full bg-gray-400 ring-2 ring-gray-100" />;
+  return <span className="h-2 w-2 rounded-full bg-[color:var(--text-5)] ring-2 ring-[color:var(--line)]" />;
 }
 
 function ToolStepBody({ step }: { step: Extract<ChainStep, { kind: 'tool' }> }) {
   const running = step.status === 'running';
   return (
     <div className="flex items-center gap-2 text-[12px]">
-      <Wrench className="h-3 w-3 text-gray-400 shrink-0" />
-      <span className="font-mono text-gray-700">{step.name}</span>
-      <span className="inline-flex items-center gap-1 text-gray-400">
+      <Wrench className="h-3 w-3 text-[color:var(--text-5)] shrink-0" />
+      <span className="font-mono text-[color:var(--text-1)]">{step.name}</span>
+      <span className="inline-flex items-center gap-1 text-[color:var(--text-5)]">
         {running ? (
           <>
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -887,7 +889,7 @@ function ToolStepBody({ step }: { step: Extract<ChainStep, { kind: 'tool' }> }) 
           </>
         ) : (
           <>
-            <Check className="h-3 w-3 text-gray-400" />
+            <Check className="h-3 w-3 text-[color:var(--text-5)]" />
             <span>done</span>
           </>
         )}
@@ -910,12 +912,12 @@ function ApprovalStepBody({
     return (
       <div className="flex items-center gap-2 text-[12px]">
         {approved ? (
-          <Check className="h-3 w-3 text-gray-500" />
+          <Check className="h-3 w-3 text-[color:var(--text-3)]" />
         ) : (
-          <X className="h-3 w-3 text-gray-400" />
+          <X className="h-3 w-3 text-[color:var(--text-5)]" />
         )}
-        <span className="text-gray-500">{approved ? 'Approved' : 'Denied'}</span>
-        <span className="font-mono text-gray-700">{step.tool}</span>
+        <span className="text-[color:var(--text-3)]">{approved ? 'Approved' : 'Denied'}</span>
+        <span className="font-mono text-[color:var(--text-1)]">{step.tool}</span>
       </div>
     );
   }
@@ -932,20 +934,20 @@ function ApprovalStepBody({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2 text-[12px]">
-        <ShieldAlert className="h-3.5 w-3.5 text-gray-500 shrink-0" />
-        <span className="font-medium text-gray-800">Approval required</span>
-        <span className="font-mono text-gray-700">{step.tool}</span>
+        <ShieldAlert className="h-3.5 w-3.5 text-[color:var(--text-3)] shrink-0" />
+        <span className="font-medium text-[color:var(--ink)]">Approval required</span>
+        <span className="font-mono text-[color:var(--text-1)]">{step.tool}</span>
       </div>
       <div className="flex gap-1.5">
         <button
           onClick={() => onDecide(msgId, step.approvalId, true)}
-          className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-gray-900 text-[color:var(--on-ink)] hover:bg-gray-700 transition-colors"
+          className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[color:var(--ink)] text-[color:var(--on-ink)] hover:opacity-85 transition-colors"
         >
           Approve
         </button>
         <button
           onClick={() => onDecide(msgId, step.approvalId, false)}
-          className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[color:var(--paper)] text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors"
+          className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[color:var(--paper)] text-[color:var(--text-1)] border border-[color:var(--line)] hover:bg-[color:var(--sand)] transition-colors"
         >
           Deny
         </button>
