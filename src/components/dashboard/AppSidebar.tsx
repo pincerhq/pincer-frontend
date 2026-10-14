@@ -25,6 +25,7 @@ import {
   LogOut,
   Globe,
   Check,
+  SunMoon,
   Pencil,
   MessageSquare,
   Phone,
@@ -42,9 +43,12 @@ import {
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 import { ProfilePanel } from '@/components/account/ProfilePanel';
 import { useVoiceT } from '@/i18n/voice';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ChatHistoryItem {
   id: string;
@@ -115,6 +119,8 @@ const languages = [
   { code: 'no', label: 'Norsk' },
 ];
 
+const themes = ['light', 'dark', 'system'] as const;
+
 
 export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat }: AppSidebarProps = {}) {
   const location = useLocation();
@@ -124,6 +130,7 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [profileOpen, setProfileOpen] = useState(false);
   const ta = useVoiceT('voice-account');
+  const { theme, setTheme } = useTheme();
 
   const identity = useSession((s) => s.identity);
   const userLabel = identity?.displayName || identity?.email || identity?.id || '';
@@ -300,6 +307,27 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
                       )}
                     </DropdownMenuItem>
                   ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="flex items-center space-x-2 cursor-pointer">
+                  <SunMoon className="h-4 w-4" />
+                  <span>{ta('theme.label')}</span>
+                  <span className="ml-auto text-xs text-[color:var(--text-5)] mr-1">
+                    {ta(`theme.${theme}`)}
+                  </span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-44 bg-[color:var(--paper)] border shadow-lg">
+                  <DropdownMenuRadioGroup
+                    value={theme}
+                    onValueChange={(value) => setTheme(value as (typeof themes)[number])}
+                  >
+                    {themes.map((option) => (
+                      <DropdownMenuRadioItem key={option} value={option} className="cursor-pointer">
+                        {ta(`theme.${option}`)}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
               <DropdownMenuSeparator />

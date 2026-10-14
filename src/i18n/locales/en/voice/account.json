@@ -1,5 +1,11 @@
 {
   "menu": "Profile",
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
   "title": "Profile",
   "description": "Your account and your password.",
   "account": {

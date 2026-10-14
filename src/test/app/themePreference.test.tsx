@@ -10,46 +10,7 @@ import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { Toaster, toast } from '@/components/ui/sonner';
-
-const QUERY = '(prefers-color-scheme: dark)';
-
-/** A `prefers-color-scheme` the test can flip, firing `change` like a browser. */
-function mockOS(initiallyDark: boolean) {
-  let dark = initiallyDark;
-  const listeners = new Set<(e: MediaQueryListEvent) => void>();
-  const original = window.matchMedia;
-  window.matchMedia = ((query: string) => ({
-    get matches() {
-      return query === QUERY && dark;
-    },
-    media: query,
-    onchange: null,
-    addListener: () => {},
-    removeListener: () => {},
-    addEventListener: (_: string, fn: (e: MediaQueryListEvent) => void) => {
-      if (query === QUERY) listeners.add(fn);
-    },
-    removeEventListener: (_: string, fn: (e: MediaQueryListEvent) => void) => {
-      listeners.delete(fn);
-    },
-    dispatchEvent: () => false,
-  })) as unknown as typeof window.matchMedia;
-  return {
-    set(next: boolean) {
-      dark = next;
-      act(() => {
-        listeners.forEach((fn) => fn({ matches: next, media: QUERY } as MediaQueryListEvent));
-      });
-    },
-    /** How many `change` listeners are attached right now. */
-    listening() {
-      return listeners.size;
-    },
-    restore() {
-      window.matchMedia = original;
-    },
-  };
-}
+import { mockOS } from './osColorScheme';
 
 function Probe() {
   const { theme, resolvedTheme, setTheme } = useTheme();

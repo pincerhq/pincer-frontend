@@ -1,5 +1,11 @@
 {
   "menu": "Profil",
+  "theme": {
+    "label": "Darstellung",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "system": "System"
+  },
   "title": "Profil",
   "description": "Ihr Konto und Ihr Passwort.",
   "account": {
