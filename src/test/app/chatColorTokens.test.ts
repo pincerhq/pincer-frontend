@@ -28,13 +28,6 @@ const HARDCODED = new RegExp(
 const EXCEPTIONS: Record<string, string[]> = {
   // Fenced code blocks stay dark in both themes, like every editor and docs site.
   'lib/formatChat.tsx': ['bg-gray-900 text-gray-100'],
-  // Categorical agent identity colours (Emma, Aria, Felix, Maya), not chrome.
-  'pages/Chat.tsx': [
-    "color: '#fce7f3', dot: '#f472b6'",
-    "color: '#dbeafe', dot: '#60a5fa'",
-    "color: '#dcfce7', dot: '#4ade80'",
-    "color: '#ede9fe', dot: '#a78bfa'",
-  ],
 };
 
 function hardcoded(file: string): string[] {

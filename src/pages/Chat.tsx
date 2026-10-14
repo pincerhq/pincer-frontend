@@ -6,7 +6,7 @@ import {
   Send, Mic, MicOff,
   Paperclip, X, FileText, Image, Plus, Link2, Unlink, WifiOff,
   ShieldAlert, Check, AlertCircle, Loader2, Wrench,
-  Users, ChevronDown, Megaphone, BarChart3, CalendarRange, Wallet,
+  Megaphone, BarChart3, CalendarRange, Wallet,
 } from 'lucide-react';
 import '@/styles/platform.css';
 import { useToast } from '@/hooks/use-toast';
@@ -87,15 +87,6 @@ const PINCER_BADGE: Record<PincerBadge, { label: string; title: string; tone: st
   },
 };
 
-// Theme exception: categorical identity colours, one per agent — not chrome, so
-// they are not theme tokens. Check their contrast in dark mode (slice 11).
-const AGENTS = [
-  { label: 'Emma',  color: '#fce7f3', dot: '#f472b6' },
-  { label: 'Aria',  color: '#dbeafe', dot: '#60a5fa' },
-  { label: 'Felix', color: '#dcfce7', dot: '#4ade80' },
-  { label: 'Maya',  color: '#ede9fe', dot: '#a78bfa' },
-];
-
 const WELCOME_MESSAGE: ChatMessage = {
   id: 1,
   text: "Hello! Welcome to 3days.ai. I'm your AI assistant. Try asking me to help you with tasks like 'Create a marketing plan for my new product' or 'Analyze my sales data'. How can I help you today?",
@@ -113,7 +104,6 @@ const ChatInner = () => {
   const [currentChatId, setCurrentChatId] = useState<string>('current');
   const [isStreaming, setIsStreaming]     = useState(false);
   const [pincerOn, setPincerOn]           = useState<boolean>(() => pincerConnected());
-  const [showAgentMenu, setShowAgentMenu] = useState(false);
   const health = useHealth();
   const badge = pincerBadgeState(pincerOn, health);
   // Offline locks everything that would start a request; "checking" does not,
@@ -153,7 +143,6 @@ const ChatInner = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef    = useRef<HTMLTextAreaElement>(null);
   const abortRef       = useRef<AbortController | null>(null);
-  const agentMenuRef   = useRef<HTMLDivElement>(null);
 
   const hasStarted = messages.some(m => m.sender === 'user');
 
@@ -223,26 +212,6 @@ const ChatInner = () => {
   useEffect(() => {
     if (hasStarted) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, hasStarted]);
-
-  useEffect(() => {
-    if (!showAgentMenu) return;
-    const handler = (e: MouseEvent) => {
-      if (agentMenuRef.current && !agentMenuRef.current.contains(e.target as Node)) {
-        setShowAgentMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showAgentMenu]);
-
-  const pickAgent = (label: string) => {
-    setMessage(prev => {
-      const sep = prev.length === 0 || /\s$/.test(prev) ? '' : ' ';
-      return `${prev}${sep}@${label} `;
-    });
-    setShowAgentMenu(false);
-    textareaRef.current?.focus();
-  };
 
   const adjustHeight = () => {
     const el = textareaRef.current;
@@ -491,44 +460,6 @@ const ChatInner = () => {
   const getFileIcon = (type: string) => type.startsWith('image/') ? Image : FileText;
   const fmt = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  /* ── Agent dropdown (lives inside the input bar) ── */
-  const agentDropdown = (
-    <div className="relative" ref={agentMenuRef}>
-      <button
-        type="button"
-        onClick={() => setShowAgentMenu(p => !p)}
-        disabled={offline}
-        className={`flex items-center gap-1 h-9 px-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent ${
-          showAgentMenu
-            ? 'bg-[color:var(--sand)] text-[color:var(--text-1)]'
-            : 'text-[color:var(--text-5)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--sand)]'
-        }`}
-        title="Mention an agent"
-      >
-        <Users className="h-5 w-5" />
-        <ChevronDown className="h-3 w-3" />
-      </button>
-      {showAgentMenu && (
-        <div className="absolute bottom-full right-0 mb-2 min-w-[170px] rounded-xl border border-[color:var(--line)] bg-[color:var(--paper)] shadow-lg py-1 z-20">
-          <div className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
-            Demo roster — inserts text only
-          </div>
-          {AGENTS.map(a => (
-            <button
-              key={a.label}
-              type="button"
-              onClick={() => pickAgent(a.label)}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs font-medium text-[color:var(--text-1)] hover:bg-[color:var(--sand)] transition-colors"
-            >
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: a.dot }} />
-              <span>{a.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
   const canSend = !isStreaming && !offline && (message.trim().length > 0 || attachments.length > 0);
 
   /* ── Bottom input bar (shared) ── */
@@ -583,7 +514,6 @@ const ChatInner = () => {
           </button>
           {/* Right actions */}
           <div className="flex items-center gap-2">
-            {agentDropdown}
             <button
               onClick={() => setIsListening(p => !p)}
               disabled={offline}

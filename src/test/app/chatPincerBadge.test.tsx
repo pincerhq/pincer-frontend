@@ -95,7 +95,7 @@ describe('chat while Pincer is offline', () => {
     renderChat();
     expect(screen.getByText(OFFLINE_NOTICE)).toBeInTheDocument();
     expect(composer()).toBeDisabled();
-    for (const name of ['Send message', 'Attach file', 'Voice input', 'Mention an agent']) {
+    for (const name of ['Send message', 'Attach file', 'Voice input']) {
       expect(control(name)).toBeDisabled();
     }
   });
