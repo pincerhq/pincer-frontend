@@ -40,6 +40,16 @@ describe('copy describes the one Pincer agent', () => {
     expect(hits).toEqual([]);
   });
 
+  it.each([
+    ['en', /AI (employees?|workers?|workforce)|workforce/i],
+    ['de', /KI-Mitarbeiter|Workforce/i],
+  ])('no %s translation still speaks of AI employees, AI workers or a workforce', (lang, re) => {
+    const strings = (o: unknown, at: string): string[] =>
+      typeof o === 'string' ? (re.test(o) ? [at] : []) : o && typeof o === 'object' ? Object.entries(o).flatMap(([k, v]) => strings(v, at ? `${at}.${k}` : k)) : [];
+    const json = JSON.parse(readFileSync(path.join(SRC, `i18n/locales/${lang}/translation.json`), 'utf8'));
+    expect(strings(json, '')).toEqual([]);
+  });
+
   it('the dead cross-company marketing block is gone from both locales', () => {
     for (const lang of ['en', 'de']) {
       const product = JSON.parse(readFileSync(path.join(SRC, `i18n/locales/${lang}/translation.json`), 'utf8')).product ?? {};
