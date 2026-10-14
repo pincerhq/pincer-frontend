@@ -99,6 +99,17 @@ describe('theme-token colours: chat, sidebar, telephony, voice', () => {
     expect(hardcoded(file)).toEqual([]);
   });
 
+  // A shadow tinted with ink glows once ink turns light in dark mode; --shade
+  // is ink in light and black in dark.
+  it('shadows are tinted with --shade, never --ink', () => {
+    const inkShadows = FILES.flatMap((file) =>
+      readFileSync(path.join(SRC, file), 'utf8')
+        .split('\n')
+        .flatMap((line, i) => (/shadow-\[[^\]]*var\(--ink\)/.test(line) ? [`${file}:${i + 1}`] : [])),
+    );
+    expect(inkShadows).toEqual([]);
+  });
+
   it('every exception still exists (a stale allow-list hides nothing)', () => {
     for (const [file, frags] of Object.entries(EXCEPTIONS)) {
       const src = readFileSync(path.join(SRC, file), 'utf8');

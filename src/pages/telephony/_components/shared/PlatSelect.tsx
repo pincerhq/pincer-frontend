@@ -145,7 +145,7 @@ export default function PlatSelect({
           className={cn(
             'plat z-[90] max-h-[320px] min-w-[var(--radix-select-trigger-width)] overflow-hidden',
             'rounded-[12px] border border-[var(--line)] bg-[var(--paper)] p-1',
-            'shadow-[0_18px_40px_-18px_color-mix(in_srgb,var(--ink)_34%,transparent)]',
+            'shadow-[0_18px_40px_-18px_color-mix(in_srgb,var(--shade)_34%,transparent)]',
             'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
           )}
         >

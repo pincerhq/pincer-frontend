@@ -90,7 +90,7 @@ export function ApprovalCard({
       <div
         data-testid="voice-approval-card"
         data-approval-state={state}
-        className="w-[360px] rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-4 shadow-[0_18px_40px_-18px_color-mix(in_srgb,var(--ink)_34%,transparent)]"
+        className="w-[360px] rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-4 shadow-[0_18px_40px_-18px_color-mix(in_srgb,var(--shade)_34%,transparent)]"
       >
         <div className="flex items-center gap-2.5">
           <Icon className={cn('h-4 w-4', meta.tone)} />
@@ -107,7 +107,7 @@ export function ApprovalCard({
       data-approval-state="pending"
       role="alertdialog"
       aria-label={`Approval required: ${approval.summary}`}
-      className="w-[360px] rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-4 shadow-[0_18px_40px_-18px_color-mix(in_srgb,var(--ink)_34%,transparent)]"
+      className="w-[360px] rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-4 shadow-[0_18px_40px_-18px_color-mix(in_srgb,var(--shade)_34%,transparent)]"
     >
       <div className="flex items-start gap-3">
         {/* Countdown ring */}
