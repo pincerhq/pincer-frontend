@@ -239,6 +239,38 @@ describe('live voice bars while dictating', () => {
     expect(frames.size).toBe(0);
   });
 
+  // WebKit (Safari, and every iOS browser) ends speech recognition when a second
+  // capture opens the microphone, so there the bars must not call getUserMedia.
+  it('on WebKit, animates the bars with CSS only and never opens a second microphone stream', async () => {
+    (window as unknown as Record<string, unknown>).GestureEvent = class {};
+    try {
+      render(ui());
+      await userEvent.click(mic());
+      await settle();
+      expect(getUserMedia).not.toHaveBeenCalled();
+      expect(FakeAudioContext.all).toHaveLength(0);
+      expect(screen.getByTestId('voice-bars')).toHaveAttribute('data-mode', 'css');
+      expect(screen.getAllByTestId('voice-bar').every((b) => b.classList.contains('animate-pulse'))).toBe(true);
+      expect(mic()).toHaveAttribute('aria-pressed', 'true');
+    } finally {
+      delete (window as unknown as Record<string, unknown>).GestureEvent;
+    }
+  });
+
+  it('on WebKit with reduced motion, shows the steady indicator', async () => {
+    (window as unknown as Record<string, unknown>).GestureEvent = class {};
+    setReducedMotion(true);
+    try {
+      render(ui());
+      await userEvent.click(mic());
+      await settle();
+      expect(getUserMedia).not.toHaveBeenCalled();
+      expect(screen.getByTestId('voice-bars')).toHaveAttribute('data-mode', 'steady');
+    } finally {
+      delete (window as unknown as Record<string, unknown>).GestureEvent;
+    }
+  });
+
   it('keeps dictating with a steady indicator when the microphone stream is refused', async () => {
     getUserMedia.mockImplementationOnce(async () => { throw new DOMException('denied', 'NotAllowedError'); });
     render(ui());

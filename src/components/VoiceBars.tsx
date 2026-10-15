@@ -8,10 +8,11 @@
  * Heights are written straight to the bars each frame, so the chat page does
  * not re-render sixty times a second. Reduced motion, or no stream (permission
  * refused, no Web Audio), shows a steady indicator; dictation itself does not
- * depend on it.
+ * depend on it. On WebKit a second capture would end the recognition itself, so
+ * there the bars never open the microphone and animate with CSS instead.
  */
 import { useEffect, useRef, useState } from 'react';
-import { ANALYSER_FFT_SIZE, barLevels, prefersReducedMotion } from '@/lib/voiceLevel';
+import { ANALYSER_FFT_SIZE, barLevels, captureConflictsWithRecognition, prefersReducedMotion } from '@/lib/voiceLevel';
 
 const BARS = 5;
 const MIN_PX = 3;
@@ -21,12 +22,18 @@ const STEADY_PX = [6, 10, 14, 10, 6];
 
 type AudioContextCtor = new () => AudioContext;
 
+/** live: analyser-driven · css: animated without the microphone · steady: still. */
+type Mode = 'live' | 'css' | 'steady';
+
+const initialMode = (): Mode =>
+  prefersReducedMotion() ? 'steady' : captureConflictsWithRecognition() ? 'css' : 'live';
+
 export function VoiceBars() {
   const bars = useRef<(HTMLSpanElement | null)[]>([]);
-  const [steady, setSteady] = useState(prefersReducedMotion);
+  const [mode, setMode] = useState<Mode>(initialMode);
 
   useEffect(() => {
-    if (steady) return;
+    if (mode !== 'live') return;
     let cancelled = false;
     let frame = 0;
     let stream: MediaStream | null = null;
@@ -66,7 +73,7 @@ export function VoiceBars() {
         frame = requestAnimationFrame(tick);
       } catch {
         release();
-        if (!cancelled) setSteady(true);
+        if (!cancelled) setMode('steady');
       }
     })();
 
@@ -74,10 +81,10 @@ export function VoiceBars() {
       cancelled = true;
       release();
     };
-  }, [steady]);
+  }, [mode]);
 
   return (
-    <span data-testid="voice-bars" data-steady={steady} aria-hidden="true" className="flex h-4 items-center gap-[2px]">
+    <span data-testid="voice-bars" data-mode={mode} data-steady={mode === 'steady'} aria-hidden="true" className="flex h-4 items-center gap-[2px]">
       {STEADY_PX.map((px, i) => (
         <span
           key={i}
@@ -85,8 +92,11 @@ export function VoiceBars() {
             bars.current[i] = el;
           }}
           data-testid="voice-bar"
-          className="w-[3px] rounded-full bg-[var(--bad-fg)]"
-          style={{ height: `${steady ? px : MIN_PX}px` }}
+          className={`w-[3px] rounded-full bg-[var(--bad-fg)]${mode === 'css' ? ' animate-pulse' : ''}`}
+          style={{
+            height: `${mode === 'live' ? MIN_PX : px}px`,
+            ...(mode === 'css' ? { animationDelay: `${i * 120}ms` } : {}),
+          }}
         />
       ))}
     </span>

@@ -25,3 +25,28 @@ export function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
+
+interface CaptureEnv {
+  userAgent: string;
+  maxTouchPoints: number;
+  hasGestureEvent: boolean;
+}
+
+const currentEnv = (): CaptureEnv => ({
+  userAgent: typeof navigator === 'undefined' ? '' : navigator.userAgent,
+  maxTouchPoints: typeof navigator === 'undefined' ? 0 : navigator.maxTouchPoints ?? 0,
+  hasGestureEvent: typeof window !== 'undefined' && 'GestureEvent' in window,
+});
+
+/**
+ * Whether opening a second microphone capture would end a running speech
+ * recognition. WebKit does that (Safari on macOS, and every iOS browser — they
+ * all run WebKit): `onend`/`audio-capture` fires as soon as the analyser starts.
+ * Detected by engine first (`GestureEvent` exists only in WebKit), then by the
+ * iOS user agents, then iPadOS, which reports a desktop Mac but has touch.
+ */
+export function captureConflictsWithRecognition(env: CaptureEnv = currentEnv()): boolean {
+  if (env.hasGestureEvent) return true;
+  if (/iP(hone|ad|od)/.test(env.userAgent)) return true;
+  return /Macintosh/.test(env.userAgent) && env.maxTouchPoints > 1;
+}
