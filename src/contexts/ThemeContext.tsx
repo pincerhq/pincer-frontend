@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useReducer, useState } from 'react';
 
-type Theme = 'light' | 'dark' | 'system';
+/** Every theme a user can pick; both theme pickers list these. */
+export const THEMES = ['light', 'dark', 'system'] as const;
+export type Theme = (typeof THEMES)[number];
 type ResolvedTheme = 'light' | 'dark';
 
 interface ThemeContextValue {
@@ -28,7 +30,7 @@ export const useTheme = () => useContext(ThemeContext);
 const readStoredTheme = (): Theme => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
+    return THEMES.find((t) => t === stored) ?? 'system';
   } catch {
     return 'system';
   }

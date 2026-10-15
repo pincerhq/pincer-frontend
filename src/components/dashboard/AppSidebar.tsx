@@ -48,7 +48,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ProfilePanel } from '@/components/account/ProfilePanel';
 import { useVoiceT } from '@/i18n/voice';
-import { useTheme } from '@/contexts/ThemeContext';
+import { THEMES, useTheme, type Theme } from '@/contexts/ThemeContext';
 
 interface ChatHistoryItem {
   id: string;
@@ -118,8 +118,6 @@ const languages = [
   { code: 'sv', label: 'Svenska' },
   { code: 'no', label: 'Norsk' },
 ];
-
-const themes = ['light', 'dark', 'system'] as const;
 
 
 export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat }: AppSidebarProps = {}) {
@@ -320,9 +318,9 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
                 <DropdownMenuSubContent className="w-44 bg-[color:var(--paper)] border shadow-lg">
                   <DropdownMenuRadioGroup
                     value={theme}
-                    onValueChange={(value) => setTheme(value as (typeof themes)[number])}
+                    onValueChange={(value) => setTheme(value as Theme)}
                   >
-                    {themes.map((option) => (
+                    {THEMES.map((option) => (
                       <DropdownMenuRadioItem key={option} value={option} className="cursor-pointer">
                         {ta(`theme.${option}`)}
                       </DropdownMenuRadioItem>

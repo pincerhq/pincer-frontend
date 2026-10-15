@@ -12,7 +12,7 @@ import { ProfilePanel } from '@/components/account/ProfilePanel';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useSession, type VoiceLocale } from '@/stores/session';
-import { useTheme } from '@/contexts/ThemeContext';
+import { THEMES, useTheme } from '@/contexts/ThemeContext';
 import { useVoiceT } from '@/i18n/voice';
 import { isNavItemActive, PRIMARY_ITEMS, useVisibleNavGroups, type NavItem } from './telephonyNav';
 import { useNavBadges } from './TelephonyMiniRail';
@@ -26,8 +26,6 @@ const APP_LINKS = [
   { key: 'company', path: '/company-brain', icon: Brain },
   { key: 'integrations', path: '/integrations', icon: Puzzle },
 ] as const;
-
-const THEMES = ['light', 'dark', 'system'] as const;
 
 export default function MobileTabBar() {
   const navigate = useNavigate();

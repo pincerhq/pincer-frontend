@@ -2,6 +2,8 @@
  * The Theme entry in the sidebar user menu: Light / Dark / System, the
  * current one marked, wired to the theme preference.
  */
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -129,3 +131,20 @@ describe('theme switch in the user menu', () => {
     ]);
   });
 });
+
+describe('theme options', () => {
+  // Both pickers (the sidebar user menu and the telephony More sheet) offer the
+  // same three themes; a second copy of the list is how they would drift apart.
+  it('are listed once, in ThemeContext', () => {
+    const SRC = path.resolve(__dirname, '../..');
+    const walk = (d: string): string[] =>
+      readdirSync(d).flatMap((n) => {
+        const f = path.join(d, n);
+        return statSync(f).isDirectory() ? walk(f) : /\.tsx?$/.test(n) && !/\.test\./.test(n) ? [f] : [];
+      });
+    const LIST = /\[\s*(['"])light\1\s*,\s*(['"])dark\2\s*,\s*(['"])system\3\s*\]/;
+    const copies = walk(SRC).filter((f) => LIST.test(readFileSync(f, 'utf8'))).map((f) => path.relative(SRC, f));
+    expect(copies).toEqual(['contexts/ThemeContext.tsx']);
+  });
+});
+
