@@ -75,7 +75,7 @@ export function useHealth() {
   const connected = useVoiceConnected();
   return useQuery<HealthInfo>({
     queryKey: ["health"],
-    queryFn: checkHealth,
+    queryFn: ({ signal }) => checkHealth(signal),
     enabled: connected,
     // FE1 §5: ['health'] every 30 s. Chat locks only when a check AND its one
     // retry fail; the telephony banner waits for two such failed polls.
@@ -90,14 +90,34 @@ export function useHealth() {
   });
 }
 
-/** One health check, retried once after HEALTH_RETRY_MS — a single blip never reads as offline. */
-async function checkHealth(): Promise<HealthInfo> {
+/**
+ * One health check, retried once after HEALTH_RETRY_MS — a single blip never
+ * reads as offline. `signal` is react-query's: a cancelled query (or one whose
+ * last observer left) aborts the fetch and the wait, and is never retried.
+ */
+async function checkHealth(signal: AbortSignal): Promise<HealthInfo> {
   try {
-    return await api.get<HealthInfo>("/api/health");
-  } catch {
-    await new Promise((resolve) => setTimeout(resolve, HEALTH_RETRY_MS));
-    return api.get<HealthInfo>("/api/health");
+    return await api.get<HealthInfo>("/api/health", { signal });
+  } catch (err) {
+    if (signal.aborted) throw err;
+    await sleep(HEALTH_RETRY_MS, signal);
+    return api.get<HealthInfo>("/api/health", { signal });
   }
+}
+
+/** Resolves after `ms`, or rejects as soon as `signal` aborts. */
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    function onAbort() {
+      clearTimeout(timer);
+      reject(signal.reason);
+    }
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 /**

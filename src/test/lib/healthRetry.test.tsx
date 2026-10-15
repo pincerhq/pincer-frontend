@@ -23,9 +23,10 @@ vi.mock('@/lib/api/voice', async (importOriginal) => {
 
 const { useHealth, HEALTH_RETRY_MS, HEALTH_POLL_MS } = await import('@/lib/capabilities');
 
+// The app's own client sets `retry: 1` globally; a bare client keeps the hook's own options honest.
+let client: QueryClient;
+
 function wrapper({ children }: { children: ReactNode }) {
-  // The app's own client sets `retry: 1` globally; a bare client keeps the hook's own options honest.
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
@@ -35,6 +36,7 @@ describe('health check retries one failure', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     get.mockReset();
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   });
   afterEach(() => vi.useRealTimers());
 
@@ -71,6 +73,7 @@ describe('health check in a hidden tab', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     get.mockReset();
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   });
   afterEach(() => {
     focusManager.setFocused(undefined);
@@ -104,5 +107,60 @@ describe('health check in a hidden tab', () => {
     expect(get).toHaveBeenCalledTimes(3);
     expect(result.current.status).toBe('error');
     expect(result.current.fetchStatus).toBe('idle');
+  });
+});
+
+// A check that nobody waits for any more must stop: react-query hands the
+// queryFn a signal when the query is cancelled or its last observer leaves.
+describe('health check can be cancelled', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    get.mockReset();
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('hands both the check and its retry the query signal, so the fetch itself aborts', async () => {
+    get.mockRejectedValueOnce(new Error('blip')).mockResolvedValue({ status: 'ok' });
+    renderHook(() => useHealth(), { wrapper });
+    await flush();
+    await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
+    await flush();
+    expect(get).toHaveBeenCalledTimes(2);
+    for (const [, init] of get.mock.calls) expect((init as RequestInit | undefined)?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('unmounting during the retry delay makes no second request', async () => {
+    get.mockRejectedValue(new Error('down'));
+    const { unmount } = renderHook(() => useHealth(), { wrapper });
+    await flush();
+    expect(get).toHaveBeenCalledTimes(1);
+    unmount();
+    await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
+    await flush();
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancelling the query during the retry delay makes no second request', async () => {
+    get.mockRejectedValue(new Error('down'));
+    renderHook(() => useHealth(), { wrapper });
+    await flush();
+    await act(async () => { await client.cancelQueries({ queryKey: ['health'] }); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
+    await flush();
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('a fetch aborted by the signal is not retried', async () => {
+    get.mockImplementation((_path: string, init?: RequestInit) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+    }));
+    renderHook(() => useHealth(), { wrapper });
+    await flush();
+    expect(get).toHaveBeenCalledTimes(1);
+    await act(async () => { await client.cancelQueries({ queryKey: ['health'] }); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
+    await flush();
+    expect(get).toHaveBeenCalledTimes(1);
   });
 });
