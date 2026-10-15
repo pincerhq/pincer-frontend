@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useReducer, useState } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useReducer, useState } from 'react';
 
 /** Every theme a user can pick; both theme pickers list these. */
 export const THEMES = ['light', 'dark', 'system'] as const;
@@ -63,7 +63,10 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
   const resolvedTheme: ResolvedTheme = theme === 'system' ? (osPrefersDark() ? 'dark' : 'light') : theme;
 
-  useEffect(() => {
+  // Layout, not passive: the class has to change in the same frame as the
+  // components that read resolvedTheme, before the browser paints. (Client-only
+  // app, so no server-render warning to avoid.)
+  useLayoutEffect(() => {
     const root = document.documentElement;
     root.classList.toggle('dark', resolvedTheme === 'dark');
     root.style.colorScheme = resolvedTheme;

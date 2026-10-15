@@ -4,6 +4,7 @@
  * the document root — the `dark` class and `color-scheme`.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { useEffect, useLayoutEffect, useReducer } from 'react';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { act, cleanup, render, screen } from '@testing-library/react';
@@ -174,6 +175,40 @@ describe('theme preference', () => {
     seen.disconnect();
     expect(resolved()).toBe('dark');
     expect(states.filter((c) => !c.split(' ').includes('dark'))).toEqual([]);
+  });
+
+  it('applies the theme to <html> before the browser can paint', () => {
+    // Layout effects run before paint; passive ones may not. A component placed
+    // after the provider and re-rendered in the same commit sees <html> from its
+    // layout effect — after the provider's own layout effects, before any
+    // passive effect. If the class is applied late, this sees the old theme.
+    os = mockOS(false);
+    const seen: boolean[] = [];
+    function AfterProvider() {
+      const [, rerender] = useReducer((n: number) => n + 1, 0);
+      useEffect(() => {
+        const mq = window.matchMedia('(prefers-color-scheme: dark)');
+        mq.addEventListener('change', rerender);
+        return () => mq.removeEventListener('change', rerender);
+      }, []);
+      useLayoutEffect(() => {
+        seen.push(root().classList.contains('dark'));
+      });
+      return null;
+    }
+    render(
+      <>
+        <ThemeProvider>
+          <Probe />
+        </ThemeProvider>
+        <AfterProvider />
+      </>,
+    );
+    seen.length = 0;
+
+    os.set(true);
+
+    expect(seen).toEqual([true]);
   });
 
   it('setTheme persists the choice and toggles html.dark', async () => {
