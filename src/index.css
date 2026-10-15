@@ -50,6 +50,7 @@
     --on-warn-fill: #ffffff;
     --bad-fill: #b0362b;
     --on-bad-fill: #ffffff;
+    --ok-halo: #4ade80;                /* the ping around a live badge: has to read on the page */
 
     --line: #e7e8e0;
     --line-soft: #efefe9;
@@ -129,6 +130,7 @@
     --on-warn-fill: #ffffff;
     --bad-fill: #f0857a;
     --on-bad-fill: #1d2117;
+    --ok-halo: #9fd08f;
     --line: #353933;
     --line-soft: #2f322d;
     --shade: #000000;

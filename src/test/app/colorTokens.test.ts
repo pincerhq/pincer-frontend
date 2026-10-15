@@ -19,7 +19,7 @@ const PLATFORM_TOKENS = [
   '--text-1', '--text-2', '--text-3', '--text-4', '--text-5',
   '--ok-bg', '--ok-fg', '--warn-bg', '--warn-fg', '--bad-fg',
   '--line', '--line-soft', '--shade',
-  '--ok-fill', '--on-ok-fill', '--warn-fill', '--on-warn-fill', '--bad-fill', '--on-bad-fill',
+  '--ok-fill', '--on-ok-fill', '--warn-fill', '--on-warn-fill', '--bad-fill', '--on-bad-fill', '--ok-halo',
 ];
 
 function files(dir: string, ext: RegExp): string[] {
