@@ -99,6 +99,27 @@ describe('status fills', () => {
     }
   });
 
+  it('--ok-halo is a lighter step of the ok green, and the live ring reads on the dark rail', () => {
+    // The halo pings around the live badge's --ok-fill dot: same hue family, so
+    // retuning the ok green without the halo fails here; lighter than the fill,
+    // so it reads as a halo; and at least 3:1 (non-text) against the dark canvas.
+    const hue = (hex: string) => {
+      const [r, g, b] = hexRgb(hex).map((v) => v / 255);
+      const max = Math.max(r, g, b);
+      const d = max - Math.min(r, g, b);
+      if (!d) return 0;
+      const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      return (h * 60 + 360) % 360;
+    };
+    const lum = (hex: string) => contrast(hexRgb(hex), [0, 0, 0]);
+    for (const selector of [':root', 'html.dark']) {
+      const t = tokens(selector);
+      expect(Math.abs(hue(t['--ok-halo']) - hue(t['--ok-fill'])), `${selector} halo hue vs fill hue`).toBeLessThanOrEqual(10);
+      expect(lum(t['--ok-halo']), `${selector} halo lighter than fill`).toBeGreaterThan(lum(t['--ok-fill']));
+    }
+    expect(contrast(hexRgb(tokens('html.dark')['--ok-halo']), hexRgb(tokens('html.dark')['--bg']))).toBeGreaterThanOrEqual(3);
+  });
+
   it('no status fill is paired with a hard-coded white (hover and opacity variants included)', () => {
     const SRC = path.resolve(__dirname, '../..');
     const walk = (d: string): string[] =>
