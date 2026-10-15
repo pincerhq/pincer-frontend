@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+import { THEMES, ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { Toaster, toast } from '@/components/ui/sonner';
 import { mockOS } from './osColorScheme';
 
@@ -253,7 +253,10 @@ describe('pre-paint bootstrap in index.html', () => {
     expect(html.indexOf('data-theme-bootstrap')).toBeLessThan(html.indexOf('</head>'));
   });
 
-  const stored = [null, 'light', 'dark', 'system', 'sepia', 'throws'] as const;
+  // Every theme ThemeContext accepts, taken from THEMES itself: the inline script
+  // can't import it, so a theme added there and not here fails these cases
+  // (the script would fall back to 'system' and the first paint would be wrong).
+  const stored = [null, ...THEMES, 'sepia', 'throws'] as const;
   const cases = stored.flatMap((s) => [true, false].map((osDark) => [s, osDark] as const));
 
   it.each(cases)('resolves like the provider: stored=%s, OS dark=%s', (s, osDark) => {

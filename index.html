@@ -6,7 +6,9 @@
     <meta name="color-scheme" content="light dark" />
     <title>3Days.ai</title>
     <!-- Applies the theme before first paint, so a dark reload never flashes white.
-         Must resolve exactly as src/contexts/ThemeContext.tsx does: stored choice, else the OS. -->
+         Must resolve exactly as src/contexts/ThemeContext.tsx does: stored choice, else the OS.
+         The accepted values below are THEMES from ThemeContext; themePreference.test checks
+         this script against every one of them, so a new theme fails there until added here. -->
     <script data-theme-bootstrap>
       (function () {
         var theme = 'system';

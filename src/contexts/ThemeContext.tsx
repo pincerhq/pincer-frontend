@@ -1,6 +1,10 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useReducer, useState } from 'react';
 
-/** Every theme a user can pick; both theme pickers list these. */
+/**
+ * Every theme a user can pick; both theme pickers list these. index.html's
+ * pre-paint script accepts the same values (it can't import this); the
+ * themePreference parity test runs it against each one.
+ */
 export const THEMES = ['light', 'dark', 'system'] as const;
 export type Theme = (typeof THEMES)[number];
 type ResolvedTheme = 'light' | 'dark';
