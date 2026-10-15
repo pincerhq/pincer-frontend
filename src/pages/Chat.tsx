@@ -27,7 +27,7 @@ import { cleanAssistantText, renderAssistantText, renderTextWithLinks } from '@/
 import { useHealth } from '@/lib/capabilities';
 import { pincerBadgeState, useRetryCountdown, type PincerBadge } from '@/lib/pincerReachability';
 import { queryClient } from '@/lib/queryClient';
-import { useDictation } from '@/lib/dictation';
+import { useDictation, type DictationState } from '@/lib/dictation';
 import { VoiceBars } from '@/components/VoiceBars';
 import i18n from '@/i18n';
 
@@ -71,6 +71,14 @@ const SUGGESTIONS = [
   { title: 'Draft a project timeline',  sub: 'with milestones and deliverables', icon: CalendarRange },
   { title: 'Prepare a budget overview', sub: 'for Q2 planning session',          icon: Wallet        },
 ];
+
+/** The mic's title in each dictation state — `stopping` and `queued` are short waits on the engine. */
+const MIC_TITLE: Record<DictationState, string> = {
+  idle: 'Dictate a message',
+  live: 'Stop dictation',
+  stopping: 'Finishing dictation…',
+  queued: 'Starting dictation…',
+};
 
 const MUTED_BADGE = 'bg-[color:var(--sand)] border-[color:var(--line)] text-[color:var(--text-3)]';
 
@@ -531,7 +539,7 @@ const ChatInner = () => {
                 disabled={offline}
                 aria-label="Voice input"
                 aria-pressed={dictation.listening}
-                title={dictation.listening ? 'Stop dictation' : 'Dictate a message'}
+                title={MIC_TITLE[dictation.state]}
                 className={`flex items-center justify-center h-9 w-9 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent ${
                   dictation.listening
                     ? 'bg-[color:color-mix(in_srgb,var(--bad-fg)_10%,transparent)] text-[color:var(--bad-fg)]'

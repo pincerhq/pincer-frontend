@@ -135,33 +135,44 @@ export function followDictation(
   };
 }
 
+/**
+ * Where dictation is. `live`: a recognizer is listening. `stopping`: the user
+ * stopped it and the engine is still delivering what it already heard.
+ * `queued`: the user started again while stopping — the new recognizer
+ * begins once the old one settles. `idle`: none of these.
+ */
+export type DictationState = 'idle' | 'live' | 'stopping' | 'queued';
+
 export function useDictation(opts: { getText: () => string; setText: (text: string) => void; lang: () => string }) {
   const [supported] = useState(() => recognitionCtor() !== undefined);
-  const [listening, setListening] = useState(false);
+  const [state, setState] = useState<DictationState>('idle');
   const [error, setError] = useState<string | null>(null);
+  /** `state` as of now, for the engine's callbacks between renders. */
+  const stateRef = useRef<DictationState>('idle');
+  /** The recognizer while `live`. */
   const recRef = useRef<Recognition | null>(null);
-  /** A stopped session still delivering its last words, until its onend settles it. */
+  /** The stopped recognizer while `stopping` or `queued`. */
   const settlingRef = useRef<Recognition | null>(null);
-  /** A restart asked for while a stopped session was settling: it begins once that one ends. */
-  const queuedRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** While `queued`: gives up on a stopped recognizer that never settles. */
+  const fallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const optsRef = useRef(opts);
   optsRef.current = opts;
 
-  /** Silence a settling session for good: no more results, no onend. */
+  const go = useCallback((next: DictationState) => {
+    stateRef.current = next;
+    setState(next);
+  }, []);
+
+  /** Forget the stopped recognizer: no more results, no onend, no fallback. */
   const dropSettling = useCallback(() => {
+    if (fallbackRef.current !== null) clearTimeout(fallbackRef.current);
+    fallbackRef.current = null;
     const settling = settlingRef.current;
     if (!settling) return;
     settlingRef.current = null;
     settling.onresult = null;
     settling.onend = null;
     settling.abort();
-  }, []);
-
-  const unqueue = useCallback(() => {
-    if (queuedRef.current === null) return false;
-    clearTimeout(queuedRef.current);
-    queuedRef.current = null;
-    return true;
   }, []);
 
   const begin = useCallback(() => {
@@ -184,67 +195,90 @@ export function useDictation(opts: { getText: () => string; setText: (text: stri
       if (e.error !== 'aborted') setError(ERROR_TEXT[e.error] ?? `Dictation stopped (${e.error}).`);
     };
     rec.onend = () => {
-      if (recRef.current === rec) recRef.current = null;
-      setListening(false);
+      // The engine ended on its own (silence, an error) while live.
+      if (recRef.current !== rec) return;
+      recRef.current = null;
+      go('idle');
     };
     recRef.current = rec;
     setError(null);
-    setListening(true);
+    go('live');
     rec.start();
-  }, []);
+  }, [go]);
 
-  /** Detach first, so nothing the engine delivers afterwards reaches the box. */
+  /**
+   * Second click (`stop`): let the engine deliver what it already heard. Send,
+   * offline, unmount (`abort`): end now and drop anything still in flight, a
+   * stopped session included, or its last result lands in a box just cleared.
+   */
   const end = useCallback((how: 'stop' | 'abort') => {
-    // A restart still waiting for a settling session is called off too.
-    if (unqueue() && !recRef.current) setListening(false);
-    // Send, offline and unmount must also silence a stopped session that is
-    // still settling, or its last result lands in a box that was just cleared.
-    if (how === 'abort') dropSettling();
-    const rec = recRef.current;
-    if (!rec) return;
+    const from = stateRef.current;
+    if (from === 'idle') return;
+    if (how === 'abort') {
+      dropSettling();
+      const rec = recRef.current;
+      recRef.current = null;
+      if (rec) {
+        rec.onresult = null;
+        rec.onerror = null;
+        rec.onend = null;
+        rec.abort();
+      }
+      go('idle');
+      return;
+    }
+    if (from === 'queued') {
+      // Calls the restart off; the stopped session still settles.
+      if (fallbackRef.current !== null) clearTimeout(fallbackRef.current);
+      fallbackRef.current = null;
+      go('stopping');
+      return;
+    }
+    if (from !== 'live') return;
+    const rec = recRef.current!;
     recRef.current = null;
     rec.onerror = null;
-    if (how === 'abort') {
+    settlingRef.current = rec;
+    // Once it settles nothing more from it reaches the box, and a restart
+    // asked for meanwhile begins.
+    rec.onend = () => {
       rec.onresult = null;
       rec.onend = null;
-    } else {
-      // Stop: the engine may still deliver what it already heard; once it
-      // settles (onend), nothing more from it reaches the box, and a restart
-      // queued meanwhile begins.
-      settlingRef.current = rec;
-      rec.onend = () => {
-        rec.onresult = null;
-        if (settlingRef.current === rec) settlingRef.current = null;
-        if (unqueue()) begin();
-      };
-    }
-    rec[how]();
-    setListening(false);
-  }, [begin, dropSettling, unqueue]);
+      settlingRef.current = null;
+      if (fallbackRef.current !== null) clearTimeout(fallbackRef.current);
+      fallbackRef.current = null;
+      if (stateRef.current === 'queued') begin();
+      else go('idle');
+    };
+    go('stopping');
+    rec.stop();
+  }, [begin, dropSettling, go]);
 
   const start = useCallback(() => {
-    if (!recognitionCtor() || recRef.current || queuedRef.current !== null) return;
-    if (!settlingRef.current) {
+    if (!recognitionCtor()) return;
+    if (stateRef.current === 'idle') {
       begin();
       return;
     }
-    // A stopped session is still delivering the phrase on screen: let it finish,
-    // then begin. Should the engine never settle, give up on those words.
+    if (stateRef.current !== 'stopping') return;
+    // The stopped session is still delivering the phrase on screen: let it
+    // finish, then begin. Should the engine never settle, give up on it.
     setError(null);
-    setListening(true);
-    queuedRef.current = setTimeout(() => {
-      queuedRef.current = null;
+    go('queued');
+    fallbackRef.current = setTimeout(() => {
+      fallbackRef.current = null;
       dropSettling();
       begin();
     }, SETTLE_TIMEOUT_MS);
-  }, [begin, dropSettling]);
+  }, [begin, dropSettling, go]);
 
-  /** Second click: let the engine deliver what it already heard, then end. */
   const stop = useCallback(() => end('stop'), [end]);
-  /** Send, offline, unmount: end now and drop anything still in flight. */
   const cancel = useCallback(() => end('abort'), [end]);
 
   useEffect(() => cancel, [cancel]);
 
-  return { supported, listening, error, start, stop, cancel };
+  /** Dictation is on, or about to be: the mic reads pressed. Not "a recognizer exists" — see `state`. */
+  const listening = state === 'live' || state === 'queued';
+
+  return { supported, state, listening, error, start, stop, cancel };
 }

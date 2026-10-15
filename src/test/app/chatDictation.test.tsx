@@ -364,9 +364,47 @@ describe('chat dictation', () => {
     expect(mic()).toHaveAttribute('aria-pressed', 'true');
     await user.click(mic());
     expect(mic()).toHaveAttribute('aria-pressed', 'false');
+    // Still stopping: one more click queues again, never a second live recognizer.
+    expect(mic()).toHaveAttribute('title', 'Finishing dictation…');
+    await user.click(mic());
+    expect(FakeRecognition.instances).toHaveLength(1);
+    await user.click(mic());
     old.settle();
     await act(() => new Promise((r) => setTimeout(r, 1_700)));
     expect(FakeRecognition.instances).toHaveLength(1);
+  });
+
+  it('names each state on the mic: idle, live, stopping, and a restart waiting for the stop', async () => {
+    const user = userEvent.setup();
+    render(ui());
+    expect(mic()).toHaveAttribute('title', 'Dictate a message');
+    await user.click(mic());
+    const old = last();
+    old.lazyStop = true;
+    expect(mic()).toHaveAttribute('title', 'Stop dictation');
+    expect(mic()).toHaveAttribute('aria-pressed', 'true');
+    await user.click(mic());
+    expect(mic()).toHaveAttribute('title', 'Finishing dictation…');
+    expect(mic()).toHaveAttribute('aria-pressed', 'false');
+    await user.click(mic());
+    expect(mic()).toHaveAttribute('title', 'Starting dictation…');
+    expect(mic()).toHaveAttribute('aria-pressed', 'true');
+    old.settle();
+    expect(mic()).toHaveAttribute('title', 'Stop dictation');
+    await user.click(mic());
+    last().settle();
+    expect(mic()).toHaveAttribute('title', 'Dictate a message');
+  });
+
+  it('a stopped session that settles on its own goes back to idle', async () => {
+    const user = userEvent.setup();
+    render(ui());
+    await user.click(mic());
+    last().lazyStop = true;
+    await user.click(mic());
+    expect(mic()).toHaveAttribute('title', 'Finishing dictation…');
+    last().settle();
+    expect(mic()).toHaveAttribute('title', 'Dictate a message');
   });
 
   it('stops on a second click', async () => {
