@@ -87,6 +87,15 @@ export function useDictation(opts: { getText: () => string; setText: (text: stri
 
   /** Detach first, so nothing the engine delivers afterwards reaches the box. */
   const end = useCallback((how: 'stop' | 'abort') => {
+    // Send, offline and unmount must also silence a stopped session that is
+    // still settling, or its last result lands in a box that was just cleared.
+    const settling = settlingRef.current;
+    if (how === 'abort' && settling) {
+      settlingRef.current = null;
+      settling.onresult = null;
+      settling.onend = null;
+      settling.abort();
+    }
     const rec = recRef.current;
     if (!rec) return;
     recRef.current = null;

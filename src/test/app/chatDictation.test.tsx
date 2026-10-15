@@ -196,6 +196,46 @@ describe('chat dictation', () => {
     expect(box().value).toBe('first second');
   });
 
+  it('Send drops a stopped session that is still settling — the sent text never comes back', async () => {
+    const user = userEvent.setup();
+    render(ui());
+    await user.click(mic());
+    const rec = last();
+    rec.lazyStop = true;
+    rec.emit([['send the report', false]]);
+    await user.click(mic());
+    await user.click(screen.getByRole('button', { name: 'Send message' }));
+    expect(box().value).toBe('');
+    rec.emit([['send the report', true]]);
+    expect(box().value).toBe('');
+    expect(rec.calls).toContain('abort');
+  });
+
+  it('going offline drops a stopped session that is still settling', async () => {
+    const view = render(ui());
+    await userEvent.click(mic());
+    const rec = last();
+    rec.lazyStop = true;
+    rec.emit([['hello', false]]);
+    await userEvent.click(mic());
+    health.mockReturnValue(DOWN);
+    view.rerender(ui());
+    expect(rec.calls).toContain('abort');
+    fireEvent.change(box(), { target: { value: '' } });
+    rec.emit([['hello there', true]]);
+    expect(box().value).toBe('');
+  });
+
+  it('leaving the page drops a stopped session that is still settling', async () => {
+    const view = render(ui());
+    await userEvent.click(mic());
+    const rec = last();
+    rec.lazyStop = true;
+    await userEvent.click(mic());
+    view.unmount();
+    expect(rec.calls).toContain('abort');
+  });
+
   it('stops on a second click', async () => {
     render(ui());
     await userEvent.click(mic());
