@@ -237,7 +237,7 @@ describe('chat dictation', () => {
     expect(rec.calls).toContain('abort');
   });
 
-  it('an edit while an interim phrase shows: that phrase is never appended again', async () => {
+  it('an edit while an interim phrase shows: its words on screen are not appended again, the rest lands', async () => {
     const user = userEvent.setup();
     render(ui());
     await user.type(box(), 'hi');
@@ -246,9 +246,65 @@ describe('chat dictation', () => {
     expect(box().value).toBe('hi book a meeting');
     fireEvent.change(box(), { target: { value: 'hi book a meeting x' } });
     last().emit([['book a', true], [' meeting tomorrow', true]]);
-    expect(box().value).toBe('hi book a meeting x');
+    expect(box().value).toBe('hi book a meeting x tomorrow');
     last().emit([['book a', true], [' meeting tomorrow', true], [' at ten', false]]);
-    expect(box().value).toBe('hi book a meeting x at ten');
+    expect(box().value).toBe('hi book a meeting x tomorrow at ten');
+  });
+
+  it('an edit mid-phrase keeps every word said after it in that phrase', async () => {
+    render(ui());
+    await userEvent.click(mic());
+    last().emit([['book a table', false]]);
+    fireEvent.change(box(), { target: { value: 'book a table,' } });
+    last().emit([['book a table for four', false]]);
+    expect(box().value).toBe('book a table, for four');
+    last().emit([['book a table for four at seven tonight', true]]);
+    expect(box().value).toBe('book a table, for four at seven tonight');
+    last().emit([['book a table for four at seven tonight', true], [' please', false]]);
+    expect(box().value).toBe('book a table, for four at seven tonight please');
+  });
+
+  it('an edit after a final: only what is said next is added', async () => {
+    render(ui());
+    await userEvent.click(mic());
+    last().emit([['hello', true]]);
+    fireEvent.change(box(), { target: { value: 'hello,' } });
+    last().emit([['hello', true], [' there', false]]);
+    expect(box().value).toBe('hello, there');
+  });
+
+  it('Chrome merging split interims into one final after an edit loses no later phrase', async () => {
+    render(ui());
+    await userEvent.click(mic());
+    last().emit([['first', true], ['hello', false], [' world', false]]);
+    expect(box().value).toBe('first hello world');
+    fireEvent.change(box(), { target: { value: 'first hello world,' } });
+    last().emit([['first', true], ['hello world', true]]);
+    expect(box().value).toBe('first hello world,');
+    last().emit([['first', true], ['hello world', true], [' next phrase', false]]);
+    expect(box().value).toBe('first hello world, next phrase');
+    last().emit([['first', true], ['hello world', true], [' next phrase', true], [' and more', false]]);
+    expect(box().value).toBe('first hello world, next phrase and more');
+  });
+
+  it('an interim revised after an edit is not appended again', async () => {
+    render(ui());
+    await userEvent.click(mic());
+    last().emit([['table for', false]]);
+    fireEvent.change(box(), { target: { value: 'table for!' } });
+    last().emit([['table four', true]]);
+    expect(box().value).toBe('table for!');
+    last().emit([['table four', true], [' people', false]]);
+    expect(box().value).toBe('table for! people');
+  });
+
+  it('typing after the dictated words keeps them, and what is said next follows', async () => {
+    render(ui());
+    await userEvent.click(mic());
+    last().emit([['call Anna', true]]);
+    fireEvent.change(box(), { target: { value: 'call Anna and' } });
+    last().emit([['call Anna', true], [' Ben', false]]);
+    expect(box().value).toBe('call Anna and Ben');
   });
 
   it('clearing the box mid-dictation does not bring the cleared words back', async () => {
