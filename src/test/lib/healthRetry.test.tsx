@@ -191,7 +191,7 @@ describe('which failures are retried', () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  it.each([401, 403, 404])('a %i is an answer: connected at once, one request, no retry delay', async (status) => {
+  it.each([404, 405, 429])('a %i from Pincer is an answer: connected at once, one request, no retry delay', async (status) => {
     get.mockRejectedValue(httpError(status, { detail: `HTTP ${status}` }));
     const { result } = renderHook(() => useHealth(), { wrapper });
     // Well inside HEALTH_RETRY_MS: the answer lands without the retry delay.
@@ -309,6 +309,38 @@ describe('only an answer from Pincer counts as reachable', () => {
   it('the telephony banner goes offline while an HTML page answers', async () => {
     const { useBannerState } = await import('@/pages/telephony/_components/shared/StatusBanner');
     get.mockRejectedValue(httpError(404));
+    const { result } = renderHook(() => useBannerState(), { wrapper });
+    await runPolls(3);
+    expect(result.current.state).toBe('offline');
+  });
+});
+
+// Pincer serves /api/health without auth (auth_guard PUBLIC_PATHS): it never
+// answers it with a 401 or 403, token or not. One there comes from something
+// in front of Pincer, and a dead session must never read "connected".
+describe('a 401 or 403 on health is never "connected"', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    get.mockReset();
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it.each([
+    ['401, no auth code', httpError(401, { detail: 'Unauthorized' })],
+    ['401 token_expired whose refresh was unavailable', httpError(401, { error: 'token_expired', detail: 'Token expired' })],
+    ['403', httpError(403, { detail: 'Forbidden' })],
+  ])('%s: offline, one request', async (_name, error) => {
+    get.mockRejectedValue(error);
+    const { result } = renderHook(() => useHealth(), { wrapper });
+    await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
+    expect(result.current.status).toBe('error');
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('the telephony banner goes offline while health answers 401', async () => {
+    const { useBannerState } = await import('@/pages/telephony/_components/shared/StatusBanner');
+    get.mockRejectedValue(httpError(401, { detail: 'Unauthorized' }));
     const { result } = renderHook(() => useBannerState(), { wrapper });
     await runPolls(3);
     expect(result.current.state).toBe('offline');

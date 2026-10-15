@@ -5,8 +5,9 @@
  * backend can be stopped while it sits there. Reachability comes from the
  * `/api/health` poll (`useHealth()`, every HEALTH_POLL_MS, hidden tab too).
  * Reachable means Pincer answered: a 4xx in Pincer's own JSON error reads as
- * connected. A poll fails at once when something else answers (an HTML page
- * where the API should be), and otherwise only when the check and its one
+ * connected, never a 401/403 (Pincer serves health without auth). A poll
+ * fails at once when something else answers (an HTML page where the API
+ * should be, a 401/403), and otherwise only when the check and its one
  * retry (`checkHealth`, after HEALTH_RETRY_MS) both get no answer or a 5xx, so
  * a single blip never reads as offline. The badge turns offline on the first
  * failed poll and back to connected on the next answer — no reload.
