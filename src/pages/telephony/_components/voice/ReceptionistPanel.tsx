@@ -346,7 +346,7 @@ function BlocklistSection() {
                         remove.mutate(e.number);
                         setConfirming(null);
                       }}
-                      className="rounded-full bg-[var(--bad-fg)] px-2.5 py-1 text-[10px] font-semibold text-white"
+                      className="rounded-full bg-[var(--bad-fill)] px-2.5 py-1 text-[10px] font-semibold text-[var(--on-bad-fill)]"
                     >
                       Unblock
                     </button>

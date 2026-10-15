@@ -5,7 +5,7 @@
  * shades the app uses for type that fail AA, which are darkened; dark-mode type
  * clears WCAG AA on the dark surfaces.
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import colors from 'tailwindcss/colors';
@@ -72,9 +72,47 @@ describe('status colours', () => {
     }
   });
 
-  it('a fill under white type clears 4.5:1 in both themes', () => {
-    const fills = [...CSS.matchAll(/\.(bg-[a-z]+-\d+)\.text-white \{\s*background-color: (#[0-9a-f]{6})/g)];
-    expect(fills.map((m) => m[1]).sort()).toEqual(['bg-amber-400', 'bg-green-500', 'bg-green-600', 'bg-red-500']);
-    for (const [, , fill] of fills) expect(contrast(hexRgb(fill), [255, 255, 255]), fill).toBeGreaterThanOrEqual(4.5);
+  it('patches no Tailwind utility after the fact', () => {
+    expect(CSS).not.toMatch(/\.text-white/);
+  });
+});
+
+/**
+ * A status badge with type on it uses a fill token and its paired on-fill
+ * token, so the pair is designed (and checked) together in both themes rather
+ * than a Tailwind fill meeting a hard-coded white.
+ */
+describe('status fills', () => {
+  const INDEX = readFileSync(path.resolve(__dirname, '../../index.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const tokens = (selector: string) => {
+    const body = INDEX.match(new RegExp(`(?:^|\\s)${selector.replace('.', '\\.')}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+    return Object.fromEntries([...body.matchAll(/(--[\w-]+)\s*:\s*(#[0-9a-f]{6})\s*;/gi)].map((m) => [m[1], m[2]]));
+  };
+
+  it.each(['ok', 'warn', 'bad'])('--%s-fill carries its on-fill token at AA in light and dark', (status) => {
+    for (const selector of [':root', 'html.dark']) {
+      const t = tokens(selector);
+      const fill = t[`--${status}-fill`];
+      const on = t[`--on-${status}-fill`];
+      expect(fill && on, `${selector} defines --${status}-fill and --on-${status}-fill`).toBeTruthy();
+      expect(contrast(hexRgb(on), hexRgb(fill)), `${selector} ${status}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('no status fill is paired with a hard-coded white (hover and opacity variants included)', () => {
+    const SRC = path.resolve(__dirname, '../..');
+    const walk = (d: string): string[] =>
+      readdirSync(d).flatMap((n) => {
+        const f = path.join(d, n);
+        return statSync(f).isDirectory() ? walk(f) : /\.tsx?$/.test(n) && !/\.test\./.test(n) ? [f] : [];
+      });
+    // A Tailwind status fill, a status type colour used as a fill, or a fill token meant for its on-fill pair.
+    const FILL = /\bbg-(?:(?:red|amber|green|emerald)-\d{2,3}|\[var\(--(?:ok|warn|bad)-(?:fg|fill)\)\])/;
+    const hits = walk(SRC).flatMap((f) =>
+      readFileSync(f, 'utf8')
+        .split('\n')
+        .flatMap((line, i) => (FILL.test(line) && /\btext-white\b/.test(line) ? [`${path.relative(SRC, f)}:${i + 1}`] : [])),
+    );
+    expect(hits).toEqual([]);
   });
 });

@@ -60,8 +60,8 @@ export default function LiveView() {
           <h1 className="mt-1 flex items-center gap-2.5 text-[26px] text-[var(--ink)]">
             Live
             {!!calls?.length && (
-              <span className="flex items-center gap-1.5 rounded-full bg-green-700 px-2.5 py-1 text-xs font-semibold text-white">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+              <span className="flex items-center gap-1.5 rounded-full bg-[var(--ok-fill)] px-2.5 py-1 text-xs font-semibold text-[var(--on-ok-fill)]">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--on-ok-fill)]" />
                 {calls.length} in progress
               </span>
             )}

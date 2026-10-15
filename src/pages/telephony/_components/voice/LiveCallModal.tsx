@@ -299,7 +299,7 @@ function CallerContext({ number, callSid }: { number: string; callSid: string })
                 block.mutate({ number, reason: 'blocked during a live call' });
                 setConfirmBlock(false);
               }}
-              className="rounded-full bg-[var(--bad-fg)] px-2.5 py-1 text-[11px] font-semibold text-white"
+              className="rounded-full bg-[var(--bad-fill)] px-2.5 py-1 text-[11px] font-semibold text-[var(--on-bad-fill)]"
             >
               Block for good
             </button>

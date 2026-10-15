@@ -28,29 +28,10 @@ const HARDCODED = new RegExp(
   'g',
 );
 
-/** White text or a white dot on a status fill: it pairs with the fill, which slices 9/11 retune. */
-const ON_STATUS_FILL = 'white on a status fill — src/styles/status-colors.css deepens the fill under it to 4.5:1';
-
 /** Intentional fixed colours: file → exact line fragments allowed to keep them. */
 const EXCEPTIONS: Record<string, string[]> = {
   // Fenced code blocks stay dark in both themes, like every editor and docs site.
   'lib/formatChat.tsx': ['bg-[#22231f] text-[#eeefe8]'],
-  // ON_STATUS_FILL
-  'pages/telephony/_components/sidebar/TelephonyMiniRail.tsx': [
-    'bg-green-500 text-[9px] font-bold leading-none text-white',
-    'bg-amber-400 px-1 text-[9px] font-bold leading-none text-white',
-  ],
-  'pages/telephony/_components/voice/AppointmentPanel.tsx': [
-    'border-green-600 bg-green-600 text-white',
-    'border-red-500 bg-red-500 text-white',
-  ],
-  'pages/telephony/_components/voice/VoicePage.tsx': ['bg-green-500 px-2 py-0.5 text-[10px] font-semibold text-white'],
-  'pages/telephony/_components/voice/LiveView.tsx': [
-    'bg-green-700 px-2.5 py-1 text-xs font-semibold text-white',
-    'h-1.5 w-1.5 animate-pulse rounded-full bg-white',
-  ],
-  'pages/telephony/_components/voice/LiveCallModal.tsx': ['bg-[var(--bad-fg)] px-2.5 py-1 text-[11px] font-semibold text-white'],
-  'pages/telephony/_components/voice/ReceptionistPanel.tsx': ['bg-[var(--bad-fg)] px-2.5 py-1 text-[10px] font-semibold text-white'],
   // Categorical risk scale R / W / X: W's blue is a rung on the scale, not the brand.
   'pages/telephony/_lib/voiceMeta.ts': ["cls: 'border-blue-200 bg-blue-50 text-blue-700'"],
   // Categorical sentiment set (positive / neutral / mixed / negative): themed per role in
@@ -67,7 +48,6 @@ const EXCEPTIONS: Record<string, string[]> = {
   // stage reads the themed status variable (src/styles/status-colors.css) directly.
   'components/voice/ApprovalCard.tsx': ["'rgb(var(--st-amber-700))'"],
 };
-void ON_STATUS_FILL;
 
 function walk(dir: string): string[] {
   return readdirSync(path.join(SRC, dir), { withFileTypes: true }).flatMap((e) => {

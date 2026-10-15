@@ -43,6 +43,14 @@
     --warn-fg: #8a5a0c;
     --bad-fg: #b0362b;
 
+    /* Status badges with type on them: a fill and its paired type, AA together. */
+    --ok-fill: #15803d;
+    --on-ok-fill: #ffffff;
+    --warn-fill: #b45309;
+    --on-warn-fill: #ffffff;
+    --bad-fill: #b0362b;
+    --on-bad-fill: #ffffff;
+
     --line: #e7e8e0;
     --line-soft: #efefe9;
     --shade: #262723;                  /* shadow tint: ink in light, black in dark (a light ink would glow) */
@@ -115,6 +123,12 @@
     --warn-bg: #33290f;
     --warn-fg: #e3b65e;
     --bad-fg: #f0857a;
+    --ok-fill: #15803d;
+    --on-ok-fill: #ffffff;
+    --warn-fill: #b45309;
+    --on-warn-fill: #ffffff;
+    --bad-fill: #f0857a;
+    --on-bad-fill: #1d2117;
     --line: #353933;
     --line-soft: #2f322d;
     --shade: #000000;

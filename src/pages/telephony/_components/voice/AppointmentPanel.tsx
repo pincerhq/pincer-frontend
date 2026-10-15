@@ -49,8 +49,8 @@ function Step({
       <span
         className={cn(
           'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border',
-          state === 'done' && 'border-green-600 bg-green-600 text-white',
-          state === 'failed' && 'border-red-500 bg-red-500 text-white',
+          state === 'done' && 'border-[var(--ok-fill)] bg-[var(--ok-fill)] text-[var(--on-ok-fill)]',
+          state === 'failed' && 'border-[var(--bad-fill)] bg-[var(--bad-fill)] text-[var(--on-bad-fill)]',
           state === 'pending' && 'border-[var(--line)] bg-[var(--paper)]',
         )}
       >

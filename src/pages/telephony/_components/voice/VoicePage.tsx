@@ -140,7 +140,7 @@ function StatusHeader() {
       {pill(st.voice_configured, 'voice')}
       {pill(st.webhook_base_configured, 'webhook')}
       {st.active_call_count > 0 && (
-        <span className="flex items-center gap-1 rounded-full bg-green-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+        <span className="flex items-center gap-1 rounded-full bg-[var(--ok-fill)] px-2 py-0.5 text-[10px] font-semibold text-[var(--on-ok-fill)]">
           {st.active_call_count} live
         </span>
       )}
