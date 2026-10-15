@@ -62,7 +62,7 @@ function LiveBadge({ count, label }: { count: number; label: string }) {
   if (count === 0) return null;
   return (
     <span className="relative flex h-4 w-4 shrink-0 items-center justify-center" role="status" aria-label={label}>
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--ok-fill)] opacity-50" />
       <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[var(--ok-fill)] text-[9px] font-bold leading-none text-[var(--on-ok-fill)]">
         {count}
       </span>

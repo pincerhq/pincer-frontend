@@ -34,7 +34,6 @@ const WORKLIST: Record<string, string[]> = {
   'pages/telephony/_components/owner-calls/TranscriptView.tsx': ['bg-amber-50', 'ring-amber-300', 'text-amber-800'],
   'pages/telephony/_components/policies/PoliciesView.tsx': ['text-amber-700', 'text-green-700'],
   'pages/telephony/_components/settings/VoiceSettingsView.tsx': ['text-amber-700', 'text-green-700'],
-  'pages/telephony/_components/sidebar/TelephonyMiniRail.tsx': ['bg-green-400'],
   'pages/telephony/_components/threads/ThreadBits.tsx': ['bg-amber-500', 'text-amber-600'],
   'pages/telephony/_components/threads/ThreadDetailView.tsx': ['bg-amber-50', 'border-amber-200', 'text-amber-700'],
   'pages/telephony/_components/threads/ThreadManageModals.tsx': ['bg-amber-50', 'bg-amber-50/60', 'text-amber-800 ×2'],
