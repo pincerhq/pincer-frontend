@@ -118,9 +118,16 @@ const ChatInner = () => {
     health.fetchStatus === 'fetching',
   );
   const retryText = retry === 'retrying' ? 'retrying…' : `retrying in ${retry} s.`;
+  // The box as dictation last saw or wrote it — updated synchronously, so two
+  // results that arrive before a re-render still splice onto the latest text.
+  const messageRef = useRef(message);
+  messageRef.current = message;
   const dictation = useDictation({
-    getText: () => message,
-    setText: setMessage,
+    getText: () => messageRef.current,
+    setText: (text) => {
+      messageRef.current = text;
+      setMessage(text);
+    },
     lang: () => i18n.resolvedLanguage ?? i18n.language,
   });
   const cancelDictation = dictation.cancel;

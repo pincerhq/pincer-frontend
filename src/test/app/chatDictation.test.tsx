@@ -5,7 +5,7 @@
  * page and when Pincer goes offline. No API → no mic button.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import i18n from '@/i18n';
@@ -134,6 +134,30 @@ describe('chat dictation', () => {
     expect(box().value).toBe('Draft a reply to Bob about Friday');
 
     expect(streamChat).not.toHaveBeenCalled();
+  });
+
+  it('keeps an edit made to earlier text while dictating', async () => {
+    const user = userEvent.setup();
+    render(ui());
+    await user.type(box(), 'Draft');
+    await user.click(mic());
+    last().emit([['a reply', true]]);
+    expect(box().value).toBe('Draft a reply');
+    fireEvent.change(box(), { target: { value: 'Drafted a reply' } });
+    last().emit([['a reply', true], [' to Bob', false]]);
+    expect(box().value).toBe('Drafted a reply to Bob');
+  });
+
+  it('keeps a correction made to dictated words, and adds only what is said next', async () => {
+    render(ui());
+    await userEvent.click(mic());
+    last().emit([['helo world', true]]);
+    expect(box().value).toBe('helo world');
+    fireEvent.change(box(), { target: { value: 'hello world' } });
+    last().emit([['helo world', true], [' how are you', false]]);
+    expect(box().value).toBe('hello world how are you');
+    last().emit([['helo world', true], [' how are you', true]]);
+    expect(box().value).toBe('hello world how are you');
   });
 
   it('stops on a second click', async () => {

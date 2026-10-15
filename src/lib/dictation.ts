@@ -58,14 +58,21 @@ export function dictatedText(typed: string, spoken: string): string {
   return `${typed} ${words}`;
 }
 
-/** The session's results so far, interim included, as one string. */
-function transcriptOf(results: RecognitionResultList): string {
+/** The session's results from `from` on, interim included, as one string. */
+function transcriptOf(results: RecognitionResultList, from = 0): string {
   let out = '';
-  for (let i = 0; i < results.length; i++) {
+  for (let i = from; i < results.length; i++) {
     const piece = results[i][0].transcript;
     out = out && piece && !/\s$/.test(out) && !/^\s/.test(piece) ? `${out} ${piece}` : out + piece;
   }
   return out;
+}
+
+/** How many results at the start of the list are final (finals never change again). */
+function finalCount(results: RecognitionResultList): number {
+  let n = 0;
+  while (n < results.length && results[n].isFinal) n++;
+  return n;
 }
 
 export function useDictation(opts: { getText: () => string; setText: (text: string) => void; lang: () => string }) {
@@ -92,11 +99,28 @@ export function useDictation(opts: { getText: () => string; setText: (text: stri
     const Ctor = recognitionCtor();
     if (!Ctor || recRef.current) return;
     const rec = new Ctor();
-    const typed = optsRef.current.getText();
     rec.lang = speechLang(optsRef.current.lang());
     rec.continuous = true;
     rec.interimResults = true;
-    rec.onresult = (e) => optsRef.current.setText(dictatedText(typed, transcriptOf(e.results)));
+    // Only the text dictation itself wrote is ever replaced. Each result re-reads
+    // the box: if it still ends with what was dictated last, everything before
+    // that (the user's edits included) is kept; if the user changed the dictated
+    // words or typed after them, the box is taken as is and only results that
+    // arrive after the edit are appended.
+    const session = { base: '', suffix: '', from: 0, finals: 0 };
+    rec.onresult = (e) => {
+      const current = optsRef.current.getText();
+      if (current.endsWith(session.suffix)) {
+        session.base = current.slice(0, current.length - session.suffix.length);
+      } else {
+        session.base = current;
+        session.from = session.finals;
+      }
+      const next = dictatedText(session.base, transcriptOf(e.results, session.from));
+      session.suffix = next.slice(session.base.length);
+      session.finals = finalCount(e.results);
+      optsRef.current.setText(next);
+    };
     rec.onerror = (e) => {
       if (e.error !== 'aborted') setError(ERROR_TEXT[e.error] ?? `Dictation stopped (${e.error}).`);
     };
