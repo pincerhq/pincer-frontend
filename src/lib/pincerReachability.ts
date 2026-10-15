@@ -3,9 +3,15 @@
  *
  * A stored session (`isConnected()`) only means a token is in storage; the
  * backend can be stopped while it sits there. Reachability comes from the
- * `/api/health` poll (`useHealth()`, every 30 s, no retries), so the badge
- * turns offline on the first failed poll and back to connected on the next
- * answer — no reload.
+ * `/api/health` poll (`useHealth()`, every HEALTH_POLL_MS, hidden tab too). A
+ * poll fails only when the check and its one retry (`checkHealth`, after
+ * HEALTH_RETRY_MS) both fail, so a single blip never reads as offline; the
+ * badge turns offline on the first such failed poll and back to connected on
+ * the next answer — no reload.
+ *
+ * The countdown runs to the next poll's start. A poll whose first try fails is
+ * in flight up to about HEALTH_RETRY_MS longer (plus the two requests' own
+ * time) before it lands; meanwhile the countdown reads 'retrying'.
  */
 import { useEffect, useState } from 'react';
 import { HEALTH_POLL_MS } from '@/lib/capabilities';
