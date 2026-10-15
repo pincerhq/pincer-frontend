@@ -157,6 +157,25 @@ describe('theme preference', () => {
     expect(root().classList.contains('dark')).toBe(true);
   });
 
+  it("switching back to 'system' after the OS went dark never shows a light frame", async () => {
+    // Dark chosen, OS light; the OS turns dark while nobody listens; then System.
+    localStorage.setItem('theme', 'dark');
+    os = mockOS(false);
+    renderTheme();
+    os.set(true);
+    // The click is async, so records reach the callback before takeRecords() could.
+    const oldClasses: string[] = [];
+    const seen = new MutationObserver((records) => records.forEach((r) => oldClasses.push(r.oldValue ?? '')));
+    seen.observe(root(), { attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+
+    await userEvent.click(screen.getByRole('button', { name: 'system' }));
+
+    const states = [...oldClasses, ...seen.takeRecords().map((r) => r.oldValue ?? ''), root().className];
+    seen.disconnect();
+    expect(resolved()).toBe('dark');
+    expect(states.filter((c) => !c.split(' ').includes('dark'))).toEqual([]);
+  });
+
   it('setTheme persists the choice and toggles html.dark', async () => {
     os = mockOS(false);
     renderTheme();

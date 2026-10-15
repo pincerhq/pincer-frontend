@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useReducer, useState } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
 type ResolvedTheme = 'light' | 'dark';
@@ -46,18 +46,20 @@ const osPrefersDark = () => window.matchMedia(DARK_QUERY).matches;
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const [theme, setThemeState] = useState<Theme>(readStoredTheme);
-  const [osDark, setOsDark] = useState(osPrefersDark);
+  // The OS preference is read fresh on every render, never cached: a copy kept
+  // only while on 'system' goes stale under an explicit choice, and switching
+  // back would paint one wrong frame before an effect caught up. The listener
+  // just re-renders when the OS changes.
+  const [, osChanged] = useReducer((n: number) => n + 1, 0);
 
   useEffect(() => {
     if (theme !== 'system') return;
     const mq = window.matchMedia(DARK_QUERY);
-    setOsDark(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setOsDark(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
+    mq.addEventListener('change', osChanged);
+    return () => mq.removeEventListener('change', osChanged);
   }, [theme]);
 
-  const resolvedTheme: ResolvedTheme = theme === 'system' ? (osDark ? 'dark' : 'light') : theme;
+  const resolvedTheme: ResolvedTheme = theme === 'system' ? (osPrefersDark() ? 'dark' : 'light') : theme;
 
   useEffect(() => {
     const root = document.documentElement;
