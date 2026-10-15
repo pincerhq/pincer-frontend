@@ -49,7 +49,7 @@ export function MockedSection({
   return (
     <section data-mock="true" className="rounded-xl border border-dashed border-amber-300/70 bg-amber-50/40 p-4">
       <div className="mb-1 flex items-center gap-2">
-        <h3 className="text-sm font-medium text-gray-900">{title}</h3>
+        <h3 className="text-sm font-medium text-[var(--ink)]">{title}</h3>
         <MockedBadge />
       </div>
       <p className="mb-3 text-xs text-amber-800/80">{reason}</p>

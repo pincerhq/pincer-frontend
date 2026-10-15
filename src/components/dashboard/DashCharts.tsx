@@ -96,7 +96,7 @@ export function TimeSeries({
   kind = 'area',
   height = 200,
   format = (n) => String(n),
-  color = 'var(--blue)',
+  color = 'var(--brand)',
   emptyLabel = 'No data for this period yet',
   yLabel,
 }: {
@@ -267,7 +267,7 @@ export function TimeSeries({
             top: 0,
             width: 150,
             background: 'var(--ink)',
-            color: '#fff',
+            color: 'var(--on-ink)',
           }}
         >
           <p className="font-mono text-[10px] opacity-70">{active.full ?? active.label}</p>
@@ -393,7 +393,7 @@ export function StatusBars({
             top: 0,
             width: 150,
             background: 'var(--ink)',
-            color: '#fff',
+            color: 'var(--on-ink)',
           }}
         >
           <p className="font-mono text-[10px] opacity-70">{active.full ?? active.label}</p>

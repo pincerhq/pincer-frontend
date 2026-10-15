@@ -89,7 +89,7 @@ function Section({
         'rounded-[12px] border p-3',
         tone === 'urgent'
           ? 'border-amber-300 bg-amber-50/70'
-          : 'border-[var(--line-soft)] bg-white',
+          : 'border-[var(--line-soft)] bg-[var(--paper)]',
       )}
     >
       <div className="mb-2 flex items-baseline gap-2">
@@ -153,7 +153,7 @@ function LiveApprovals({ callSid }: { callSid: string }) {
           const state = settled[a.id];
           const seconds = Math.ceil(msRemaining(a.expires_at) / 1000);
           return (
-            <div key={a.id} data-testid="live-approval" className="rounded-[10px] bg-white p-2.5">
+            <div key={a.id} data-testid="live-approval" className="rounded-[10px] bg-[var(--paper)] p-2.5">
               <div className="flex items-start gap-2">
                 <ShieldQuestion className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-700" />
                 <p className="min-w-0 flex-1 text-xs font-medium text-[var(--ink)]">{a.summary}</p>
@@ -170,7 +170,7 @@ function LiveApprovals({ callSid }: { callSid: string }) {
                     type="button"
                     disabled={!!busy[a.id]}
                     onClick={() => onDecide(a.id, 'approve')}
-                    className="rounded-full bg-[var(--ink)] px-3 py-1 text-[11px] font-semibold text-white disabled:opacity-40"
+                    className="rounded-full bg-[var(--brand)] hover:bg-[var(--brand-hover)] px-3 py-1 text-[11px] font-semibold text-[var(--on-brand)] disabled:opacity-40"
                   >
                     Approve
                   </button>
@@ -299,7 +299,7 @@ function CallerContext({ number, callSid }: { number: string; callSid: string })
                 block.mutate({ number, reason: 'blocked during a live call' });
                 setConfirmBlock(false);
               }}
-              className="rounded-full bg-[var(--bad-fg)] px-2.5 py-1 text-[11px] font-semibold text-white"
+              className="rounded-full bg-[var(--bad-fill)] px-2.5 py-1 text-[11px] font-semibold text-[var(--on-bad-fill)]"
             >
               Block for good
             </button>
@@ -471,7 +471,7 @@ export default function LiveCallModal({
                       <span
                         className={cn(
                           'w-14 shrink-0 pt-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                          t.speaker === 'agent' ? 'text-[var(--blue)]' : 'text-[var(--text-4)]',
+                          t.speaker === 'agent' ? 'text-[var(--brand)]' : 'text-[var(--text-4)]',
                         )}
                       >
                         {t.speaker}
@@ -498,7 +498,7 @@ export default function LiveCallModal({
             )}
           </div>
 
-          <aside className="w-[380px] shrink-0 space-y-3 overflow-y-auto overflow-x-hidden border-l border-[var(--line-soft)] bg-[rgba(20,22,26,0.015)] p-4">
+          <aside className="w-[380px] shrink-0 space-y-3 overflow-y-auto overflow-x-hidden border-l border-[var(--line-soft)] bg-[color:color-mix(in_srgb,var(--ink)_1.5%,transparent)] p-4">
             <LiveApprovals callSid={call.call_sid} />
 
             <Section title="Live signals">
@@ -610,8 +610,8 @@ export default function LiveCallModal({
                   className={cn(
                     'flex cursor-not-allowed items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium',
                     danger
-                      ? 'border-red-200 bg-white text-red-600'
-                      : 'border-[var(--line)] bg-white text-[var(--text-3)]',
+                      ? 'border-red-200 bg-[var(--paper)] text-red-600'
+                      : 'border-[var(--line)] bg-[var(--paper)] text-[var(--text-3)]',
                   )}
                 >
                   <Icon className="h-3.5 w-3.5" />

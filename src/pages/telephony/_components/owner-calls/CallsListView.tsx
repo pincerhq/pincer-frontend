@@ -105,7 +105,7 @@ export default function CallsListView() {
             <Skeleton className="h-12 rounded-[10px]" />
           </div>
         ) : isError ? (
-          <div role="alert" data-testid="list-error" className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-[rgba(179,56,46,0.25)] bg-[rgba(179,56,46,0.06)] px-3 py-2 text-sm text-[var(--bad-fg)]">
+          <div role="alert" data-testid="list-error" className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-[color:color-mix(in_srgb,var(--bad-fg)_25%,transparent)] bg-[color:color-mix(in_srgb,var(--bad-fg)_6%,transparent)] px-3 py-2 text-sm text-[var(--bad-fg)]">
             <span>{error?.message ?? tc("errors.network")}</span>
             <button type="button" className="rounded-[8px] border border-current px-2 py-0.5 text-xs" onClick={() => void refetch()}>{tc("errors.retry")}</button>
           </div>

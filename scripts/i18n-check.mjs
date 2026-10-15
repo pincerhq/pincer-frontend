@@ -7,7 +7,7 @@ import { join } from 'node:path';
 
 const BASE = 'src/i18n/locales';
 const LANGS = ['de', 'en'];
-const SRC_DIRS = ['src/pages/telephony', 'src/components/voice', 'src/components/account', 'src/components/ui', 'src/lib', 'src/stores', 'src/i18n'];
+const SRC_DIRS = ['src/pages/telephony', 'src/components/voice', 'src/components/account', 'src/components/dashboard', 'src/components/ui', 'src/lib', 'src/stores', 'src/i18n'];
 
 function flatten(obj, prefix = '', out = {}) {
   for (const [k, v] of Object.entries(obj)) {

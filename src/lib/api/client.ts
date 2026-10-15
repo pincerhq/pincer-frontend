@@ -42,6 +42,8 @@ export class ApiError extends PincerError {
   readonly code?: string;
   /** Seconds from a 429's `Retry-After`, when the browser was allowed to read it. */
   retryAfter?: number;
+  /** The error response's JSON body; absent when it had none (an HTML page, an empty body). */
+  body?: unknown;
 
   constructor(detail: string, status: number, fields?: ApiFieldErrors, code?: string) {
     super(detail, status);
@@ -193,13 +195,16 @@ function errorCodeOf(body: unknown): string | undefined {
 async function parseResponse<T>(res: Response, path: string): Promise<T> {
   if (!res.ok) {
     let body: unknown = null;
+    let json = false;
     try {
       body = await res.json();
+      json = true;
     } catch {
       /* non-JSON error page; keep the status-only detail */
     }
     const { detail, fields } = normalizeErrorBody(body, res.status);
     const error = new ApiError(detail, res.status, fields, errorCodeOf(body));
+    if (json) error.body = body;
     // Not CORS-safelisted: readable same-origin, or when the API exposes it.
     const retryAfter = Number(res.headers.get("Retry-After"));
     if (Number.isFinite(retryAfter) && retryAfter > 0) error.retryAfter = retryAfter;

@@ -1,5 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@300;400;500;600;700&display=swap');
 
+@import './styles/status-colors.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,133 +12,157 @@
 }
 
 @layer base {
+  /* The one light token set: the pincer-sh palette. It lives on the document
+     root so Radix portals (dialogs, dropdowns, popovers render into <body>,
+     outside `.platform`) read the same values as the pages. The text ramp is
+     darker than pincer-sh's own (#9a9e90 at the light end is ~2.6:1 on white)
+     so every step passes WCAG AA (4.5:1) on --bg, --paper and --sand. */
   :root {
-    /* Light neutral gray palette */
-    --background: 0 0% 96%;            /* #f5f5f5 light neutral gray */
-    --foreground: 60 3% 8%;            /* #141413 near-black */
+    --bg: #fafaf7;
+    --paper: #ffffff;
+    --sand: #f4f5ef;
+    --sand-deep: #eceee5;
+    --ink: #262723;
 
-    --card: 0 0% 100%;
-    --card-foreground: 60 3% 8%;
+    --brand: #617800;
+    --brand-hover: #4b5c06;
+    --brand-100: #f1f4e7;
+    --brand-200: #dce4cf;
+    --on-brand: #ffffff;
+    --on-ink: #ffffff;                 /* text on ink surfaces; diverges from --on-brand in dark */
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 60 3% 8%;
+    --text-1: #505549;
+    --text-2: #575c50;
+    --text-3: #5e6256;
+    --text-4: #65695d;
+    --text-5: #6c7064;
 
-    --primary: 60 3% 8%;              /* #141413 dark */
-    --primary-foreground: 0 0% 100%;
+    --ok-bg: #e9f2e3;
+    --ok-fg: #2f6b2a;
+    --warn-bg: #faf0db;
+    --warn-fg: #8a5a0c;
+    --bad-fg: #b0362b;
 
-    --secondary: 42 14% 92%;           /* #f0ede6 light warm */
-    --secondary-foreground: 60 3% 8%;
+    /* Status badges with type on them: a fill and its paired type, AA together. */
+    --ok-fill: #15803d;
+    --on-ok-fill: #ffffff;
+    --warn-fill: #b45309;
+    --on-warn-fill: #ffffff;
+    --bad-fill: #b0362b;
+    --on-bad-fill: #ffffff;
+    --ok-halo: #4ade80;                /* the ping around a live badge: a lighter step of --ok-fill's green
+                                          (statusColors.test keeps the hue in step and the dark ring visible) */
 
-    --muted: 42 14% 92%;
-    --muted-foreground: 30 5% 45%;
+    --line: #e7e8e0;
+    --line-soft: #efefe9;
+    --shade: #262723;                  /* shadow tint: ink in light, black in dark (a light ink would glow) */
 
-    --accent: 42 8% 95%;
-    --accent-foreground: 60 3% 8%;
+    /* shadcn: the same palette as HSL triplets, each derived from the token
+       named beside it (colorTokens.test pins the conversion). */
+    --background: 60 23.1% 97.5%;               /* --bg #fafaf7 */
+    --foreground: 75 5.4% 14.5%;                /* --ink #262723 */
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --card: 0 0% 100%;                          /* --paper #ffffff */
+    --card-foreground: 75 5.4% 14.5%;           /* --ink #262723 */
 
-    --border: 42 12% 82%;
-    --input: 42 14% 92%;
-    --ring: 60 3% 8%;
+    --popover: 0 0% 100%;                       /* --paper #ffffff */
+    --popover-foreground: 75 5.4% 14.5%;        /* --ink #262723 */
 
-    --radius: 0.5rem;
+    --primary: 75 5.4% 14.5%;                   /* --ink #262723 */
+    --primary-foreground: 0 0% 100%;            /* --on-ink #ffffff */
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 0 0% 20%;
-    --sidebar-primary: 0 0% 7%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 10% 96%;
-    --sidebar-accent-foreground: 0 0% 7%;
-    --sidebar-border: 30 15% 87%;
-    --sidebar-ring: 0 0% 7%;
-  }
+    --secondary: 70 23.1% 94.9%;                /* --sand #f4f5ef */
+    --secondary-foreground: 75 5.4% 14.5%;      /* --ink #262723 */
 
-  /* Dark mode */
-  .dark {
-    --background: 20 10% 9%;           /* #181512 warm near-black */
-    --foreground: 30 15% 92%;          /* #ede8e3 warm near-white */
+    --muted: 70 23.1% 94.9%;                    /* --sand #f4f5ef */
+    --muted-foreground: 80 6.5% 36.1%;          /* --text-3 #5e6256 */
 
-    --card: 20 8% 12%;
-    --card-foreground: 30 15% 92%;
+    --accent: 70 23.1% 94.9%;                   /* --sand #f4f5ef */
+    --accent-foreground: 75 5.4% 14.5%;         /* --ink #262723 */
 
-    --popover: 20 8% 12%;
-    --popover-foreground: 30 15% 92%;
+    --destructive: 5 60.7% 42.9%;               /* --bad-fg #b0362b */
+    --destructive-foreground: 0 0% 100%;        /* --on-brand #ffffff */
 
-    --primary: 30 15% 92%;
-    --primary-foreground: 20 10% 9%;
-
-    --secondary: 20 8% 18%;
-    --secondary-foreground: 30 15% 92%;
-
-    --muted: 20 8% 18%;
-    --muted-foreground: 30 10% 55%;
-
-    --accent: 20 8% 22%;
-    --accent-foreground: 30 15% 92%;
-
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 20 8% 20%;
-    --input: 20 8% 18%;
-    --ring: 30 15% 75%;
+    --border: 67.5 14.8% 89.4%;                 /* --line #e7e8e0 */
+    --input: 67.5 14.8% 89.4%;                  /* --line #e7e8e0 */
+    --ring: 71.5 100% 23.5%;                    /* --brand #617800 */
 
     --radius: 0.75rem;
 
-    --sidebar-background: 20 8% 11%;
-    --sidebar-foreground: 30 12% 80%;
-    --sidebar-primary: 30 15% 92%;
-    --sidebar-primary-foreground: 20 10% 9%;
-    --sidebar-accent: 20 8% 18%;
-    --sidebar-accent-foreground: 30 15% 92%;
-    --sidebar-border: 20 8% 20%;
-    --sidebar-ring: 30 15% 75%;
+    --sidebar-background: 60 23.1% 97.5%;       /* --bg #fafaf7 */
+    --sidebar-foreground: 85 7.6% 31%;          /* --text-1 #505549 */
+    --sidebar-primary: 75 5.4% 14.5%;           /* --ink #262723 */
+    --sidebar-primary-foreground: 0 0% 100%;    /* --on-ink #ffffff */
+    --sidebar-accent: 70 23.1% 94.9%;           /* --sand #f4f5ef */
+    --sidebar-accent-foreground: 75 5.4% 14.5%; /* --ink #262723 */
+    --sidebar-border: 67.5 14.8% 89.4%;         /* --line #e7e8e0 */
+    --sidebar-ring: 71.5 100% 23.5%;            /* --brand #617800 */
   }
 
-  /* Platform (logged-in) — lighter warm palette matching marketing site */
-  .platform {
-    --background: 30 25% 97%;          /* #f8f3ee light warm beige */
-    --foreground: 0 0% 9%;
+  /* The dark token set: the same names, so pages, portals and the shadcn
+     primitives follow without per-component dark rules. The text ramp stops
+     at #8e9485 (not the #6f7566 first proposed) so every step passes WCAG AA
+     on --bg, --paper and --sand, mirroring the light ramp. */
+  html.dark {
+    --bg: #181b17;
+    --paper: #20241f;
+    --sand: #262b25;
+    --sand-deep: #2d332b;
+    --ink: #f0f2e9;
+    --brand: #c2d76a;
+    --brand-hover: #d0e27f;
+    --brand-100: #2a3218;
+    --brand-200: #3f4b1f;
+    --on-brand: #1d2117;
+    --on-ink: #1d2117;
+    --text-1: #d4d8cb;
+    --text-2: #c2c7ba;
+    --text-3: #b1b6a8;
+    --text-4: #a0a596;
+    --text-5: #8e9485;
+    --ok-bg: #1f2b1c;
+    --ok-fg: #9fd08f;
+    --warn-bg: #33290f;
+    --warn-fg: #e3b65e;
+    --bad-fg: #f0857a;
+    --ok-fill: #15803d;
+    --on-ok-fill: #ffffff;
+    --warn-fill: #b45309;
+    --on-warn-fill: #ffffff;
+    --bad-fill: #f0857a;
+    --on-bad-fill: #1d2117;
+    --ok-halo: #86efac;
+    --line: #353933;
+    --line-soft: #2f322d;
+    --shade: #000000;
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
-
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 30 18% 93%;           /* light warm gray */
-    --secondary-foreground: 0 0% 9%;
-
-    --muted: 30 18% 93%;
-    --muted-foreground: 0 0% 45%;
-
-    --accent: 30 8% 95%;
-    --accent-foreground: 0 0% 9%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 30 15% 88%;              /* warm light border */
-    --input: 30 18% 93%;
-    --ring: 0 0% 9%;
-
-    --radius: 0.75rem;                 /* match marketing site */
-
-    --sidebar-background: 30 20% 98%; /* near-white warm */
-    --sidebar-foreground: 0 0% 20%;
-    --sidebar-primary: 0 0% 9%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 8% 96%;
-    --sidebar-accent-foreground: 0 0% 9%;
-    --sidebar-border: 30 15% 88%;
-    --sidebar-ring: 0 0% 9%;
-
-    background-color: hsl(30, 25%, 97%);
-    color: #171717;
+    --background: 105 8% 9.8%;                    /* --bg #181b17 */
+    --foreground: 73.3 25.7% 93.1%;               /* --ink #f0f2e9 */
+    --card: 108 7.5% 13.1%;                       /* --paper #20241f */
+    --card-foreground: 73.3 25.7% 93.1%;          /* --ink #f0f2e9 */
+    --popover: 108 7.5% 13.1%;                    /* --paper #20241f */
+    --popover-foreground: 73.3 25.7% 93.1%;       /* --ink #f0f2e9 */
+    --primary: 73.3 25.7% 93.1%;                  /* --ink #f0f2e9 */
+    --primary-foreground: 84 17.9% 11%;           /* --on-ink #1d2117 */
+    --secondary: 110 7.5% 15.7%;                  /* --sand #262b25 */
+    --secondary-foreground: 73.3 25.7% 93.1%;     /* --ink #f0f2e9 */
+    --muted: 110 7.5% 15.7%;                      /* --sand #262b25 */
+    --muted-foreground: 81.4 8.8% 68.6%;          /* --text-3 #b1b6a8 */
+    --accent: 110 7.5% 15.7%;                     /* --sand #262b25 */
+    --accent-foreground: 73.3 25.7% 93.1%;        /* --ink #f0f2e9 */
+    --destructive: 5.6 79.7% 71%;                 /* --bad-fg #f0857a */
+    --destructive-foreground: 84 17.9% 11%;       /* --on-brand #1d2117 */
+    --border: 100 5.6% 21.2%;                     /* --line #353933 */
+    --input: 100 5.6% 21.2%;                      /* --line #353933 */
+    --ring: 71.6 57.7% 62.9%;                     /* --brand #c2d76a */
+    --sidebar-background: 105 8% 9.8%;            /* --bg #181b17 */
+    --sidebar-foreground: 78.5 14.3% 82.2%;       /* --text-1 #d4d8cb */
+    --sidebar-primary: 73.3 25.7% 93.1%;          /* --ink #f0f2e9 */
+    --sidebar-primary-foreground: 84 17.9% 11%;   /* --on-ink #1d2117 */
+    --sidebar-accent: 110 7.5% 15.7%;             /* --sand #262b25 */
+    --sidebar-accent-foreground: 73.3 25.7% 93.1%;/* --ink #f0f2e9 */
+    --sidebar-border: 100 5.6% 21.2%;             /* --line #353933 */
+    --sidebar-ring: 71.6 57.7% 62.9%;             /* --brand #c2d76a */
   }
 }
 
@@ -147,51 +173,13 @@
 
   body {
     @apply bg-background text-foreground;
-    background-color: #f5f5f5;
+    background-color: var(--bg);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     position: relative;
     overflow-x: hidden;
     letter-spacing: -0.015em;
-  }
-
-  html.dark body {
-    background-color: #181512;
-    color: #ede8e3;
-  }
-
-  /* Override hardcoded dark text colors across all marketing pages in dark mode */
-  html.dark .text-gray-900,
-  html.dark .text-gray-800 {
-    color: #ede8e3;
-  }
-
-  html.dark .text-gray-700,
-  html.dark .text-gray-600 {
-    color: rgba(237, 232, 227, 0.65);
-  }
-
-  html.dark .text-gray-500,
-  html.dark .text-gray-400 {
-    color: rgba(237, 232, 227, 0.45);
-  }
-
-  html.dark .text-\[\#111111\],
-  html.dark .text-\[\#141413\],
-  html.dark .text-\[\#222222\],
-  html.dark .text-\[\#1b1b1b\] {
-    color: #ede8e3;
-  }
-
-  html.dark .text-\[\#30302e\] {
-    color: #ede8e3;
-  }
-
-  /* Override border colors */
-  html.dark .border-gray-200,
-  html.dark .border-gray-300 {
-    border-color: rgba(255, 255, 255, 0.1);
   }
 
   html {
@@ -228,12 +216,14 @@
   }
 
   /* STANDARDIZED BUTTONS — Anthropic style */
+  /* The default (filled) button is the primary action: brand olive, like
+     pincer-sh. Outline / ghost / secondary below stay neutral. */
   .standard-button,
   .pricing-button {
-    background: #141413;
+    background: var(--brand);
     border: none;
     border-radius: 9999px;
-    color: #ffffff;
+    color: var(--on-brand);
     font-weight: 500;
     padding: 10px 22px;
     transition: all 0.2s ease;
@@ -252,7 +242,7 @@
 
   .standard-button:hover,
   .pricing-button:hover {
-    background: #2a2a28;
+    background: var(--brand-hover);
     transform: translateY(-1px);
   }
 
@@ -337,9 +327,6 @@
     background-color: #f5f5f5;
   }
 
-  .dark .section-with-shapes {
-    background: linear-gradient(160deg, #181512 0%, #1d1814 60%, #161210 100%);
-  }
 
   /* Gradient section backgrounds */
   .gradient-warm {
@@ -382,95 +369,58 @@
     background-color: #f5f5f5;
   }
 
-  .dark .pricing-page-bg {
-    background: linear-gradient(160deg, #181512 0%, #1d1814 100%);
-  }
 
   .pricing-section-bg {
     background-color: #f5f5f5;
   }
 
-  .dark .pricing-section-bg {
-    background-color: #1c1916;
-  }
 
   .pricing-dark-section {
     background-color: #141413;
     color: #ffffff;
   }
 
-  /* Dark mode overrides for CSS utility classes */
-  .dark .pricing-card {
-    background: #1c1916;
-    border-color: rgba(255,255,255,0.1);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+
+  /* Buttons in dark: the same roles on the dark tokens (the light rules
+     above still carry fixed colours until the button restyle lands). Each
+     variant restates its background: the default rule below comes later in
+     the file and would otherwise paint ghost and outline buttons solid. */
+  .dark .standard-button {
+    background: var(--ink);
+    color: var(--on-ink);
   }
 
-  .dark .pricing-card:hover {
-    background: #252220;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.3);
-  }
-
-  .dark .pricing-text {
-    color: rgba(237,232,227,0.6);
-  }
-
-  .dark .pricing-title {
-    color: #ede8e3;
-  }
-
-  .dark .pricing-gradient {
-    background-color: #181512;
-  }
-
-  .dark .gradient-warm {
-    background-color: #181512;
-  }
-
-  .dark .gradient-warm-alt {
-    background-color: #1c1916;
-  }
-
-  .dark .gradient-cool-warm {
-    background-color: #1c1916;
-  }
-
-  .dark .standard-button,
-  .dark .pricing-button {
-    background: #ede8e3;
-    color: #141413;
-  }
-
-  .dark .standard-button:hover,
-  .dark .pricing-button:hover {
-    background: #ffffff;
+  .dark .standard-button:hover {
+    background: color-mix(in srgb, var(--ink) 88%, var(--paper));
   }
 
   .dark .standard-button.variant-outline {
-    border-color: rgba(237,232,227,0.3);
-    color: #ede8e3;
+    background: transparent;
+    border-color: color-mix(in srgb, var(--ink) 30%, transparent);
+    color: var(--ink);
   }
 
   .dark .standard-button.variant-outline:hover {
-    background: #ede8e3;
-    color: #141413;
+    background: var(--ink);
+    color: var(--on-ink);
   }
 
   .dark .standard-button.variant-ghost {
-    color: #ede8e3;
+    background: transparent;
+    color: var(--ink);
   }
 
   .dark .standard-button.variant-ghost:hover {
-    background: rgba(237,232,227,0.08);
+    background: color-mix(in srgb, var(--ink) 8%, transparent);
   }
 
   .dark .standard-button.variant-secondary {
-    background: rgba(237,232,227,0.08);
-    color: #ede8e3;
+    background: color-mix(in srgb, var(--ink) 8%, transparent);
+    color: var(--ink);
   }
 
   .dark .standard-button.variant-secondary:hover {
-    background: rgba(237,232,227,0.14);
+    background: color-mix(in srgb, var(--ink) 14%, transparent);
   }
 
   /* Slider */
@@ -533,13 +483,6 @@
       radial-gradient(at 84% 8%, hsla(18, 45%, 88%, 0.55) 0px, transparent 50%),
       radial-gradient(at 72% 82%, hsla(20, 20%, 86%, 0.6) 0px, transparent 55%);
   }
-  .dark .mesh-warm {
-    background-color: #181512;
-    background-image:
-      radial-gradient(at 16% 18%, hsla(28, 25%, 18%, 0.9) 0px, transparent 55%),
-      radial-gradient(at 84% 8%, hsla(18, 40%, 16%, 0.6) 0px, transparent 50%),
-      radial-gradient(at 72% 82%, hsla(30, 15%, 14%, 0.6) 0px, transparent 55%);
-  }
 
   /* Grain overlay — apply to a position:relative container */
   .grain { position: relative; }
@@ -552,7 +495,6 @@
     z-index: 0;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
-  .dark .grain::after { opacity: 0.06; }
 
   /* Layered dramatic soft shadow */
   .shadow-layered {
@@ -562,22 +504,11 @@
       0 12px 24px rgba(20, 20, 19, 0.06),
       0 32px 64px rgba(20, 20, 19, 0.08);
   }
-  .dark .shadow-layered {
-    box-shadow:
-      0 1px 1px rgba(0, 0, 0, 0.2),
-      0 4px 8px rgba(0, 0, 0, 0.25),
-      0 12px 24px rgba(0, 0, 0, 0.3),
-      0 32px 64px rgba(0, 0, 0, 0.4);
-  }
 
   /* Crafted hairline edge with inner highlight */
   .border-crafted {
     border: 1px solid rgba(20, 20, 19, 0.1);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  }
-  .dark .border-crafted {
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   /* Stronger frosted panel */
@@ -586,10 +517,6 @@
     backdrop-filter: blur(20px) saturate(140%);
     -webkit-backdrop-filter: blur(20px) saturate(140%);
     border: 1px solid rgba(255, 255, 255, 0.6);
-  }
-  .dark .glass-strong {
-    background: rgba(28, 25, 22, 0.6);
-    border-color: rgba(255, 255, 255, 0.08);
   }
 }
 
@@ -662,115 +589,4 @@
 ::-moz-selection {
   background: rgba(17, 17, 17, 0.12);
   color: #111111;
-}
-
-/* AI-Native Docs feature styles */
-.ai-docs-ghost-text {
-  color: rgba(120, 120, 130, 0.55);
-  pointer-events: none;
-  user-select: none;
-  font-style: italic;
-}
-
-.ProseMirror p.is-editor-empty:first-child::before {
-  color: rgba(140, 140, 150, 0.6);
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
-}
-
-.ProseMirror h1.is-empty::before,
-.ProseMirror h2.is-empty::before,
-.ProseMirror h3.is-empty::before,
-.ProseMirror p.is-empty::before {
-  color: rgba(160, 160, 170, 0.5);
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
-}
-
-/*
- * The source-sentence highlight (FE-2).
- *
- * Reuses the editor's existing search-highlight weight rather than inventing a
- * treatment — the design debt is recorded and this is the interim. Deliberately
- * a background wash and not a border: it must not shift a single character of
- * the text it lands on, or hovering a proposal makes the paragraph jump.
- */
-.ProseMirror .notes-source-highlight {
-  background-color: rgba(251, 191, 36, 0.32);
-  border-radius: 2px;
-  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.32);
-  transition: background-color 120ms ease-out;
-}
-
-.ProseMirror ul[data-type="taskList"] {
-  list-style: none;
-  padding: 0;
-}
-
-.ProseMirror ul[data-type="taskList"] li {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-}
-
-.ProseMirror ul[data-type="taskList"] li > label {
-  margin-top: 0.35rem;
-  user-select: none;
-}
-
-.ProseMirror ul[data-type="taskList"] li > div {
-  flex: 1;
-}
-
-.ProseMirror table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 0.5rem 0;
-}
-
-.ProseMirror table td,
-.ProseMirror table th {
-  border: 1px solid rgba(120, 120, 130, 0.25);
-  padding: 0.4rem 0.6rem;
-  vertical-align: top;
-}
-
-.ProseMirror table th {
-  background: rgba(120, 120, 130, 0.08);
-  font-weight: 600;
-}
-
-.ProseMirror pre {
-  background: rgba(120, 120, 130, 0.08);
-  border-radius: 8px;
-  padding: 0.8rem 1rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.85em;
-  overflow-x: auto;
-}
-
-.ProseMirror blockquote {
-  border-left: 3px solid rgba(120, 120, 130, 0.35);
-  padding-left: 0.9rem;
-  color: rgba(80, 80, 90, 0.85);
-  font-style: italic;
-}
-
-.dark .ProseMirror blockquote {
-  color: rgba(190, 190, 200, 0.85);
-}
-
-.ProseMirror hr {
-  border: 0;
-  border-top: 1px solid rgba(120, 120, 130, 0.25);
-  margin: 1rem 0;
-}
-
-.ProseMirror img {
-  max-width: 100%;
-  border-radius: 6px;
 }

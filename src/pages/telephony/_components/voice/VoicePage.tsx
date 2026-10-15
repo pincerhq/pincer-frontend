@@ -140,7 +140,7 @@ function StatusHeader() {
       {pill(st.voice_configured, 'voice')}
       {pill(st.webhook_base_configured, 'webhook')}
       {st.active_call_count > 0 && (
-        <span className="flex items-center gap-1 rounded-full bg-green-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+        <span className="flex items-center gap-1 rounded-full bg-[var(--ok-fill)] px-2 py-0.5 text-[10px] font-semibold text-[var(--on-ok-fill)]">
           {st.active_call_count} live
         </span>
       )}
@@ -195,7 +195,7 @@ function ActiveCallsSection() {
   const { data: calls } = useActiveCalls();
   const [selected, setSelected] = useState<ActiveCall | null>(null);
   return (
-    <section className="rounded-[14px] border border-[var(--line)] bg-white p-5">
+    <section className="rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-5">
       <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--ink)]">
         <PhoneCall className="h-4 w-4 text-[var(--text-5)]" />
         Active calls
@@ -209,7 +209,7 @@ function ActiveCallsSection() {
               <button
                 type="button"
                 onClick={() => setSelected(c)}
-                className="flex w-full items-center justify-between px-5 py-3 text-left transition-colors hover:bg-[rgba(20,22,26,0.02)]"
+                className="flex w-full items-center justify-between px-5 py-3 text-left transition-colors hover:bg-[color:color-mix(in_srgb,var(--ink)_2%,transparent)]"
                 title="Open live call"
               >
               <div className="min-w-0">
@@ -475,7 +475,7 @@ function HistoryViewToggle({
           className={cn(
             'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
             view === o.id
-              ? 'bg-[var(--ink)] text-white'
+              ? 'bg-[var(--ink)] text-[var(--on-ink)]'
               : 'text-[var(--text-4)] hover:text-[var(--ink)]',
           )}
         >
@@ -561,7 +561,7 @@ function SentimentFilterMenu({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden="true" />
-          <div className="absolute z-20 mt-1 w-56 overflow-hidden rounded-[10px] border border-[var(--line)] bg-white py-1 shadow-lg">
+          <div className="absolute z-20 mt-1 w-56 overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--paper)] py-1 shadow-lg">
             {[...SENTIMENTS, 'unassessed' as const].map((v) => {
               const on = selected.includes(v);
               return (
@@ -575,7 +575,7 @@ function SentimentFilterMenu({
                   <span
                     className={cn(
                       'flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[4px] border',
-                      on ? 'border-[var(--ink)] bg-[var(--ink)] text-white' : 'border-[var(--line)]',
+                      on ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--on-ink)]' : 'border-[var(--line)]',
                     )}
                   >
                     {on && <Check className="h-2.5 w-2.5" />}
@@ -837,7 +837,7 @@ function HistorySection({
   );
 
   return (
-    <section className="rounded-[14px] border border-[var(--line)] bg-white p-5">
+    <section className="rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-5">
       {/* Title row */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-baseline gap-2">
@@ -923,7 +923,7 @@ function HistorySection({
             />
           </div>
 
-          <div className="flex items-center rounded-full border border-[var(--line)] bg-white p-0.5">
+          <div className="flex items-center rounded-full border border-[var(--line)] bg-[var(--paper)] p-0.5">
             {(['all', 'inbound', 'outbound'] as const).map((d) => (
               <button
                 key={d}
@@ -931,7 +931,7 @@ function HistorySection({
                 onClick={() => withReset(setDirection)(d)}
                 className={cn(
                   'rounded-full px-2.5 py-1 text-[11px] font-medium capitalize transition-colors',
-                  direction === d ? 'bg-[var(--ink)] text-white' : 'text-[var(--text-4)] hover:text-[var(--ink)]',
+                  direction === d ? 'bg-[var(--ink)] text-[var(--on-ink)]' : 'text-[var(--text-4)] hover:text-[var(--ink)]',
                 )}
               >
                 {d === 'all' ? 'All' : d}
@@ -1044,7 +1044,7 @@ function HistorySection({
             className={cn(
               'flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11px] font-medium transition-colors',
               threadlessOnly
-                ? 'border-[var(--ink)] bg-[var(--ink)] text-white'
+                ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--on-ink)]'
                 : 'border-[var(--line)] text-[var(--text-3)] hover:bg-[var(--sand)]',
             )}
           >
@@ -1060,7 +1060,7 @@ function HistorySection({
               className={cn(
                 'flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11px] font-medium transition-colors',
                 apptOnly
-                  ? 'border-[var(--ink)] bg-[var(--ink)] text-white'
+                  ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--on-ink)]'
                   : 'border-[var(--line)] text-[var(--text-3)] hover:bg-[var(--sand)]',
               )}
             >
@@ -1076,7 +1076,7 @@ function HistorySection({
             <button
               type="button"
               onClick={() => void refetch()}
-              className="rounded-full border border-red-200 px-2.5 py-1 font-medium hover:bg-white"
+              className="rounded-full border border-red-200 px-2.5 py-1 font-medium hover:bg-[var(--paper)]"
             >
               Retry
             </button>
@@ -1145,8 +1145,8 @@ function HistorySection({
                           }
                         }}
                         className={cn(
-                          'cursor-pointer border-t border-[var(--line-soft)] text-[var(--text-2)] outline-none hover:bg-[rgba(20,22,26,0.02)] focus-visible:bg-[rgba(20,22,26,0.04)] [&>td]:px-2',
-                          selected === c.call_sid && 'bg-[rgba(20,22,26,0.05)]',
+                          'cursor-pointer border-t border-[var(--line-soft)] text-[var(--text-2)] outline-none hover:bg-[color:color-mix(in_srgb,var(--ink)_2%,transparent)] focus-visible:bg-[color:color-mix(in_srgb,var(--ink)_4%,transparent)] [&>td]:px-2',
+                          selected === c.call_sid && 'bg-[color:color-mix(in_srgb,var(--ink)_5%,transparent)]',
                         )}
                       >
                         <td className="py-2 whitespace-nowrap">
@@ -1320,7 +1320,7 @@ function HistorySection({
                       className={cn(
                         'flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-[11px] font-medium transition-colors',
                         safePage === p
-                          ? 'bg-[var(--ink)] text-white'
+                          ? 'bg-[var(--ink)] text-[var(--on-ink)]'
                           : 'text-[var(--text-4)] hover:bg-[var(--sand)] hover:text-[var(--ink)]',
                       )}
                     >
@@ -1419,7 +1419,7 @@ function TranscriptPanel({
 }) {
   const { data: d, isLoading } = useCallDetail(callSid);
   return (
-    <aside className="rounded-[14px] border border-[var(--line)] bg-white p-5">
+    <aside className="rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-5">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="truncate text-sm font-semibold text-[var(--ink)]">
           Transcript · <span className="font-mono text-xs text-[var(--text-4)]">{callSid}</span>
@@ -1457,7 +1457,7 @@ function ContactsSection() {
   if (!contacts?.length) return null;
   const optedOut = contacts.filter((c) => c.opted_out).length;
   return (
-    <section className="rounded-[14px] border border-[var(--line)] bg-white p-5">
+    <section className="rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-5">
       <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--ink)]">
         Contacts
         {optedOut > 0 && (
@@ -1496,7 +1496,7 @@ function ContactsSection() {
 
 function ConnectPrompt() {
   return (
-    <div className="mx-auto mt-16 max-w-md rounded-[14px] border border-[var(--line)] bg-white p-8 text-center">
+    <div className="mx-auto mt-16 max-w-md rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-8 text-center">
       <Plug className="mx-auto mb-3 h-8 w-8 text-[var(--text-5)]" />
       <h2 className="text-sm font-semibold text-[var(--ink)]">Not connected to a Pincer backend</h2>
       <p className="mt-2 text-xs leading-relaxed text-[var(--text-5)]">
@@ -1505,7 +1505,7 @@ function ConnectPrompt() {
       </p>
       <Link
         to="/login"
-        className="mt-4 inline-block rounded-full bg-[var(--ink)] px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-85"
+        className="mt-4 inline-block rounded-full bg-[var(--brand)] px-4 py-2 text-xs font-semibold text-[var(--on-brand)] transition-colors hover:bg-[var(--brand-hover)]"
       >
         Connect (Login → Token)
       </Link>
@@ -1552,7 +1552,7 @@ export default function VoicePage() {
               <Inbox className="h-3.5 w-3.5" />
               Messages
               {unreadMessages > 0 && (
-                <span className="ml-0.5 rounded-full bg-[var(--blue)] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                <span className="ml-0.5 rounded-full bg-[var(--brand)] px-1.5 py-0.5 text-[10px] font-bold leading-none text-[var(--on-brand)]">
                   {unreadMessages}
                 </span>
               )}
@@ -1562,7 +1562,7 @@ export default function VoicePage() {
             <button
               type="button"
               onClick={() => setStartOpen(true)}
-              className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--ink)] px-3.5 text-xs font-medium text-white transition-colors hover:opacity-85"
+              className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--brand)] px-3.5 text-xs font-medium text-[var(--on-brand)] transition-colors hover:bg-[var(--brand-hover)]"
             >
               <PhoneOutgoing className="h-3.5 w-3.5" />
               New call

@@ -67,7 +67,7 @@ export default function PlannedCallsView() {
           {empty}
         </p>
       ) : (
-        <Card className="overflow-hidden border-[var(--line-soft)] bg-white">
+        <Card className="overflow-hidden border-[var(--line-soft)] bg-[var(--paper)]">
           <table className="w-full text-sm">
             <tbody>
               {items.map((entry) => (
@@ -83,7 +83,7 @@ export default function PlannedCallsView() {
                         <p className="truncate font-medium text-[var(--ink)]">
                           {label(entry)}
                           {entry.at && (
-                            <span className="ml-2 text-xs font-normal text-[var(--blue)]">
+                            <span className="ml-2 text-xs font-normal text-[var(--brand)]">
                               {fmtWhen(entry.at)}
                               <span className="ml-1.5 text-[var(--text-5)]">
                                 {leadTimeLabel(entry.at)}
@@ -108,7 +108,7 @@ export default function PlannedCallsView() {
                           });
                           setComposerOpen(true);
                         }}
-                        className="flex h-7 items-center gap-1.5 rounded-full bg-[var(--ink)] px-2.5 text-xs font-medium text-white hover:opacity-85"
+                        className="flex h-7 items-center gap-1.5 rounded-full bg-[var(--brand)] px-2.5 text-xs font-medium text-[var(--on-brand)] hover:bg-[var(--brand-hover)]"
                         title="Open in the composer and dial for real"
                       >
                         <PhoneOutgoing className="h-3 w-3" />
@@ -150,7 +150,7 @@ export default function PlannedCallsView() {
               setComposer(null);
               setComposerOpen(true);
             }}
-            className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--ink)] px-3.5 text-xs font-medium text-white transition-colors hover:opacity-85"
+            className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--brand)] px-3.5 text-xs font-medium text-[var(--on-brand)] transition-colors hover:bg-[var(--brand-hover)]"
           >
             <PhoneOutgoing className="h-3.5 w-3.5" />
             New call

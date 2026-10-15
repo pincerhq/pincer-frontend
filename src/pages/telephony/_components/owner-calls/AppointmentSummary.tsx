@@ -49,7 +49,7 @@ export default function AppointmentSummary({ appointment }: { appointment: Appoi
         )}
       </dl>
       {appointment.calendar_event_link && (
-        <a href={appointment.calendar_event_link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-[var(--blue)] underline-offset-2 hover:underline">
+        <a href={appointment.calendar_event_link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-[var(--brand)] underline-offset-2 hover:underline">
           <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
           {t("appointment.calendarLink")}
         </a>

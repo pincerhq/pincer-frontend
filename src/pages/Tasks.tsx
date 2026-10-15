@@ -17,6 +17,7 @@ import { Link } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
+import { MobileMenuBar } from '@/components/dashboard/MobileMenuBar';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,10 +73,10 @@ const searchInputCls =
   'pl-11 h-9 !rounded-[10px] border-[color:var(--line)] bg-[color:var(--paper)] text-[13px] placeholder:text-[color:var(--text-5)] focus-visible:border-[color:var(--ink)] focus-visible:ring-0 focus-visible:ring-offset-0';
 /** Inactive filter pill: hairline outline, quiet text (rule: no saturated chrome). */
 const filterBtnCls =
-  '!rounded-full !border !border-[color:var(--line)] !bg-transparent !text-[color:var(--text-2)] min-w-[130px] justify-between text-xs font-medium hover:!bg-[rgba(20,22,26,0.04)] hover:!text-[color:var(--ink)]';
+  '!rounded-full !border !border-[color:var(--line)] !bg-transparent !text-[color:var(--text-2)] min-w-[130px] justify-between text-xs font-medium hover:!bg-[color-mix(in_srgb,var(--ink)_4%,transparent)] hover:!text-[color:var(--ink)]';
 /** Active filter pill: ink fill, white text. */
 const filterBtnActiveCls =
-  '!rounded-full !border !border-transparent !bg-[color:var(--ink)] !text-white min-w-[130px] justify-between text-xs font-medium hover:!bg-[color:var(--ink)] hover:!opacity-90';
+  '!rounded-full !border !border-transparent !bg-[color:var(--ink)] !text-[color:var(--on-ink)] min-w-[130px] justify-between text-xs font-medium hover:!bg-[color:var(--ink)] hover:!opacity-90';
 const thCls =
   'text-left px-4 py-3 font-medium text-[color:var(--text-3)] cursor-pointer select-none hover:text-[color:var(--ink)]';
 
@@ -130,7 +131,7 @@ function TableFooter({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-1 rounded-full border px-2.5 py-1 font-medium transition-colors hover:bg-[rgba(20,22,26,0.04)]"
+              className="flex items-center gap-1 rounded-full border px-2.5 py-1 font-medium transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_4%,transparent)]"
               style={{ borderColor: 'var(--line)', color: 'var(--text-2)' }}
             >
               {pageSize} / page
@@ -148,7 +149,7 @@ function TableFooter({
       </div>
       {totalPages > 1 && (
         <div className="flex items-center gap-1">
-          <Button variant="outline" size="icon" className="h-7 w-7 !rounded-full !border-transparent !bg-transparent text-[color:var(--text-4)] hover:!bg-[rgba(20,22,26,0.05)] hover:!text-[color:var(--ink)]" disabled={page === 1} onClick={() => onPage(page - 1)}>
+          <Button variant="outline" size="icon" className="h-7 w-7 !rounded-full !border-transparent !bg-transparent text-[color:var(--text-4)] hover:!bg-[color-mix(in_srgb,var(--ink)_5%,transparent)] hover:!text-[color:var(--ink)]" disabled={page === 1} onClick={() => onPage(page - 1)}>
             <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
           {nums.map(n => (
@@ -159,15 +160,15 @@ function TableFooter({
               className={cn(
                 'h-7 w-7 text-xs !rounded-full',
                 n === page
-                  ? '!bg-[color:var(--ink)] !text-white !border-transparent hover:!opacity-90'
-                  : '!border-transparent !bg-transparent text-[color:var(--text-3)] hover:!bg-[rgba(20,22,26,0.05)] hover:!text-[color:var(--ink)]',
+                  ? '!bg-[color:var(--ink)] !text-[color:var(--on-ink)] !border-transparent hover:!opacity-90'
+                  : '!border-transparent !bg-transparent text-[color:var(--text-3)] hover:!bg-[color-mix(in_srgb,var(--ink)_5%,transparent)] hover:!text-[color:var(--ink)]',
               )}
               onClick={() => onPage(n)}
             >
               {n}
             </Button>
           ))}
-          <Button variant="outline" size="icon" className="h-7 w-7 !rounded-full !border-transparent !bg-transparent text-[color:var(--text-4)] hover:!bg-[rgba(20,22,26,0.05)] hover:!text-[color:var(--ink)]" disabled={page === totalPages} onClick={() => onPage(page + 1)}>
+          <Button variant="outline" size="icon" className="h-7 w-7 !rounded-full !border-transparent !bg-transparent text-[color:var(--text-4)] hover:!bg-[color-mix(in_srgb,var(--ink)_5%,transparent)] hover:!text-[color:var(--ink)]" disabled={page === totalPages} onClick={() => onPage(page + 1)}>
             <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -235,7 +236,7 @@ function JsonBlock({ label, value }: { label: string; value: unknown }) {
             setCopied(true);
             setTimeout(() => setCopied(false), 1200);
           }}
-          className="flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors hover:bg-[rgba(20,22,26,0.04)]"
+          className="flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_4%,transparent)]"
           style={{ borderColor: 'var(--line)', color: 'var(--text-2)' }}
         >
           {copied ? <Check className="h-3 w-3" style={{ color: 'var(--ok-fg)' }} /> : <Copy className="h-3 w-3" />}
@@ -272,7 +273,7 @@ function JournalDetailModal({ entry, onClose }: { entry: AuditEntry; onClose: ()
               style={
                 entry.approved
                   ? undefined
-                  : { background: 'rgba(179,56,46,0.1)', color: 'var(--bad-fg)' }
+                  : { background: 'color-mix(in srgb, var(--bad-fg) 10%, transparent)', color: 'var(--bad-fg)' }
               }
             >
               {entry.approved ? 'Succeeded' : 'Failed'}
@@ -484,7 +485,7 @@ function ScheduledTable() {
                   <tr
                     key={t.id}
                     onClick={() => setSelected(t)}
-                    className="cursor-pointer border-b border-[color:var(--line-soft)] transition-colors last:border-b-0 hover:bg-[rgba(20,22,26,0.02)]"
+                    className="cursor-pointer border-b border-[color:var(--line-soft)] transition-colors last:border-b-0 hover:bg-[color-mix(in_srgb,var(--ink)_2%,transparent)]"
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -696,7 +697,7 @@ function JournalTable() {
                   <tr
                     key={e.id}
                     onClick={() => setSelected(e)}
-                    className="cursor-pointer border-b border-[color:var(--line-soft)] transition-colors last:border-b-0 hover:bg-[rgba(20,22,26,0.02)]"
+                    className="cursor-pointer border-b border-[color:var(--line-soft)] transition-colors last:border-b-0 hover:bg-[color-mix(in_srgb,var(--ink)_2%,transparent)]"
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -723,7 +724,7 @@ function JournalTable() {
                         style={
                           e.approved
                             ? undefined
-                            : { background: 'rgba(179,56,46,0.1)', color: 'var(--bad-fg)' }
+                            : { background: 'color-mix(in srgb, var(--bad-fg) 10%, transparent)', color: 'var(--bad-fg)' }
                         }
                       >
                         {e.approved ? 'Succeeded' : 'Failed'}
@@ -780,6 +781,7 @@ const TasksInner = () => {
         <div className="flex w-full flex-1">
           <AppSidebar />
           <SidebarInset className="flex flex-1 flex-col bg-transparent">
+            <MobileMenuBar />
             <main className="mx-auto w-full max-w-6xl flex-1 p-6 pb-20 lg:p-8">
               <div className="mb-6 flex items-center justify-between">
                 <div>
@@ -802,8 +804,8 @@ const TasksInner = () => {
                     className={cn(
                       'flex h-8 items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium transition-colors',
                       activeTab === key
-                        ? 'border-transparent bg-[color:var(--ink)] text-white hover:opacity-90'
-                        : 'border-[color:var(--line)] text-[color:var(--text-2)] hover:bg-[rgba(20,22,26,0.04)] hover:text-[color:var(--ink)]'
+                        ? 'border-transparent bg-[color:var(--ink)] text-[color:var(--on-ink)] hover:opacity-90'
+                        : 'border-[color:var(--line)] text-[color:var(--text-2)] hover:bg-[color-mix(in_srgb,var(--ink)_4%,transparent)] hover:text-[color:var(--ink)]'
                     )}
                   >
                     <Icon className="h-3.5 w-3.5" />

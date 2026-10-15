@@ -1,8 +1,10 @@
 {
+  "openMenu": "Menü öffnen",
   "groups": {
     "owner": "Ihr Empfang",
     "operations": "Betrieb",
-    "advanced": "Erweitert"
+    "advanced": "Erweitert",
+    "apps": "Apps"
   },
   "items": {
     "overview": "Übersicht",
@@ -12,10 +14,16 @@
     "messages": "Nachrichten",
     "planned": "Geplant",
     "policies": "Richtlinien",
-    "assistant": "Assistent",
     "advancedSettings": "Erweiterte Einstellungen",
     "more": "Mehr",
     "callsOps": "Betriebsansicht Anrufe"
+  },
+  "apps": {
+    "dashboard": "Dashboard",
+    "chat": "Chat",
+    "tasks": "Aufgaben",
+    "company": "Unternehmen",
+    "integrations": "Integrationen"
   },
   "badges": {
     "pastDue": "Überfällig: {{subjects}}",

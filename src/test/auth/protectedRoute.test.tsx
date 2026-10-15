@@ -36,7 +36,7 @@ afterEach(() => {
 describe('ProtectedRoute', () => {
   it.each([
     ['/dashboard', '/login?returnTo=%2Fdashboard'],
-    ['/notes/daily?x=1', '/login?returnTo=%2Fnotes%2Fdaily%3Fx%3D1'],
+    ['/company-brain/memory?x=1', '/login?returnTo=%2Fcompany-brain%2Fmemory%3Fx%3D1'],
     ['/telephony', '/telephony/login?returnTo=%2Ftelephony'],
     ['/telephony/calls/CA-1', '/telephony/login?returnTo=%2Ftelephony%2Fcalls%2FCA-1'],
   ])('sends a signed-out visitor from %s to %s', (from, to) => {

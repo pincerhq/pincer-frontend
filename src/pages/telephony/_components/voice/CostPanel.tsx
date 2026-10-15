@@ -58,7 +58,7 @@ export default function CostPanel({ cost }: { cost: CallCostBreakdown | null | u
       : null;
 
   return (
-    <section className="mb-3 rounded-[10px] border border-[var(--line)] bg-white p-3">
+    <section className="mb-3 rounded-[10px] border border-[var(--line)] bg-[var(--paper)] p-3">
       <h4 className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-[var(--ink)]">
         <Receipt className="h-3.5 w-3.5 text-[var(--text-4)]" />
         {pick(T.title, lang)}

@@ -279,14 +279,14 @@ export default function TranscriptModal({
         </div>
 
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--line-soft)] bg-[rgba(20,22,26,0.02)] px-6 py-2.5">
+        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--line-soft)] bg-[color:color-mix(in_srgb,var(--ink)_2%,transparent)] px-6 py-2.5">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-5)]" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search transcript…"
-              className="h-8 w-72 bg-white pl-8 text-xs"
+              className="h-8 w-72 bg-[var(--paper)] pl-8 text-xs"
             />
             {query && (
               <button
@@ -305,7 +305,7 @@ export default function TranscriptModal({
             </span>
           )}
 
-          <div className="flex items-center rounded-full border border-[var(--line)] bg-white p-0.5">
+          <div className="flex items-center rounded-full border border-[var(--line)] bg-[var(--paper)] p-0.5">
             {speakerPills.map((p) => (
               <button
                 key={p.id}
@@ -313,7 +313,7 @@ export default function TranscriptModal({
                 onClick={() => setSpeaker(p.id)}
                 className={cn(
                   'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
-                  speaker === p.id ? 'bg-[var(--ink)] text-white' : 'text-[var(--text-4)] hover:text-[var(--ink)]',
+                  speaker === p.id ? 'bg-[var(--ink)] text-[var(--on-ink)]' : 'text-[var(--text-4)] hover:text-[var(--ink)]',
                 )}
               >
                 {p.label}
@@ -344,21 +344,21 @@ export default function TranscriptModal({
             <button
               type="button"
               onClick={copyAll}
-              className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3 py-1.5 text-[11px] font-medium text-[var(--text-3)] hover:bg-[var(--sand)]"
+              className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--paper)] px-3 py-1.5 text-[11px] font-medium text-[var(--text-3)] hover:bg-[var(--sand)]"
             >
               <Copy className="h-3 w-3" /> Copy all
             </button>
             <button
               type="button"
               onClick={() => download('txt')}
-              className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3 py-1.5 text-[11px] font-medium text-[var(--text-3)] hover:bg-[var(--sand)]"
+              className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--paper)] px-3 py-1.5 text-[11px] font-medium text-[var(--text-3)] hover:bg-[var(--sand)]"
             >
               <Download className="h-3 w-3" /> .txt
             </button>
             <button
               type="button"
               onClick={() => download('json')}
-              className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3 py-1.5 text-[11px] font-medium text-[var(--text-3)] hover:bg-[var(--sand)]"
+              className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--paper)] px-3 py-1.5 text-[11px] font-medium text-[var(--text-3)] hover:bg-[var(--sand)]"
             >
               <FileJson className="h-3 w-3" /> .json
             </button>
@@ -398,7 +398,7 @@ export default function TranscriptModal({
                     className={cn(
                       'w-14 shrink-0 pt-0.5 text-[10px] font-semibold uppercase tracking-wide',
                       speakerBucket(t.speaker) === 'agent'
-                        ? 'text-[var(--blue)]'
+                        ? 'text-[var(--brand)]'
                         : speakerBucket(t.speaker) === 'caller'
                           ? 'text-[var(--text-4)]'
                           : 'text-[var(--text-5)]',
@@ -453,7 +453,7 @@ export default function TranscriptModal({
               agent was told, how it went, what came of it, and what it cost.
               The transcript on the left is the evidence for all of it. */}
           {d && (
-            <aside className="plat-scroll-y w-[360px] shrink-0 overflow-y-auto overflow-x-hidden border-l border-[var(--line-soft)] bg-[rgba(20,22,26,0.015)] px-4 py-4">
+            <aside className="plat-scroll-y w-[360px] shrink-0 overflow-y-auto overflow-x-hidden border-l border-[var(--line-soft)] bg-[color:color-mix(in_srgb,var(--ink)_1.5%,transparent)] px-4 py-4">
               <BriefingPanel call={d} />
               <AnalyticsPanel call={d} />
               <CallOutcomePanel detail={d} />

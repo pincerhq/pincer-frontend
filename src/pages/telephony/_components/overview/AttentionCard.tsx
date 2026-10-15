@@ -49,7 +49,7 @@ export default function AttentionCard() {
               <button
                 type="button"
                 onClick={() => navigate(targetFor(item))}
-                className="flex w-full items-center gap-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--blue)]"
+                className="flex w-full items-center gap-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
               >
                 <AlertCircle
                   className={item.kind === "urgent_message" || item.kind === "handoff_failed" ? "h-4 w-4 shrink-0 text-[var(--bad-fg)]" : "h-4 w-4 shrink-0 text-[var(--warn-fg)]"}

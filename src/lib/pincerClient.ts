@@ -14,8 +14,8 @@
  *     shortly before expiry, and once more on a 401 `token_expired`. Only an
  *     answer about the token itself ends the session (`onAuthLost`).
  *   - Each browser still has a stable UUID (`pincer.web.userId`), sent as
- *     `X-Pincer-User` for the Notes service. Pincer itself ignores the header
- *     under a JWT: the signed-in identity is who the request is.
+ *     `X-Pincer-User`: `/api/chat/message` keeps its conversation per that
+ *     header (see `generateCallSummary` in `lib/api/voice.ts`).
  *
  * Known limit: a *duplicated* tab that is not remembered copies the session
  * record, refresh token included. Refresh tokens are single-use: a copy that
@@ -68,6 +68,8 @@ export function authFromTokenPair(apiUrl: string, pair: TokenPair): PincerAuth {
 // In-memory copy of the session-scoped record: survives a storage that throws
 // (private mode, blocked site data) for the life of the page.
 let memoryAuth: PincerAuth | null = null;
+// Same for the anonymous user id: stable for the page when storage refuses it.
+let memoryUserId: string | null = null;
 
 function storageOf(kind: "session" | "local"): Storage | undefined {
   try {
@@ -188,17 +190,27 @@ export function isConnected(): boolean {
 }
 
 export function getUserId(): string {
-  let id = localStorage.getItem(USER_ID_KEY);
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(USER_ID_KEY, id);
+  try {
+    let id = localStorage.getItem(USER_ID_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(USER_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    memoryUserId ??= crypto.randomUUID();
+    return memoryUserId;
   }
-  return id;
 }
 
 export function resetUserId(): string {
   const id = crypto.randomUUID();
-  localStorage.setItem(USER_ID_KEY, id);
+  memoryUserId = id;
+  try {
+    localStorage.setItem(USER_ID_KEY, id);
+  } catch {
+    /* storage unavailable — the in-memory copy serves this page */
+  }
   return id;
 }
 
@@ -230,8 +242,8 @@ export function normalizeApiUrl(raw: string): string {
 // ───────────────────── low-level fetch ─────────────────────
 
 /**
- * `X-Pincer-User` is kept for the Notes service (`notes_app`), which rejects a
- * request missing *either* header (ADR 0001). Pincer ignores it under a JWT.
+ * `X-Pincer-User` is kept because `/api/chat/message` is stateful per that
+ * header: the chat thread and its memory belong to the id sent here.
  */
 export function authHeaders(auth: PincerAuth): Record<string, string> {
   return {

@@ -25,7 +25,7 @@ const ForgotPassword = () => {
   const { toast } = useToast();
 
   const field =
-    'h-11 rounded-[10px] border-[color:var(--line)] bg-white text-[color:var(--ink)] placeholder:text-[color:var(--text-5)]';
+    'h-11 rounded-[10px] border-[color:var(--line)] bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--text-5)]';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +64,7 @@ const ForgotPassword = () => {
           </h1>
           <p className="mt-8 max-w-md text-[17px] leading-relaxed text-[color:var(--text-3)]">
             Tell us the address on your account and we'll pass the request to whoever runs your
-            3Days instance. Your AI employees keep working in the meantime.
+            3Days instance. Your agent keeps working in the meantime.
           </p>
         </div>
 
@@ -76,7 +76,7 @@ const ForgotPassword = () => {
       {/* ── Right: the form, floating on the brand panel ── */}
       <div className="p-4 lg:py-6 lg:pr-6">
         <div className="m-auth-art flex min-h-[560px] items-center justify-center p-6 lg:min-h-full">
-          <div className="relative z-10 w-full max-w-[420px] rounded-[20px] bg-white p-7 shadow-[0_30px_60px_-32px_rgba(10,16,60,0.55)] sm:p-9">
+          <div className="relative z-10 w-full max-w-[420px] rounded-[20px] bg-[color:var(--paper)] p-7 shadow-[0_30px_60px_-32px_color-mix(in_srgb,var(--shade)_55%,transparent)] sm:p-9">
             {!submitted ? (
               <>
                 <h2 className="text-center text-[26px] text-[color:var(--ink)]">Reset password</h2>
@@ -109,7 +109,7 @@ const ForgotPassword = () => {
 
                   <button
                     type="submit"
-                    className="mt-1 h-11 w-full rounded-full bg-[color:var(--ink)] text-[15px] font-semibold text-white transition-opacity hover:opacity-85"
+                    className="mt-1 h-11 w-full rounded-full bg-[color:var(--brand)] text-[15px] font-semibold text-[color:var(--on-brand)] transition-colors hover:bg-[color:var(--brand-hover)]"
                   >
                     Send reset request
                   </button>

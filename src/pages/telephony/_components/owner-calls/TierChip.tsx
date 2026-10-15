@@ -3,7 +3,7 @@ import type { Tier } from "@/pages/telephony/_lib/toolMeta";
 
 const CLS: Record<Tier, string> = {
   R: "border-[var(--line)] text-[var(--text-2)]",
-  W: "border-[var(--blue)] text-[var(--blue)]",
+  W: "border-[var(--brand)] text-[var(--brand)]",
   X: "border-[var(--line)] bg-[var(--sand)] text-[var(--text-3)]",
 };
 

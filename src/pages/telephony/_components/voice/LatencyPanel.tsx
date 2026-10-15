@@ -20,7 +20,7 @@ import { CHIP_TONE_CLASS, fmtMs, latencyTone } from '@/pages/telephony/_lib/voic
 import { cn } from '@/lib/utils';
 
 const STAGES = [
-  { key: 'stt_ms', label: 'STT', bar: 'bg-[var(--blue)]/70' },
+  { key: 'stt_ms', label: 'STT', bar: 'bg-[var(--brand)]/70' },
   { key: 'llm_ttft_ms', label: 'LLM TTFT', bar: 'bg-[var(--ink)]/70' },
   { key: 'tts_ms', label: 'TTS', bar: 'bg-amber-400' },
 ] as const;
@@ -95,7 +95,7 @@ export default function LatencyPanel({ latency }: { latency: CallLatency }) {
   };
 
   return (
-    <section className="rounded-[10px] border border-[var(--line)] bg-white p-3">
+    <section className="rounded-[10px] border border-[var(--line)] bg-[var(--paper)] p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="plat-eyebrow flex items-center gap-1.5">
           <Gauge className="h-3.5 w-3.5 text-[var(--text-5)]" />

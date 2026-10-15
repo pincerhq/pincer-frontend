@@ -282,8 +282,8 @@ describe("returnTo", () => {
 
   it("falls back to where the session was lost, then to the default", () => {
     window.history.pushState({}, "", "/login");
-    useSession.getState().setReturnTo("/notes/daily");
-    expect(resolveReturnTo("/dashboard")).toBe("/notes/daily");
+    useSession.getState().setReturnTo("/company-brain/memory");
+    expect(resolveReturnTo("/dashboard")).toBe("/company-brain/memory");
     useSession.getState().setReturnTo(null);
     expect(resolveReturnTo("/dashboard")).toBe("/dashboard");
   });

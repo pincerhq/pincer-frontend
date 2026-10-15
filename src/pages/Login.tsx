@@ -70,7 +70,7 @@ const Login = () => {
   };
 
   const field =
-    'h-11 rounded-[10px] border-[color:var(--line)] bg-white text-[color:var(--ink)] placeholder:text-[color:var(--text-5)]';
+    'h-11 rounded-[10px] border-[color:var(--line)] bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--text-5)]';
 
   return (
     <div className="site3d min-h-screen lg:grid lg:grid-cols-[1fr_1fr]">
@@ -86,8 +86,8 @@ const Login = () => {
             An AI workforce that starts before you do
           </h1>
           <p className="mt-8 max-w-md text-[17px] leading-relaxed text-[color:var(--text-3)]">
-            Sign in to review what your AI employees handled, approve what needs a human,
-            and see the hours they gave back this week.
+            Sign in to chat with your Pincer agent, see what it handled on calls and tasks, and
+            approve anything that needs you.
           </p>
         </div>
 
@@ -99,7 +99,7 @@ const Login = () => {
       {/* ── Right: the form, floating on the brand panel ── */}
       <div className="p-4 lg:py-6 lg:pr-6">
         <div className="m-auth-art flex min-h-[560px] items-center justify-center p-6 lg:min-h-full">
-          <div className="relative z-10 w-full max-w-[420px] rounded-[20px] bg-white p-7 shadow-[0_30px_60px_-32px_rgba(10,16,60,0.55)] sm:p-9">
+          <div className="relative z-10 w-full max-w-[420px] rounded-[20px] bg-[color:var(--paper)] p-7 shadow-[0_30px_60px_-32px_color-mix(in_srgb,var(--shade)_55%,transparent)] sm:p-9">
             <h2 className="text-center text-[26px] text-[color:var(--ink)]">Sign in</h2>
             <p className="mt-2 text-center text-[15px] text-[color:var(--text-3)]">
               Enter your account details below
@@ -171,7 +171,7 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="mt-1 h-11 w-full rounded-full bg-[color:var(--ink)] text-[15px] font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-40"
+                className="mt-1 h-11 w-full rounded-full bg-[color:var(--brand)] text-[15px] font-semibold text-[color:var(--on-brand)] transition-colors hover:bg-[color:var(--brand-hover)] disabled:opacity-40"
               >
                 {isLoading ? 'Signing in…' : 'Sign in'}
               </button>

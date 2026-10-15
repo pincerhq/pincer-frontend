@@ -72,7 +72,7 @@ export function ActionRow({ action, compact = false }: { action: CallAction; com
       data-denied={denied ? 'true' : 'false'}
       className={cn(
         'text-xs',
-        !compact && 'rounded-[10px] border border-[var(--line)] bg-white p-3',
+        !compact && 'rounded-[10px] border border-[var(--line)] bg-[var(--paper)] p-3',
         compact && 'py-0.5',
       )}
     >

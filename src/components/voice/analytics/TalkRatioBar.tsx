@@ -70,7 +70,7 @@ export default function TalkRatioBar({ analytics }: { analytics: CallAnalytics |
         aria-label={`${t(TALK_LABEL.agent, lang)} ${agentOfSpeech}%, ${t(TALK_LABEL.caller, lang)} ${callerOfSpeech}%, ${silencePct}% ${t(TALK_LABEL.silence, lang)}`}
       >
         <span className="bg-[var(--ink)]" style={{ width: `${agentPct}%` }} />
-        <span className="bg-[var(--blue)]" style={{ width: `${callerPct}%` }} />
+        <span className="bg-[var(--brand)]" style={{ width: `${callerPct}%` }} />
         {/* Silence is present but muted: it is the absence of both speakers. */}
         <span className="bg-[var(--sand-deep)] opacity-70" style={{ width: `${silencePct}%` }} />
       </div>

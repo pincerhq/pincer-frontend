@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
+import { MobileMenuBar } from '@/components/dashboard/MobileMenuBar';
 import {
-  Send, Mic, MicOff,
-  Paperclip, X, FileText, Image, Plus, Link2, Unlink,
+  Send, Mic,
+  Paperclip, X, FileText, Image, Plus, Link2, Unlink, WifiOff,
   ShieldAlert, Check, AlertCircle, Loader2, Wrench,
-  Users, ChevronDown, Megaphone, BarChart3, CalendarRange, Wallet,
+  Megaphone, BarChart3, CalendarRange, Wallet,
 } from 'lucide-react';
 import '@/styles/platform.css';
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +24,12 @@ import {
 } from '@/lib/pincerClient';
 import { listConversations, type Conversation } from '@/lib/api/conversations';
 import { cleanAssistantText, renderAssistantText, renderTextWithLinks } from '@/lib/formatChat';
+import { useHealth } from '@/lib/capabilities';
+import { pincerBadgeState, useRetryCountdown, type PincerBadge } from '@/lib/pincerReachability';
+import { queryClient } from '@/lib/queryClient';
+import { useDictation, type DictationState } from '@/lib/dictation';
+import { VoiceBars } from '@/components/VoiceBars';
+import i18n from '@/i18n';
 
 type ChainStep =
   | {
@@ -64,12 +72,32 @@ const SUGGESTIONS = [
   { title: 'Prepare a budget overview', sub: 'for Q2 planning session',          icon: Wallet        },
 ];
 
-const AGENTS = [
-  { label: 'Emma',  color: '#fce7f3', dot: '#f472b6' },
-  { label: 'Aria',  color: '#dbeafe', dot: '#60a5fa' },
-  { label: 'Felix', color: '#dcfce7', dot: '#4ade80' },
-  { label: 'Maya',  color: '#ede9fe', dot: '#a78bfa' },
-];
+/** The mic's title in each dictation state — `stopping` and `queued` are short waits on the engine. */
+const MIC_TITLE: Record<DictationState, string> = {
+  idle: 'Dictate a message',
+  live: 'Stop dictation',
+  stopping: 'Finishing dictation…',
+  queued: 'Starting dictation…',
+};
+
+const MUTED_BADGE = 'bg-[color:var(--sand)] border-[color:var(--line)] text-[color:var(--text-3)]';
+
+const PINCER_BADGE: Record<PincerBadge, { label: string; title: string; tone: string; icon: typeof Link2 }> = {
+  demo: { label: 'Demo mode', title: 'Demo mode — sign in again to connect', tone: MUTED_BADGE, icon: Unlink },
+  checking: { label: 'Checking Pincer…', title: 'Checking whether Pincer is reachable', tone: MUTED_BADGE, icon: Link2 },
+  connected: {
+    label: 'Pincer connected',
+    title: 'Pincer answered its last health check',
+    tone: 'bg-[color:var(--ok-bg)] border-[color:color-mix(in_srgb,var(--ok-fg)_25%,transparent)] text-[color:var(--ok-fg)]',
+    icon: Link2,
+  },
+  offline: {
+    label: 'Pincer offline',
+    title: '', // set at render: it carries the live retry countdown
+    tone: 'bg-[color:var(--warn-bg)] border-[color:color-mix(in_srgb,var(--warn-fg)_25%,transparent)] text-[color:var(--warn-fg)]',
+    icon: WifiOff,
+  },
+};
 
 const WELCOME_MESSAGE: ChatMessage = {
   id: 1,
@@ -78,17 +106,41 @@ const WELCOME_MESSAGE: ChatMessage = {
   timestamp: new Date(),
 };
 
-const Chat = () => {
+const ChatInner = () => {
   const { toast } = useToast();
   const [message, setMessage]             = useState('');
   const [messages, setMessages]           = useState<ChatMessage[]>([]);
-  const [isListening, setIsListening]     = useState(false);
   const [attachments, setAttachments]     = useState<File[]>([]);
   const [chatHistory, setChatHistory]     = useState<ChatHistory[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string>('current');
   const [isStreaming, setIsStreaming]     = useState(false);
   const [pincerOn, setPincerOn]           = useState<boolean>(() => pincerConnected());
-  const [showAgentMenu, setShowAgentMenu] = useState(false);
+  const health = useHealth();
+  const badge = pincerBadgeState(pincerOn, health);
+  // Offline locks everything that would start a request; "checking" does not,
+  // so a slow first health answer never shuts anyone out.
+  const offline = badge === 'offline';
+  // The 1 s retry countdown lives in OfflineNotice / PincerStatusBadge, so its
+  // ticks re-render those two, not this page.
+  const lastAttempt = Math.max(health.errorUpdatedAt ?? 0, health.dataUpdatedAt ?? 0);
+  const checking = health.fetchStatus === 'fetching';
+  // The box as dictation last saw or wrote it — updated synchronously, so two
+  // results that arrive before a re-render still splice onto the latest text.
+  const messageRef = useRef(message);
+  messageRef.current = message;
+  const dictation = useDictation({
+    getText: () => messageRef.current,
+    setText: (text) => {
+      messageRef.current = text;
+      setMessage(text);
+    },
+    lang: () => i18n.resolvedLanguage ?? i18n.language,
+  });
+  const cancelDictation = dictation.cancel;
+  // Going offline ends a session the lock would otherwise leave running.
+  useEffect(() => {
+    if (offline) cancelDictation();
+  }, [offline, cancelDictation]);
   // Dismissed prompt suggestions survive reloads — "closed" should stay closed.
   const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>(() => {
     try {
@@ -117,7 +169,6 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef    = useRef<HTMLTextAreaElement>(null);
   const abortRef       = useRef<AbortController | null>(null);
-  const agentMenuRef   = useRef<HTMLDivElement>(null);
 
   const hasStarted = messages.some(m => m.sender === 'user');
 
@@ -188,26 +239,6 @@ const Chat = () => {
     if (hasStarted) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, hasStarted]);
 
-  useEffect(() => {
-    if (!showAgentMenu) return;
-    const handler = (e: MouseEvent) => {
-      if (agentMenuRef.current && !agentMenuRef.current.contains(e.target as Node)) {
-        setShowAgentMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showAgentMenu]);
-
-  const pickAgent = (label: string) => {
-    setMessage(prev => {
-      const sep = prev.length === 0 || /\s$/.test(prev) ? '' : ' ';
-      return `${prev}${sep}@${label} `;
-    });
-    setShowAgentMenu(false);
-    textareaRef.current?.focus();
-  };
-
   const adjustHeight = () => {
     const el = textareaRef.current;
     if (el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 240) + 'px'; }
@@ -220,7 +251,8 @@ const Chat = () => {
 
   const handleSend = () => {
     if (isStreaming) return;
-    if (!message.trim() && attachments.length === 0) return;
+    if (offline || (!message.trim() && attachments.length === 0)) return;
+    dictation.cancel();
 
     // Typing while viewing a past exchange always continues the live thread.
     if (currentChatId !== 'current') {
@@ -408,6 +440,7 @@ const Chat = () => {
       );
     };
 
+    if (offline) return;
     try {
       await respondApproval(approvalId, approved);
       setDecision(approved ? 'approved' : 'denied');
@@ -454,42 +487,7 @@ const Chat = () => {
   const getFileIcon = (type: string) => type.startsWith('image/') ? Image : FileText;
   const fmt = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  /* ── Agent dropdown (lives inside the input bar) ── */
-  const agentDropdown = (
-    <div className="relative" ref={agentMenuRef}>
-      <button
-        type="button"
-        onClick={() => setShowAgentMenu(p => !p)}
-        className={`flex items-center gap-1 h-9 px-2 rounded-lg transition-colors ${
-          showAgentMenu
-            ? 'bg-gray-100 text-gray-700'
-            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-        }`}
-        title="Mention an agent"
-      >
-        <Users className="h-5 w-5" />
-        <ChevronDown className="h-3 w-3" />
-      </button>
-      {showAgentMenu && (
-        <div className="absolute bottom-full right-0 mb-2 min-w-[170px] rounded-xl border border-gray-200 bg-white shadow-lg py-1 z-20">
-          <div className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
-            Demo roster — inserts text only
-          </div>
-          {AGENTS.map(a => (
-            <button
-              key={a.label}
-              type="button"
-              onClick={() => pickAgent(a.label)}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: a.dot }} />
-              <span>{a.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  const canSend = !isStreaming && !offline && (message.trim().length > 0 || attachments.length > 0);
 
   /* ── Bottom input bar (shared) ── */
   const inputBar = (
@@ -500,19 +498,21 @@ const Chat = () => {
           {attachments.map((f, i) => {
             const Icon = getFileIcon(f.type);
             return (
-              <div key={i} className="flex items-center gap-1.5 bg-gray-100 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-700">
-                <Icon className="h-3.5 w-3.5 text-gray-400" />
+              <div key={i} className="flex items-center gap-1.5 bg-[color:var(--sand)] px-2.5 py-1.5 rounded-lg border border-[color:var(--line)] text-xs text-[color:var(--text-1)]">
+                <Icon className="h-3.5 w-3.5 text-[color:var(--text-5)]" />
                 <span className="truncate max-w-[8rem]">{f.name}</span>
-                <button onClick={() => setAttachments(p => p.filter((_, j) => j !== i))} className="ml-0.5 text-gray-400 hover:text-gray-600"><X className="h-3 w-3" /></button>
+                <button onClick={() => setAttachments(p => p.filter((_, j) => j !== i))} className="ml-0.5 text-[color:var(--text-5)] hover:text-[color:var(--text-1)]"><X className="h-3 w-3" /></button>
               </div>
             );
           })}
         </div>
       )}
 
+      {offline && <OfflineNotice lastAttempt={lastAttempt} checking={checking} />}
+
       {/* Textarea card */}
       <div
-        className="plat-field-shell rounded-[14px] border bg-white transition-colors duration-200"
+        className="plat-field-shell rounded-[14px] border bg-[color:var(--paper)] transition-colors duration-200"
         style={{ borderColor: 'var(--line)' }}
       >
         <textarea
@@ -522,31 +522,41 @@ const Chat = () => {
           onKeyDown={handleKeyDown}
           placeholder={isStreaming ? 'Generating reply…' : 'Message AI assistant… (Shift+Enter for new line)'}
           rows={1}
-          disabled={isStreaming}
-          className="w-full resize-none bg-transparent text-base text-gray-800 placeholder-gray-400 px-5 pt-5 pb-2 focus:outline-none leading-relaxed disabled:opacity-60"
+          disabled={isStreaming || offline}
+          className="w-full resize-none bg-transparent text-base text-[color:var(--ink)] placeholder:text-[color:var(--text-5)] px-5 pt-5 pb-2 focus:outline-none leading-relaxed disabled:opacity-60"
           style={{ minHeight: '88px', maxHeight: '240px' }}
         />
         <div className="flex items-center justify-between px-4 pb-4">
           {/* Left actions */}
-          <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center h-9 w-9 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+          <button onClick={() => fileInputRef.current?.click()} disabled={offline} aria-label="Attach file" className="flex items-center justify-center h-9 w-9 rounded-lg text-[color:var(--text-5)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--sand)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">
             <Paperclip className="h-5 w-5" />
           </button>
           {/* Right actions */}
           <div className="flex items-center gap-2">
-            {agentDropdown}
-            <button
-              onClick={() => setIsListening(p => !p)}
-              className={`flex items-center justify-center h-9 w-9 rounded-lg transition-colors ${isListening ? 'bg-red-100 text-red-500' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
-            >
-              {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-            </button>
+            {dictation.supported && (
+              <button
+                onClick={dictation.listening ? dictation.stop : dictation.start}
+                disabled={offline}
+                aria-label="Voice input"
+                aria-pressed={dictation.listening}
+                title={MIC_TITLE[dictation.state]}
+                className={`flex items-center justify-center h-9 w-9 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent ${
+                  dictation.listening
+                    ? 'bg-[color:color-mix(in_srgb,var(--bad-fg)_10%,transparent)] text-[color:var(--bad-fg)]'
+                    : 'text-[color:var(--text-5)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--sand)]'
+                }`}
+              >
+                {dictation.listening ? <VoiceBars /> : <Mic className="h-5 w-5" />}
+              </button>
+            )}
             <button
               onClick={handleSend}
-              disabled={isStreaming || (!message.trim() && attachments.length === 0)}
+              disabled={!canSend}
+              aria-label="Send message"
               className={`flex items-center justify-center h-9 w-9 rounded-full transition-all duration-150 ${
-                !isStreaming && (message.trim() || attachments.length > 0)
-                  ? 'bg-[#14161a] text-white hover:opacity-85'
-                  : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                canSend
+                  ? 'bg-[color:var(--brand)] text-[color:var(--on-brand)] hover:bg-[color:var(--brand-hover)]'
+                  : 'bg-[color:var(--sand)] text-[color:var(--text-5)] cursor-not-allowed'
               }`}
             >
               <Send className="h-4 w-4" />
@@ -555,25 +565,19 @@ const Chat = () => {
         </div>
       </div>
 
-      <p className="text-center text-[11px] text-gray-400 mt-2">
+      {dictation.error && (
+        <p role="alert" className="mt-2 px-1 text-xs text-[color:var(--bad-fg)]">
+          {dictation.error}
+        </p>
+      )}
+
+      <p className="text-center text-[11px] text-[color:var(--text-5)] mt-2">
         AI can make mistakes. Consider checking important information.
       </p>
     </div>
   );
 
-  const pincerBadge = (
-    <span
-      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${
-        pincerOn
-          ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-          : 'bg-gray-50 border-gray-200 text-gray-500'
-      }`}
-      title={pincerOn ? 'Connected to Pincer' : 'Demo mode — sign in again to connect'}
-    >
-      {pincerOn ? <Link2 className="h-3 w-3" /> : <Unlink className="h-3 w-3" />}
-      {pincerOn ? 'Pincer connected' : 'Demo mode'}
-    </span>
-  );
+  const pincerBadge = <PincerStatusBadge badge={badge} lastAttempt={lastAttempt} checking={checking} />;
 
   return (
     <SidebarProvider className="plat">
@@ -587,6 +591,7 @@ const Chat = () => {
 
         {/* ────────────── Main chat column ────────────── */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <MobileMenuBar />
 
           {!hasStarted ? (
             /* ── Empty / welcome state ── */
@@ -596,8 +601,8 @@ const Chat = () => {
                 {/* Greeting */}
                 <div className="flex flex-col items-center gap-3 text-center">
                   <p className="plat-crumb">3days.chat</p>
-                  <h1 className="text-[2rem] text-gray-900">How can I help you today?</h1>
-                  <p className="text-sm text-gray-500">Chat with your AI employees or ask anything</p>
+                  <h1 className="text-[2rem] text-[color:var(--ink)]">How can I help you today?</h1>
+                  <p className="text-sm text-[color:var(--text-3)]">Chat with your Pincer agent or ask anything</p>
                   {pincerBadge}
                 </div>
 
@@ -611,7 +616,7 @@ const Chat = () => {
                   <button
                     type="button"
                     onClick={restoreSuggestions}
-                    className="text-xs text-gray-400 transition-colors hover:text-gray-600"
+                    className="text-xs text-[color:var(--text-5)] transition-colors hover:text-[color:var(--text-1)]"
                   >
                     Show suggestions
                   </button>
@@ -625,7 +630,7 @@ const Chat = () => {
                       <button
                         type="button"
                         onClick={() => dismissSuggestion('ALL')}
-                        className="text-[11px] text-gray-400 transition-colors hover:text-gray-600"
+                        className="text-[11px] text-[color:var(--text-5)] transition-colors hover:text-[color:var(--text-1)]"
                       >
                         Hide all
                       </button>
@@ -651,7 +656,7 @@ const Chat = () => {
                             <button
                               type="button"
                               onClick={() => dismissSuggestion(item.title)}
-                              className="mr-2 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-gray-300 opacity-0 transition-all hover:bg-gray-200/60 hover:text-gray-600 group-hover:opacity-100"
+                              className="mr-2 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-[color:var(--text-5)] opacity-0 transition-all hover:bg-[color:color-mix(in_srgb,var(--sand-deep)_60%,transparent)] hover:text-[color:var(--text-1)] group-hover:opacity-100"
                               aria-label={`Dismiss suggestion: ${item.title}`}
                               title="Dismiss"
                             >
@@ -702,20 +707,21 @@ const Chat = () => {
                                     msgId={msg.id}
                                     streaming={!!msg.streaming}
                                     onDecide={handleApproval}
+                                    locked={offline}
                                   />
                                 )}
-                                <div className="text-sm text-gray-800 leading-relaxed">
+                                <div className="text-sm text-[color:var(--ink)] leading-relaxed">
                                   {showTyping ? (
-                                    <span className="inline-flex items-center gap-1 text-gray-400">
-                                      <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:-0.3s]" />
-                                      <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:-0.15s]" />
-                                      <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce" />
+                                    <span className="inline-flex items-center gap-1 text-[color:var(--text-5)]">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--text-5)] animate-bounce [animation-delay:-0.3s]" />
+                                      <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--text-5)] animate-bounce [animation-delay:-0.15s]" />
+                                      <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--text-5)] animate-bounce" />
                                     </span>
                                   ) : hasText ? (
                                     <>
                                       {renderAssistantText(msg.text)}
                                       {msg.streaming && (
-                                        <span className="inline-block w-1.5 h-3.5 ml-0.5 bg-gray-400 animate-pulse align-middle" />
+                                        <span className="inline-block w-1.5 h-3.5 ml-0.5 bg-[color:var(--text-5)] animate-pulse align-middle" />
                                       )}
                                     </>
                                   ) : null}
@@ -734,16 +740,16 @@ const Chat = () => {
                             {msg.attachments.map((att, i) => {
                               const Icon = getFileIcon(att.type);
                               return (
-                                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg border border-gray-200">
-                                  <Icon className="h-3.5 w-3.5 text-gray-500" />
-                                  <span className="text-xs text-gray-700 truncate max-w-48">{att.name}</span>
+                                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-[color:var(--sand)] rounded-lg border border-[color:var(--line)]">
+                                  <Icon className="h-3.5 w-3.5 text-[color:var(--text-3)]" />
+                                  <span className="text-xs text-[color:var(--text-1)] truncate max-w-48">{att.name}</span>
                                 </div>
                               );
                             })}
                           </div>
                         )}
 
-                        <span className="text-[11px] text-gray-400 mt-1.5 px-0.5">{fmt(msg.timestamp)}</span>
+                        <span className="text-[11px] text-[color:var(--text-5)] mt-1.5 px-0.5">{fmt(msg.timestamp)}</span>
                       </div>
                     </div>
                   ))}
@@ -776,14 +782,17 @@ function ChainTimeline({
   msgId,
   streaming,
   onDecide,
+  locked,
 }: {
   steps: ChainStep[];
   msgId: number;
   streaming: boolean;
   onDecide: (msgId: number, approvalId: string, approved: boolean) => void;
+  /** Pincer is offline: decisions cannot be sent. */
+  locked: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2.5">
+    <div className="rounded-xl border border-[color:var(--line)] bg-[color:color-mix(in_srgb,var(--sand)_60%,transparent)] px-3 py-2.5">
       <ol className="flex flex-col">
         {steps.map((step, i) => (
           <ChainRow
@@ -793,6 +802,7 @@ function ChainTimeline({
             streaming={streaming}
             msgId={msgId}
             onDecide={onDecide}
+            locked={locked}
           />
         ))}
       </ol>
@@ -806,12 +816,14 @@ function ChainRow({
   streaming,
   msgId,
   onDecide,
+  locked,
 }: {
   step: ChainStep;
   isLast: boolean;
   streaming: boolean;
   msgId: number;
   onDecide: (msgId: number, approvalId: string, approved: boolean) => void;
+  locked: boolean;
 }) {
   // Active = the latest in-flight thing the agent is doing right now; this
   // controls the dot accent so the chain reads like a progress indicator.
@@ -826,7 +838,7 @@ function ChainRow({
       {/* Dot + connector */}
       <div className="flex flex-col items-center pt-1">
         <ChainDot step={step} isActive={isActive} />
-        {!isLast && <div className="flex-1 w-px bg-gray-200 mt-1 min-h-[14px]" />}
+        {!isLast && <div className="flex-1 w-px bg-[color:var(--sand-deep)] mt-1 min-h-[14px]" />}
       </div>
 
       {/* Content */}
@@ -834,7 +846,7 @@ function ChainRow({
         {step.kind === 'tool' ? (
           <ToolStepBody step={step} />
         ) : (
-          <ApprovalStepBody step={step} msgId={msgId} onDecide={onDecide} />
+          <ApprovalStepBody step={step} msgId={msgId} onDecide={onDecide} locked={locked} />
         )}
       </div>
     </li>
@@ -844,17 +856,17 @@ function ChainRow({
 function ChainDot({ step, isActive }: { step: ChainStep; isActive: boolean }) {
   if (step.kind === 'approval') {
     if (step.decision === 'approved') {
-      return <span className="h-2 w-2 rounded-full bg-gray-700 ring-2 ring-gray-100" />;
+      return <span className="h-2 w-2 rounded-full bg-[color:var(--ink)] ring-2 ring-[color:var(--line)]" />;
     }
     if (step.decision === 'denied') {
-      return <span className="h-2 w-2 rounded-full bg-gray-300 ring-2 ring-gray-100" />;
+      return <span className="h-2 w-2 rounded-full bg-[color:var(--sand-deep)] ring-2 ring-[color:var(--line)]" />;
     }
     if (step.decision === 'error') {
       return <span className="h-2 w-2 rounded-full bg-red-400 ring-2 ring-red-50" />;
     }
     return (
       <span
-        className={`h-2 w-2 rounded-full bg-gray-500 ring-2 ring-gray-100 ${
+        className={`h-2 w-2 rounded-full bg-[color:var(--text-3)] ring-2 ring-[color:var(--line)] ${
           isActive ? 'animate-pulse' : ''
         }`}
       />
@@ -864,22 +876,22 @@ function ChainDot({ step, isActive }: { step: ChainStep; isActive: boolean }) {
   if (step.status === 'running') {
     return (
       <span
-        className={`h-2 w-2 rounded-full bg-[#8fc4e4] ring-2 ring-[#bdd8ec]/40 ${
+        className={`h-2 w-2 rounded-full bg-[color:var(--brand-200)] ring-2 ring-[color:color-mix(in_srgb,var(--brand-100)_40%,transparent)] ${
           isActive ? 'animate-pulse' : ''
         }`}
       />
     );
   }
-  return <span className="h-2 w-2 rounded-full bg-gray-400 ring-2 ring-gray-100" />;
+  return <span className="h-2 w-2 rounded-full bg-[color:var(--text-5)] ring-2 ring-[color:var(--line)]" />;
 }
 
 function ToolStepBody({ step }: { step: Extract<ChainStep, { kind: 'tool' }> }) {
   const running = step.status === 'running';
   return (
     <div className="flex items-center gap-2 text-[12px]">
-      <Wrench className="h-3 w-3 text-gray-400 shrink-0" />
-      <span className="font-mono text-gray-700">{step.name}</span>
-      <span className="inline-flex items-center gap-1 text-gray-400">
+      <Wrench className="h-3 w-3 text-[color:var(--text-5)] shrink-0" />
+      <span className="font-mono text-[color:var(--text-1)]">{step.name}</span>
+      <span className="inline-flex items-center gap-1 text-[color:var(--text-5)]">
         {running ? (
           <>
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -887,7 +899,7 @@ function ToolStepBody({ step }: { step: Extract<ChainStep, { kind: 'tool' }> }) 
           </>
         ) : (
           <>
-            <Check className="h-3 w-3 text-gray-400" />
+            <Check className="h-3 w-3 text-[color:var(--text-5)]" />
             <span>done</span>
           </>
         )}
@@ -900,22 +912,24 @@ function ApprovalStepBody({
   step,
   msgId,
   onDecide,
+  locked,
 }: {
   step: Extract<ChainStep, { kind: 'approval' }>;
   msgId: number;
   onDecide: (msgId: number, approvalId: string, approved: boolean) => void;
+  locked: boolean;
 }) {
   if (step.decision === 'approved' || step.decision === 'denied') {
     const approved = step.decision === 'approved';
     return (
       <div className="flex items-center gap-2 text-[12px]">
         {approved ? (
-          <Check className="h-3 w-3 text-gray-500" />
+          <Check className="h-3 w-3 text-[color:var(--text-3)]" />
         ) : (
-          <X className="h-3 w-3 text-gray-400" />
+          <X className="h-3 w-3 text-[color:var(--text-5)]" />
         )}
-        <span className="text-gray-500">{approved ? 'Approved' : 'Denied'}</span>
-        <span className="font-mono text-gray-700">{step.tool}</span>
+        <span className="text-[color:var(--text-3)]">{approved ? 'Approved' : 'Denied'}</span>
+        <span className="font-mono text-[color:var(--text-1)]">{step.tool}</span>
       </div>
     );
   }
@@ -932,20 +946,22 @@ function ApprovalStepBody({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2 text-[12px]">
-        <ShieldAlert className="h-3.5 w-3.5 text-gray-500 shrink-0" />
-        <span className="font-medium text-gray-800">Approval required</span>
-        <span className="font-mono text-gray-700">{step.tool}</span>
+        <ShieldAlert className="h-3.5 w-3.5 text-[color:var(--text-3)] shrink-0" />
+        <span className="font-medium text-[color:var(--ink)]">Approval required</span>
+        <span className="font-mono text-[color:var(--text-1)]">{step.tool}</span>
       </div>
       <div className="flex gap-1.5">
         <button
           onClick={() => onDecide(msgId, step.approvalId, true)}
-          className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-gray-900 text-white hover:bg-gray-700 transition-colors"
+          disabled={locked}
+          className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[color:var(--brand)] text-[color:var(--on-brand)] hover:bg-[color:var(--brand-hover)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Approve
         </button>
         <button
           onClick={() => onDecide(msgId, step.approvalId, false)}
-          className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors"
+          disabled={locked}
+          className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[color:var(--paper)] text-[color:var(--text-1)] border border-[color:var(--line)] hover:bg-[color:var(--sand)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Deny
         </button>
@@ -969,6 +985,48 @@ function mapHistory(history: PincerMessage[]): ChatMessage[] {
     });
   }
   return out;
+}
+
+const Chat = () => (
+  <QueryClientProvider client={queryClient}>
+    <ChatInner />
+  </QueryClientProvider>
+);
+
+/** "retrying in N s." / "retrying…" — the countdown to the next real health check. */
+const retryLabel = (retry: number | 'retrying' | null) =>
+  retry === 'retrying' ? 'retrying…' : `retrying in ${retry} s.`;
+
+function OfflineNotice({ lastAttempt, checking }: { lastAttempt: number; checking: boolean }) {
+  const retry = useRetryCountdown(true, lastAttempt, checking);
+  return (
+    <div
+      role="status"
+      className="mb-2 flex items-center gap-2 rounded-[10px] border border-[color:color-mix(in_srgb,var(--warn-fg)_25%,transparent)] bg-[color:var(--warn-bg)] px-3 py-2 text-xs text-[color:var(--warn-fg)]"
+    >
+      <WifiOff className="h-3.5 w-3.5 shrink-0" />
+      Pincer is offline. Chat is unavailable until it reconnects — {retryLabel(retry)}
+    </div>
+  );
+}
+
+function PincerStatusBadge({ badge, lastAttempt, checking }: { badge: PincerBadge; lastAttempt: number; checking: boolean }) {
+  const retry = useRetryCountdown(badge === 'offline', lastAttempt, checking);
+  const view = PINCER_BADGE[badge];
+  const Icon = view.icon;
+  return (
+    <span
+      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${view.tone}`}
+      title={
+        badge === 'offline'
+          ? `Pincer did not answer at ${getAuth()?.apiUrl ?? 'its address'}. ${retry === 'retrying' ? 'Retrying now…' : `Retrying in ${retry} s.`}`
+          : view.title
+      }
+    >
+      <Icon className="h-3 w-3" />
+      {view.label}
+    </span>
+  );
 }
 
 export default Chat;

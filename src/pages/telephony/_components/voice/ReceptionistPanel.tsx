@@ -53,7 +53,7 @@ function ProfileCard({ profile }: { profile: BusinessProfile }) {
   const hours = todayHoursLabel(profile.hours ?? {}, profile.timezone);
 
   return (
-    <div className="rounded-[14px] border border-[var(--line-soft)] bg-white p-5">
+    <div className="rounded-[14px] border border-[var(--line-soft)] bg-[var(--paper)] p-5">
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
           <p className="plat-eyebrow">Receptionist</p>
@@ -135,7 +135,7 @@ function StatsStrip() {
   const intentTotal = INBOUND_INTENTS.reduce((n, k) => n + (data?.intents?.[k] ?? 0), 0);
 
   return (
-    <div className="rounded-[14px] border border-[var(--line-soft)] bg-white p-5">
+    <div className="rounded-[14px] border border-[var(--line-soft)] bg-[var(--paper)] p-5">
       <div className="mb-4 flex items-center gap-3">
         <p className="plat-eyebrow">Inbound</p>
         <div className="ml-auto flex rounded-full border border-[var(--line)] p-0.5">
@@ -146,7 +146,7 @@ function StatsStrip() {
               onClick={() => setDays(d)}
               className={cn(
                 'rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors',
-                days === d ? 'bg-[var(--ink)] text-white' : 'text-[var(--text-4)] hover:text-[var(--ink)]',
+                days === d ? 'bg-[var(--ink)] text-[var(--on-ink)]' : 'text-[var(--text-4)] hover:text-[var(--ink)]',
               )}
             >
               {d}d
@@ -191,7 +191,7 @@ function StatsStrip() {
                       title={`${intentMeta(intent)?.label}: ${n}`}
                       style={{
                         width: `${(n / intentTotal) * 100}%`,
-                        background: `color-mix(in srgb, var(--blue) ${100 - i * 14}%, var(--sand-deep))`,
+                        background: `color-mix(in srgb, var(--brand) ${100 - i * 14}%, var(--sand-deep))`,
                         marginRight: 2,
                       }}
                     />
@@ -276,7 +276,7 @@ function BlocklistSection() {
   const error = localError ?? (add.isError ? add.error?.message : null);
 
   return (
-    <div className="rounded-[14px] border border-[var(--line-soft)] bg-white p-5">
+    <div className="rounded-[14px] border border-[var(--line-soft)] bg-[var(--paper)] p-5">
       <p className="plat-eyebrow mb-3 flex items-center gap-1.5">
         <ShieldBan className="h-3.5 w-3.5" /> Blocked callers
       </p>
@@ -308,7 +308,7 @@ function BlocklistSection() {
           type="button"
           onClick={submit}
           disabled={add.isPending}
-          className="flex items-center gap-1.5 rounded-full bg-[var(--ink)] px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-full bg-[var(--brand)] hover:bg-[var(--brand-hover)] px-3.5 py-2 text-xs font-semibold text-[var(--on-brand)] disabled:opacity-40"
         >
           <Plus className="h-3.5 w-3.5" />
           Block
@@ -346,7 +346,7 @@ function BlocklistSection() {
                         remove.mutate(e.number);
                         setConfirming(null);
                       }}
-                      className="rounded-full bg-[var(--bad-fg)] px-2.5 py-1 text-[10px] font-semibold text-white"
+                      className="rounded-full bg-[var(--bad-fill)] px-2.5 py-1 text-[10px] font-semibold text-[var(--on-bad-fill)]"
                     >
                       Unblock
                     </button>

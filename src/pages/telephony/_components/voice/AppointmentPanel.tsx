@@ -49,9 +49,9 @@ function Step({
       <span
         className={cn(
           'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border',
-          state === 'done' && 'border-green-600 bg-green-600 text-white',
-          state === 'failed' && 'border-red-500 bg-red-500 text-white',
-          state === 'pending' && 'border-[var(--line)] bg-white',
+          state === 'done' && 'border-[var(--ok-fill)] bg-[var(--ok-fill)] text-[var(--on-ok-fill)]',
+          state === 'failed' && 'border-[var(--bad-fill)] bg-[var(--bad-fill)] text-[var(--on-bad-fill)]',
+          state === 'pending' && 'border-[var(--line)] bg-[var(--paper)]',
         )}
       >
         {state === 'done' && <Check className="h-2.5 w-2.5" />}
@@ -93,7 +93,7 @@ export default function AppointmentPanel({ appointment }: { appointment: Appoint
   const attempts = appointment.attempts ?? [];
 
   return (
-    <section className="rounded-[10px] border border-[var(--line)] bg-white p-3">
+    <section className="rounded-[10px] border border-[var(--line)] bg-[var(--paper)] p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="plat-eyebrow flex items-center gap-1.5">
           <CalendarClock className="h-3.5 w-3.5 text-[var(--text-5)]" />
@@ -208,7 +208,7 @@ export default function AppointmentPanel({ appointment }: { appointment: Appoint
           href={appointment.calendar_event_link}
           target="_blank"
           rel="noreferrer"
-          className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-[var(--ink)] px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-85"
+          className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-[var(--brand)] px-3 py-2 text-xs font-medium text-[var(--on-brand)] transition-colors hover:bg-[var(--brand-hover)]"
         >
           <ExternalLink className="h-3.5 w-3.5" />
           Open calendar event

@@ -24,10 +24,9 @@
  * workforce/teams API, so its headcount and productivity figures were demo
  * numbers with nothing behind them.
  */
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   ArrowUpRight,
-  Bot,
   CalendarClock,
   Check,
   CircleAlert,
@@ -35,18 +34,18 @@ import {
   MessageSquare,
   Phone,
   Plug,
-  Plus,
   Sparkles,
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
-import CreateAgentWizard from '@/components/dashboard/CreateAgentWizard';
+import { MobileMenuBar } from '@/components/dashboard/MobileMenuBar';
 import { queryClient } from '@/lib/queryClient';
 import { isConnected } from '@/lib/pincerClient';
 import {
   useAgentStatus,
+  liveAgentStatus,
   useAuditStats,
   useCostHistory,
   useCostsByModel,
@@ -112,7 +111,7 @@ function TodayRow() {
             className="h-full rounded-full transition-all"
             style={{
               width: `${pct}%`,
-              background: downgraded || pct >= 90 ? 'var(--warn-fg)' : 'var(--blue)',
+              background: downgraded || pct >= 90 ? 'var(--warn-fg)' : 'var(--brand)',
             }}
           />
         </div>
@@ -254,9 +253,9 @@ function SpendTrendCard() {
             <div
               key={d.date}
               className="flex-1 rounded-t-md transition-colors"
-              style={{ height: `${Math.max(4, (d.total_usd / max) * 100)}%`, background: 'var(--blue-200)' }}
-              onMouseEnter={(ev) => ((ev.currentTarget as HTMLDivElement).style.background = 'var(--blue)')}
-              onMouseLeave={(ev) => ((ev.currentTarget as HTMLDivElement).style.background = 'var(--blue-200)')}
+              style={{ height: `${Math.max(4, (d.total_usd / max) * 100)}%`, background: 'var(--brand-200)' }}
+              onMouseEnter={(ev) => ((ev.currentTarget as HTMLDivElement).style.background = 'var(--brand)')}
+              onMouseLeave={(ev) => ((ev.currentTarget as HTMLDivElement).style.background = 'var(--brand-200)')}
               title={`${d.date} · ${fmtUsd(d.total_usd)} · ${d.request_count} requests`}
             />
           ))}
@@ -288,7 +287,7 @@ function SpendTrendCard() {
 // ── Right rail: agent, quick actions, automation ─────────────────────
 
 function AgentCard() {
-  const { data: st } = useAgentStatus();
+  const { st, unreachable } = liveAgentStatus(useAgentStatus());
   const detail = useDetail('Agent', 'Runtime, channels and what the agent has been doing', <AgentDetail />);
   return (
     <div className="plat-panel">
@@ -300,13 +299,20 @@ function AgentCard() {
           {detail.trigger}
         </span>
       </div>
-      <span className={cn('plat-pill', !st ? 'plat-pill-mute' : st.agent_running ? 'plat-pill-ok' : 'plat-pill-warn')}>
-        <span
-          className="h-1.5 w-1.5 rounded-full"
-          style={{ background: !st ? 'var(--text-5)' : st.agent_running ? 'var(--ok-fg)' : 'var(--warn-fg)' }}
-        />
-        {!st ? 'waiting for data' : st.agent_running ? 'Running' : 'Stopped'}
-      </span>
+      {unreachable ? (
+        <span className="plat-pill plat-pill-warn" title="The last status check failed — retrying">
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--warn-fg)' }} />
+          Not reachable
+        </span>
+      ) : (
+        <span className={cn('plat-pill', !st ? 'plat-pill-mute' : st.agent_running ? 'plat-pill-ok' : 'plat-pill-warn')}>
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ background: !st ? 'var(--text-5)' : st.agent_running ? 'var(--ok-fg)' : 'var(--warn-fg)' }}
+          />
+          {!st ? 'waiting for data' : st.agent_running ? 'Running' : 'Stopped'}
+        </span>
+      )}
       {st && (
         <div className="mt-4 space-y-1.5 border-t pt-3" style={{ borderColor: 'var(--line-soft)' }}>
           <p className="plat-eyebrow mb-2">Channels</p>
@@ -333,11 +339,10 @@ function AgentCard() {
 }
 
 /** Squircle-icon list rows, straight from the reference nav screen. */
-function QuickActions({ onDeploy }: { onDeploy: () => void }) {
+function QuickActions() {
   const navigate = useNavigate();
   const actions = [
-    { label: 'Create AI Worker', sub: 'Deploy a new agent', icon: Bot, onClick: onDeploy },
-    { label: 'Open Chat', sub: 'Talk to your agents', icon: MessageSquare, onClick: () => navigate('/chat') },
+    { label: 'Open Chat', sub: 'Talk to your agent', icon: MessageSquare, onClick: () => navigate('/chat') },
     { label: 'Voice Calls', sub: 'Start or schedule calls', icon: Phone, onClick: () => navigate('/telephony') },
   ];
   return (
@@ -419,7 +424,6 @@ function AutomationCard() {
 // ── Page ─────────────────────────────────────────────────────────────
 
 const Dashboard = () => {
-  const [wizardOpen, setWizardOpen] = useState(false);
   const connected = isConnected();
   const activityDetail = useDetail(
     'Activity',
@@ -434,19 +438,16 @@ const Dashboard = () => {
           <div className="flex w-full flex-1">
             <AppSidebar />
             <SidebarInset className="flex flex-1 flex-col bg-transparent">
+              <MobileMenuBar />
               <main className="mx-auto w-full max-w-6xl flex-1 p-6 lg:p-8">
                 {/* Page header — mono breadcrumb, like the reference */}
                 <div className="mb-8 flex items-center justify-between">
                   <div>
                     <p className="plat-crumb">3days.dashboard</p>
                     <p className="mt-1 text-sm" style={{ color: 'var(--text-4)' }}>
-                      What your AI workforce is doing, at a glance
+                      What your agent is doing, at a glance
                     </p>
                   </div>
-                  <button type="button" onClick={() => setWizardOpen(true)} className="plat-btn">
-                    <Plus className="h-4 w-4" />
-                    Deploy Agent
-                  </button>
                 </div>
 
                 {!connected && <ConnectStrip />}
@@ -475,7 +476,7 @@ const Dashboard = () => {
                       <SectionHeader label="Your agent" />
                       <div className="space-y-4">
                         <AgentCard />
-                        <QuickActions onDeploy={() => setWizardOpen(true)} />
+                        <QuickActions />
                         <AutomationCard />
                       </div>
                     </section>
@@ -489,11 +490,6 @@ const Dashboard = () => {
             </SidebarInset>
           </div>
         </SidebarProvider>
-        <CreateAgentWizard
-          open={wizardOpen}
-          onClose={() => setWizardOpen(false)}
-          onComplete={() => setWizardOpen(false)}
-        />
       </div>
     </QueryClientProvider>
   );

@@ -82,7 +82,7 @@ export default function BrainSearchView() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Query…"
-              className="rounded-[10px] border-[var(--line)] bg-white pl-10 text-[var(--text-1)] placeholder:text-[var(--text-5)] focus-visible:ring-2 focus-visible:ring-[var(--ink)]/25 focus-visible:ring-offset-0"
+              className="rounded-[10px] border-[var(--line)] bg-[color:var(--paper)] pl-10 text-[var(--text-1)] placeholder:text-[var(--text-5)] focus-visible:ring-2 focus-visible:ring-[var(--ink)]/25 focus-visible:ring-offset-0"
             />
           </div>
           <button
@@ -114,7 +114,7 @@ export default function BrainSearchView() {
                     className={cn(
                       'max-w-[220px] truncate rounded-full px-2.5 py-1 text-[10px] transition-colors',
                       sourceFilter === src
-                        ? 'bg-[var(--ink)] text-white'
+                        ? 'bg-[var(--ink)] text-[color:var(--on-ink)]'
                         : 'border border-[var(--line)] text-[var(--text-3)] hover:border-[var(--ink)] hover:text-[var(--ink)]',
                     )}
                   >
@@ -138,7 +138,7 @@ export default function BrainSearchView() {
             No chunks matched{sourceFilter !== 'all' ? ' this source' : ''}.
           </p>
         ) : (
-          <Card className="overflow-hidden rounded-[14px] border-[var(--line-soft)] bg-white shadow-none">
+          <Card className="overflow-hidden rounded-[14px] border-[var(--line-soft)] bg-[color:var(--paper)] shadow-none">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--line-soft)] bg-[var(--sand)] text-left">
@@ -157,7 +157,7 @@ export default function BrainSearchView() {
                     <tr
                       key={i}
                       onClick={() => setExpanded(isOpen ? null : i)}
-                      className="cursor-pointer border-b border-[var(--line-soft)] align-top transition-colors last:border-b-0 hover:bg-[rgba(20,22,26,0.02)]"
+                      className="cursor-pointer border-b border-[var(--line-soft)] align-top transition-colors last:border-b-0 hover:bg-[color-mix(in_srgb,var(--ink)_2%,transparent)]"
                     >
                       <td className="px-4 py-3 text-xs text-[var(--text-4)]" style={{ fontFamily: 'var(--mono)' }}>{i + 1}</td>
                       <td className="w-full max-w-0 px-4 py-3">
@@ -177,10 +177,10 @@ export default function BrainSearchView() {
                           <span className="text-xs text-[var(--text-5)]">—</span>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100">
+                            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[color:var(--sand)]">
                               <div className="h-full rounded-full bg-[#5aacee]" style={{ width: `${pct}%` }} />
                             </div>
-                            <span className="font-mono text-[10px] text-gray-500">
+                            <span className="font-mono text-[10px] text-[color:var(--text-3)]">
                               {r.distance!.toFixed(3)}
                             </span>
                           </div>
@@ -195,7 +195,7 @@ export default function BrainSearchView() {
                             setCopiedIdx(i);
                             setTimeout(() => setCopiedIdx(null), 1200);
                           }}
-                          className="rounded-[10px] p-1.5 text-[var(--text-5)] transition-colors hover:bg-[rgba(20,22,26,0.05)] hover:text-[var(--ink)]"
+                          className="rounded-[10px] p-1.5 text-[var(--text-5)] transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_5%,transparent)] hover:text-[var(--ink)]"
                           aria-label="Copy chunk"
                         >
                           {copiedIdx === i ? <Check className="h-3.5 w-3.5 text-[var(--ok-fg)]" /> : <Copy className="h-3.5 w-3.5" />}

@@ -135,6 +135,15 @@ export function useAgentStatus() {
   });
 }
 
+/**
+ * The agent status the UI may present as current. react-query keeps the last
+ * successful `data` when a refetch fails, so a stopped agent would go on
+ * reading "Running"; once the poll fails, there is no current status.
+ */
+export function liveAgentStatus(q: { data?: AgentStatus | null; isError: boolean }) {
+  return { st: q.isError ? null : (q.data ?? null), unreachable: q.isError };
+}
+
 export function useTodayCosts() {
   return useQuery<TodayCosts, PincerError>({
     queryKey: ["dash", "costs", "today"],

@@ -104,7 +104,7 @@ function SubjectField({ thread }: { thread: ThreadDetail }) {
           }
         }}
         aria-label="Thread subject"
-        className="w-full max-w-[640px] rounded-[10px] border border-[var(--line)] bg-white px-2 py-1 text-[24px] text-[var(--ink)] outline-none focus:border-[var(--ink)]"
+        className="w-full max-w-[640px] rounded-[10px] border border-[var(--line)] bg-[var(--paper)] px-2 py-1 text-[24px] text-[var(--ink)] outline-none focus:border-[var(--ink)]"
       />
     );
   }
@@ -149,7 +149,7 @@ function ManageMenu({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden="true" />
-          <div className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-[10px] border border-[var(--line)] bg-white py-1 shadow-lg">
+          <div className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--paper)] py-1 shadow-lg">
             {[
               { label: 'Assign a call…', run: onAssign, show: true },
               { label: 'Merge thread into this…', run: onMerge, show: true },
@@ -182,7 +182,7 @@ function SummaryCard({ thread }: { thread: ThreadDetail }) {
   const lines = (thread.rolling_summary ?? '').split('\n').filter((l) => l.trim());
   if (!lines.length) {
     return (
-      <section className="rounded-[14px] border border-[var(--line)] bg-white p-5">
+      <section className="rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-5">
         <h2 className="text-sm font-semibold text-[var(--ink)]">Summary</h2>
         <p className="mt-2 text-xs text-[var(--text-5)]">
           The summary is written after the first call in this thread completes.
@@ -192,7 +192,7 @@ function SummaryCard({ thread }: { thread: ThreadDetail }) {
   }
   const last = lines.length - 1;
   return (
-    <section className="rounded-[14px] border border-[var(--line)] bg-white p-5">
+    <section className="rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-sm font-semibold text-[var(--ink)]">Summary</h2>
         {thread.summary_updated_after_call != null && (
@@ -253,7 +253,7 @@ function TimelineEntry({
         <AttachGlyph kind={call.thread_attach_kind} />
       </span>
 
-      <div className="rounded-[10px] border border-[var(--line-soft)] bg-white">
+      <div className="rounded-[10px] border border-[var(--line-soft)] bg-[var(--paper)]">
         <button
           type="button"
           onClick={onToggle}
@@ -439,7 +439,7 @@ export default function ThreadDetailView({ threadId }: { threadId: string }) {
         <div className="space-y-4">
           <SummaryCard thread={thread} />
 
-          <section className="rounded-[14px] border border-[var(--line)] bg-white p-5">
+          <section className="rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-5">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-sm font-semibold text-[var(--ink)]">Commitments</h2>
               <span
@@ -454,7 +454,7 @@ export default function ThreadDetailView({ threadId }: { threadId: string }) {
             </div>
           </section>
 
-          <section className="rounded-[14px] border border-[var(--line)] bg-white p-5">
+          <section className="rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-5">
             <h2 className="mb-4 text-sm font-semibold text-[var(--ink)]">
               Calls
               <span className="ml-2 text-[11px] font-normal text-[var(--text-5)]">oldest first</span>
@@ -478,7 +478,7 @@ export default function ThreadDetailView({ threadId }: { threadId: string }) {
                 <button
                   type="button"
                   onClick={() => setFollowUp('now')}
-                  className="flex items-center gap-1.5 rounded-full bg-[var(--ink)] px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-85"
+                  className="flex items-center gap-1.5 rounded-full bg-[var(--brand)] px-3 py-1.5 text-xs font-medium text-[var(--on-brand)] transition-colors hover:bg-[var(--brand-hover)]"
                 >
                   <PhoneOutgoing className="h-3.5 w-3.5" />
                   Follow-up call

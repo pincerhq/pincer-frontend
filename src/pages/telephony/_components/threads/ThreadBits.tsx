@@ -78,7 +78,7 @@ export function ThreadChip({
 // ── Status ───────────────────────────────────────────────────────────
 
 /** Blue is not in the shared chip palette; threads are the only user of it. */
-const BLUE_CHIP = 'border-[var(--blue-200)] bg-[var(--blue-100)] text-[var(--blue)]';
+const BLUE_CHIP = 'border-[var(--brand-200)] bg-[var(--brand-100)] text-[var(--brand)]';
 
 const STATUS_CLASS: Record<string, string> = {
   open: BLUE_CHIP,
@@ -109,7 +109,7 @@ export function AttachGlyph({ kind, className }: { kind: string; className?: str
       title={meta.title}
       aria-label={meta.label}
       className={cn(
-        'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--line)] bg-white text-[11px] text-[var(--text-3)]',
+        'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--paper)] text-[11px] text-[var(--text-3)]',
         className,
       )}
     >

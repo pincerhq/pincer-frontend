@@ -201,7 +201,7 @@ import { fromLocalInput, leadTimeLabel, stampIn } from '@/pages/telephony/_lib/p
 
 const labelCls = 'text-xs font-medium text-[var(--text-3)]';
 const inputCls =
-  'rounded-[10px] border-[var(--line)] bg-[var(--sand)] text-[var(--ink)] placeholder:text-[var(--text-5)] focus-visible:ring-[rgba(20,22,26,0.25)]';
+  'rounded-[10px] border-[var(--line)] bg-[var(--sand)] text-[var(--ink)] placeholder:text-[var(--text-5)] focus-visible:ring-[color:color-mix(in_srgb,var(--ink)_25%,transparent)]';
 
 /**
  * The purpose field — the text that becomes the agent's briefing.
@@ -302,7 +302,7 @@ function PurposeField({
         className={cn(
           inputCls,
           'transition-[border-color,box-shadow] duration-300',
-          flash && 'border-[var(--blue)] shadow-[0_0_0_3px_var(--blue-100)]',
+          flash && 'border-[var(--brand)] shadow-[0_0_0_3px_var(--brand-100)]',
           error && 'border-red-300',
         )}
       />
@@ -584,17 +584,17 @@ export default function StartCallModal({
                 PlatMenu inside this wrapper, so clipping the wrapper clips the
                 open menu down to the height of the button. The two ends are
                 rounded individually instead. */}
-            <div className="inline-flex items-stretch rounded-full bg-[var(--ink)] text-white">
+            <div className="inline-flex items-stretch rounded-full bg-[var(--brand)] text-[var(--on-brand)]">
               <span className="flex h-8 items-center gap-1.5 rounded-l-full pl-3.5 pr-2.5 text-xs font-medium" data-testid="call-mode">
                 <active.icon className="h-3.5 w-3.5" aria-hidden="true" />
                 {active.label}
               </span>
-              <span className="my-1.5 w-px bg-white/25" aria-hidden="true" />
+              <span className="my-1.5 w-px bg-[color:color-mix(in_srgb,var(--on-brand)_25%,transparent)]" aria-hidden="true" />
               <PlatMenu
                 ariaLabel="Change call type"
                 align="start"
                 panelClassName="min-w-[304px]"
-                triggerClassName="flex h-8 items-center rounded-r-full px-2 text-white transition-colors hover:bg-white/15"
+                triggerClassName="flex h-8 items-center rounded-r-full px-2 text-[var(--on-brand)] transition-colors hover:bg-[color:color-mix(in_srgb,var(--on-brand)_15%,transparent)]"
                 trigger={<ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />}
                 sections={[
                   {
@@ -617,7 +617,7 @@ export default function StartCallModal({
 
         <div className="flex min-h-0 flex-1">
           {/* ── Contact picker column ── */}
-          <aside className="flex w-72 shrink-0 flex-col border-r border-[var(--line-soft)] bg-[rgba(20,22,26,0.015)]">
+          <aside className="flex w-72 shrink-0 flex-col border-r border-[var(--line-soft)] bg-[color:color-mix(in_srgb,var(--ink)_1.5%,transparent)]">
             <div className="border-b border-[var(--line-soft)] p-3">
               <p className="plat-eyebrow mb-2 flex items-center gap-1.5 px-1">
                 <BookUser className="h-3.5 w-3.5" />
@@ -629,7 +629,7 @@ export default function StartCallModal({
                   value={contactQuery}
                   onChange={(e) => setContactQuery(e.target.value)}
                   placeholder="Search name or number…"
-                  className={cn(inputCls, 'h-9 bg-white pl-9 text-xs')}
+                  className={cn(inputCls, 'h-9 bg-[var(--paper)] pl-9 text-xs')}
                 />
               </div>
             </div>
@@ -658,13 +658,13 @@ export default function StartCallModal({
                         optedOut
                           ? 'cursor-not-allowed opacity-45'
                           : active
-                            ? 'bg-[var(--blue)]/50'
-                            : 'hover:bg-white',
+                            ? 'bg-[var(--brand)]/50'
+                            : 'hover:bg-[var(--paper)]',
                       )}
                     >
                       <span className={cn(
                         'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-                        active && !optedOut ? 'bg-[var(--blue)]' : 'bg-[var(--sand-deep)]',
+                        active && !optedOut ? 'bg-[var(--brand)]' : 'bg-[var(--sand-deep)]',
                       )}>
                         {optedOut ? (
                           <Ban className="h-3.5 w-3.5 text-red-500" />
@@ -729,7 +729,7 @@ export default function StartCallModal({
                       <button
                         type="button"
                         onClick={() => setAttachThread(false)}
-                        className="ml-auto rounded-full p-1 text-[var(--text-5)] transition-colors hover:bg-white hover:text-[var(--ink)]"
+                        className="ml-auto rounded-full p-1 text-[var(--text-5)] transition-colors hover:bg-[var(--paper)] hover:text-[var(--ink)]"
                         aria-label={`Do not attach this call to ${thread.subject}`}
                         title="Start a new matter instead"
                       >
@@ -809,7 +809,7 @@ export default function StartCallModal({
                         className={cn(
                           'flex h-10 items-center gap-1 rounded-[10px] px-3 text-xs font-medium transition-colors',
                           lead === opt.value
-                            ? 'bg-[var(--ink)] text-white'
+                            ? 'bg-[var(--ink)] text-[var(--on-ink)]'
                             : 'border border-[var(--line)] text-[var(--text-3)] hover:bg-[var(--sand)]',
                         )}
                       >
@@ -855,7 +855,7 @@ export default function StartCallModal({
                           className={cn(
                             'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                             timeframe === opt.id
-                              ? 'bg-[var(--ink)] text-white'
+                              ? 'bg-[var(--ink)] text-[var(--on-ink)]'
                               : 'border border-[var(--line)] text-[var(--text-3)] hover:bg-[var(--sand)]',
                           )}
                         >
@@ -900,7 +900,7 @@ export default function StartCallModal({
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label className={labelCls}>Duration</Label>
-                      <div className="flex items-center rounded-full border border-[var(--line)] bg-white p-0.5">
+                      <div className="flex items-center rounded-full border border-[var(--line)] bg-[var(--paper)] p-0.5">
                         {DURATIONS.map((d) => (
                           <button
                             key={d}
@@ -909,7 +909,7 @@ export default function StartCallModal({
                             className={cn(
                               'flex-1 rounded-full px-2 py-1.5 text-xs font-medium tabular-nums transition-colors',
                               duration === d
-                                ? 'bg-[var(--ink)] text-white'
+                                ? 'bg-[var(--ink)] text-[var(--on-ink)]'
                                 : 'text-[var(--text-4)] hover:text-[var(--ink)]',
                             )}
                           >
@@ -1032,7 +1032,7 @@ export default function StartCallModal({
                 className={cn(
                   'flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium transition-colors',
                   canSubmit && !pending
-                    ? 'bg-[var(--ink)] text-white hover:opacity-85'
+                    ? 'bg-[var(--brand)] text-[var(--on-brand)] hover:bg-[var(--brand-hover)]'
                     : 'cursor-not-allowed bg-[var(--sand-deep)] text-[var(--text-5)]',
                 )}
               >

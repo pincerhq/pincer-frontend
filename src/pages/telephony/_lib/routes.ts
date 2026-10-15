@@ -17,7 +17,6 @@ export const ROUTES = {
   OVERVIEW: TELEPHONY_BASE,
   OVERVIEW_ALIAS: p("/overview"),
   LOGIN: p("/login"),
-  ASSISTANT: p("/assistant"),
   CALLS: p("/calls"),
   /** The operator-flavoured voice page (threads, latency, cost) — "Erweitert". */
   CALLS_OPS: p("/calls/ops"),
@@ -37,7 +36,6 @@ export const ROUTES = {
 export const TELEPHONY_STATIC_PATHS: readonly string[] = [
   ROUTES.HOME,
   ROUTES.OVERVIEW_ALIAS,
-  ROUTES.ASSISTANT,
   ROUTES.CALLS,
   ROUTES.CALLS_OPS,
   ROUTES.CALLS_LIVE,

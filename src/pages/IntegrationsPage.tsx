@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
+import { MobileMenuBar } from '@/components/dashboard/MobileMenuBar';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { queryClient } from '@/lib/queryClient';
 import { isConnected } from '@/lib/pincerClient';
@@ -85,7 +86,7 @@ function CommandRow({ command }: { command: string }) {
           setTimeout(() => setCopied(false), 1500);
           toast({ title: 'Command copied', description: 'Run it where the agent is installed.' });
         }}
-        className="shrink-0 rounded-md p-1 transition-colors hover:bg-[rgba(20,22,26,0.06)]"
+        className="shrink-0 rounded-md p-1 transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
         style={{ color: copied ? 'var(--ok-fg)' : 'var(--text-4)' }}
         aria-label="Copy command"
       >
@@ -391,6 +392,7 @@ const IntegrationsInner = () => {
         <div className="flex w-full flex-1">
           <AppSidebar />
           <SidebarInset className="flex flex-1 flex-col bg-transparent">
+            <MobileMenuBar />
             <main className="mx-auto w-full max-w-5xl flex-1 p-6 lg:p-8">
               <div className="mb-8 flex items-start justify-between gap-4">
                 <div>

@@ -48,7 +48,7 @@ export function UserMenu({ collapsed = false, connected }: { collapsed?: boolean
         <DropdownMenuTrigger
           aria-label={t("rail.userMenu")}
           className={cn(
-            "flex w-full items-center gap-2 rounded-[10px] px-2 py-1.5 text-left text-xs hover:bg-[rgba(20,22,26,0.04)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--blue)]",
+            "flex w-full items-center gap-2 rounded-[10px] px-2 py-1.5 text-left text-xs hover:bg-[color:color-mix(in_srgb,var(--ink)_4%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]",
             collapsed && "justify-center",
           )}
         >

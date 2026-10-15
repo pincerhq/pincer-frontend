@@ -87,7 +87,7 @@ export default function TranscriptView({ lines, purged }: { lines: TranscriptLin
           const isAssistant = item.speaker === "assistant";
           return (
             <li key={i} className={cn("flex gap-2", isAssistant ? "" : "")}>
-              <div className={cn("max-w-[85%] rounded-[12px] px-3 py-2 text-sm", isAssistant ? "bg-[var(--sand)] text-[var(--text-1)]" : "bg-[var(--blue-100)] text-[var(--ink)]", hit && "ring-2 ring-amber-300")}>
+              <div className={cn("max-w-[85%] rounded-[12px] px-3 py-2 text-sm", isAssistant ? "bg-[var(--sand)] text-[var(--text-1)]" : "bg-[var(--brand-100)] text-[var(--ink)]", hit && "ring-2 ring-amber-300")}>
                 <div className="mb-0.5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-3)]">
                   <span>{t(`transcript.speakers.${item.speaker}`)}</span>
                   <time className="font-normal normal-case tabular-nums">{formatTime(item.timestamp)}</time>

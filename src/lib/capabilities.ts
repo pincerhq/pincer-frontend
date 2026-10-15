@@ -13,8 +13,14 @@
  * the status body are mapped here so gating is real where it can be.
  */
 import { useQuery } from "@tanstack/react-query";
-import { api, type Schema } from "@/lib/api/client";
+import { api, ApiError, type Schema } from "@/lib/api/client";
 import { useVoiceConnected, useVoiceStatus } from "@/lib/api/voice";
+
+/** How often `useHealth()` polls /api/health; the offline countdown reads it too. */
+export const HEALTH_POLL_MS = 30_000;
+
+/** Delay before a failed health check is retried once — one blip must not read as offline. */
+export const HEALTH_RETRY_MS = 2_000;
 
 export type CapabilityKey =
   | "voice"
@@ -63,18 +69,93 @@ export function capabilitiesFromStatus(status: StatusWithCapabilities | undefine
 export interface HealthInfo {
   status?: string;
   version?: string;
+  /** Set when Pincer answered /api/health with a 4xx: reachable, but no health report. */
+  httpStatus?: number;
 }
 
 export function useHealth() {
   const connected = useVoiceConnected();
   return useQuery<HealthInfo>({
     queryKey: ["health"],
-    queryFn: () => api.get<HealthInfo>("/api/health"),
+    queryFn: ({ signal }) => checkHealth(signal),
     enabled: connected,
-    // FE1 §5: ['health'] every 30 s; the banner calls it offline after two misses.
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    // FE1 §5: ['health'] every 30 s. Chat locks only when a check AND its one
+    // retry get no answer (or a 5xx); the telephony banner waits for two such
+    // failed polls. A 4xx in Pincer's own JSON error (never a 401/403) is an
+    // answer: reachable.
+    staleTime: HEALTH_POLL_MS,
+    refetchInterval: HEALTH_POLL_MS,
+    // Keep polling in a hidden tab: the offline countdown promises the next
+    // check, and a backgrounded Chat would otherwise sit on "retrying…".
+    refetchIntervalInBackground: true,
+    // The retry lives in checkHealth: react-query pauses its own retries while
+    // the window is unfocused, which would stall a hidden tab mid-check.
     retry: false,
+  });
+}
+
+/**
+ * One health check, retried once after HEALTH_RETRY_MS — a single blip never
+ * reads as offline. Only "no answer" (status 0) and a 5xx are retried. A 4xx
+ * that is Pincer's own answer resolves as reachable at once; any other 4xx —
+ * a 401/403, an HTML page where the API should be — is not Pincer and fails
+ * at once. `signal` is react-query's: a cancelled query (or one whose last
+ * observer left) aborts the fetch and the wait, and is never retried.
+ */
+async function checkHealth(signal: AbortSignal): Promise<HealthInfo> {
+  try {
+    return await healthAttempt(signal);
+  } catch (err) {
+    const retryable = err instanceof ApiError && (err.status === 0 || err.status >= 500);
+    if (signal.aborted || !retryable) throw err;
+    await sleep(HEALTH_RETRY_MS, signal);
+    return healthAttempt(signal);
+  }
+}
+
+async function healthAttempt(signal: AbortSignal): Promise<HealthInfo> {
+  try {
+    return await api.get<HealthInfo>("/api/health", { signal });
+  } catch (err) {
+    if (err instanceof ApiError && answeredByPincer(err)) return { httpStatus: err.status };
+    throw err;
+  }
+}
+
+/**
+ * A 4xx that is Pincer's own answer about /api/health. Never a 401 or 403:
+ * Pincer serves health without auth (PUBLIC_PATHS on the server), so one of
+ * those comes from something in front of it — and a dead session must not
+ * read "connected" either way.
+ */
+function answeredByPincer(err: ApiError): boolean {
+  if (err.status <= 0 || err.status >= 500 || err.status === 401 || err.status === 403) return false;
+  return isPincerErrorBody(err.body);
+}
+
+/**
+ * Pincer's error answers are JSON objects with a string `detail` (FastAPI) or
+ * `error` (the auth layer). Anything else — an HTML page where the API should
+ * be, a portal's own JSON — is not Pincer answering.
+ */
+function isPincerErrorBody(body: unknown): boolean {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return false;
+  const { detail, error } = body as { detail?: unknown; error?: unknown };
+  return typeof detail === "string" || typeof error === "string";
+}
+
+/** Resolves after `ms`, or rejects as soon as `signal` aborts. */
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    function onAbort() {
+      clearTimeout(timer);
+      reject(signal.reason);
+    }
+    signal.addEventListener("abort", onAbort, { once: true });
   });
 }
 

@@ -41,11 +41,11 @@ function NavRow({ icon: Icon, label, active, onClick, badge, collapsed, depth = 
       title={collapsed ? label : undefined}
       className={cn(
         'mx-2 flex w-[calc(100%-1rem)] items-center gap-3 rounded-[10px] py-2 text-left text-sm transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--blue)]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]',
         collapsed ? 'justify-center px-0' : depth === 1 ? 'pl-9 pr-3' : 'px-3',
         active
-          ? 'bg-[rgba(20,22,26,0.07)] font-semibold text-[var(--ink)]'
-          : 'text-[var(--text-2)] hover:bg-[rgba(20,22,26,0.04)]',
+          ? 'bg-[color:color-mix(in_srgb,var(--ink)_7%,transparent)] font-semibold text-[var(--ink)]'
+          : 'text-[var(--text-2)] hover:bg-[color:color-mix(in_srgb,var(--ink)_4%,transparent)]',
       )}
     >
       <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-[var(--ink)]' : 'text-[var(--text-4)]')} aria-hidden="true" />
@@ -62,8 +62,8 @@ function LiveBadge({ count, label }: { count: number; label: string }) {
   if (count === 0) return null;
   return (
     <span className="relative flex h-4 w-4 shrink-0 items-center justify-center" role="status" aria-label={label}>
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-      <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-green-500 text-[9px] font-bold leading-none text-white">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--ok-halo)] opacity-75" />
+      <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[var(--ok-fill)] text-[9px] font-bold leading-none text-[var(--on-ok-fill)]">
         {count}
       </span>
     </span>
@@ -74,7 +74,7 @@ function AmberBadge({ count, label }: { count: number; label: string }) {
   if (count === 0) return null;
   return (
     <span
-      className="flex h-4 min-w-[1rem] shrink-0 items-center justify-center rounded-full bg-amber-400 px-1 text-[9px] font-bold leading-none text-white"
+      className="flex h-4 min-w-[1rem] shrink-0 items-center justify-center rounded-full bg-[var(--warn-fill)] px-1 text-[9px] font-bold leading-none text-[var(--on-warn-fill)]"
       aria-label={label}
     >
       {count}
@@ -221,7 +221,7 @@ export default function TelephonyMiniRail() {
           onClick={() => setCollapsed((c) => !c)}
           aria-label={collapsed ? t('rail.expand') : t('rail.collapse')}
           aria-pressed={collapsed}
-          className="rounded-[8px] p-1 text-[var(--text-4)] hover:bg-[rgba(20,22,26,0.04)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--blue)]"
+          className="rounded-[8px] p-1 text-[var(--text-4)] hover:bg-[color:color-mix(in_srgb,var(--ink)_4%,transparent)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
         >
           {collapsed ? <PanelLeftOpen className="h-4 w-4" aria-hidden="true" /> : <PanelLeftClose className="h-4 w-4" aria-hidden="true" />}
         </button>

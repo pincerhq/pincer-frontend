@@ -28,7 +28,7 @@ function fmtDuration(s: number) {
 
 function ConnectPrompt() {
   return (
-    <div className="mx-auto mt-16 max-w-md rounded-[14px] border border-[var(--line)] bg-white p-8 text-center">
+    <div className="mx-auto mt-16 max-w-md rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-8 text-center">
       <Plug className="mx-auto mb-3 h-8 w-8 text-[var(--text-5)]" />
       <h2 className="text-sm font-semibold text-[var(--ink)]">Not connected to a Pincer backend</h2>
       <p className="mt-2 text-xs leading-relaxed text-[var(--text-5)]">
@@ -37,7 +37,7 @@ function ConnectPrompt() {
       </p>
       <Link
         to="/login"
-        className="mt-4 inline-block rounded-full bg-[var(--ink)] px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-85"
+        className="mt-4 inline-block rounded-full bg-[var(--brand)] px-4 py-2 text-xs font-semibold text-[var(--on-brand)] transition-colors hover:bg-[var(--brand-hover)]"
       >
         Connect (Login → Token)
       </Link>
@@ -60,8 +60,8 @@ export default function LiveView() {
           <h1 className="mt-1 flex items-center gap-2.5 text-[26px] text-[var(--ink)]">
             Live
             {!!calls?.length && (
-              <span className="flex items-center gap-1.5 rounded-full bg-green-700 px-2.5 py-1 text-xs font-semibold text-white">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+              <span className="flex items-center gap-1.5 rounded-full bg-[var(--ok-fill)] px-2.5 py-1 text-xs font-semibold text-[var(--on-ok-fill)]">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--on-ok-fill)]" />
                 {calls.length} in progress
               </span>
             )}
@@ -80,7 +80,7 @@ export default function LiveView() {
             <button
               type="button"
               onClick={() => setStartOpen(true)}
-              className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--ink)] px-3.5 text-xs font-medium text-white transition-colors hover:opacity-85"
+              className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--brand)] px-3.5 text-xs font-medium text-[var(--on-brand)] transition-colors hover:bg-[var(--brand-hover)]"
             >
               <PhoneOutgoing className="h-3.5 w-3.5" />
               New call
@@ -105,7 +105,7 @@ export default function LiveView() {
             <button
               type="button"
               onClick={() => setStartOpen(true)}
-              className="mx-auto mt-4 flex items-center gap-1.5 rounded-full bg-[var(--ink)] px-4 py-2 text-xs font-medium text-white hover:opacity-85"
+              className="mx-auto mt-4 flex items-center gap-1.5 rounded-full bg-[var(--brand)] px-4 py-2 text-xs font-medium text-[var(--on-brand)] hover:bg-[var(--brand-hover)]"
             >
               <PhoneOutgoing className="h-3.5 w-3.5" />
               Start a call
@@ -113,7 +113,7 @@ export default function LiveView() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="overflow-hidden rounded-[14px] border border-[var(--line-soft)] bg-white">
+            <div className="overflow-hidden rounded-[14px] border border-[var(--line-soft)] bg-[var(--paper)]">
               {calls.map((c) => (
                 <div
                   key={c.call_sid}
@@ -122,7 +122,7 @@ export default function LiveView() {
                 <button
                   type="button"
                   onClick={() => setSelected(c)}
-                  className="group -mx-2 w-[calc(100%+1rem)] rounded-[10px] px-2 py-1 text-left transition-colors hover:bg-[rgba(20,22,26,0.02)]"
+                  className="group -mx-2 w-[calc(100%+1rem)] rounded-[10px] px-2 py-1 text-left transition-colors hover:bg-[color:color-mix(in_srgb,var(--ink)_2%,transparent)]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">

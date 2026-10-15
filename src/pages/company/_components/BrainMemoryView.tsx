@@ -124,8 +124,8 @@ export default function BrainMemoryView() {
                 className={cn(
                   'w-full rounded-[10px] px-3 py-2.5 text-left transition-colors',
                   selected === k.key
-                    ? 'bg-[rgba(20,22,26,0.07)]'
-                    : 'hover:bg-[rgba(20,22,26,0.04)]',
+                    ? 'bg-[color-mix(in_srgb,var(--ink)_7%,transparent)]'
+                    : 'hover:bg-[color-mix(in_srgb,var(--ink)_4%,transparent)]',
                 )}
               >
                 <p
@@ -166,7 +166,7 @@ export default function BrainMemoryView() {
                 onChange={(e) => setKey(e.target.value)}
                 placeholder="supplier-mueller-skonto"
                 style={{ fontFamily: 'var(--mono)' }}
-                className="rounded-[10px] border-[var(--line)] bg-white text-xs"
+                className="rounded-[10px] border-[var(--line)] bg-[color:var(--paper)] text-xs"
               />
             </div>
             <div className="space-y-1.5">
@@ -177,7 +177,7 @@ export default function BrainMemoryView() {
                 onChange={(e) => setContent(e.target.value)}
                 rows={5}
                 placeholder="'Supplier Müller grants 5% Skonto on invoices paid within 10 days, agreed 2026-08-12 by phone.'"
-                className="rounded-[10px] border-[var(--line)] bg-white text-sm"
+                className="rounded-[10px] border-[var(--line)] bg-[color:var(--paper)] text-sm"
               />
               <p className="text-[11px] text-[var(--text-4)]">
                 Storing to an existing key fully replaces its previous content.
@@ -207,7 +207,7 @@ export default function BrainMemoryView() {
                 type="button"
                 onClick={forget}
                 disabled={!!busy || !key.trim()}
-                className="inline-flex h-9 items-center gap-2 rounded-full border border-[rgba(179,56,46,0.25)] px-4 text-[12.5px] font-semibold text-[var(--bad-fg)] transition-colors hover:bg-[rgba(179,56,46,0.06)] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bad-fg)]/25"
+                className="inline-flex h-9 items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--bad-fg)_25%,transparent)] px-4 text-[12.5px] font-semibold text-[var(--bad-fg)] transition-colors hover:bg-[color-mix(in_srgb,var(--bad-fg)_6%,transparent)] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bad-fg)]/25"
               >
                 {busy === 'forget' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                 Forget
@@ -215,7 +215,7 @@ export default function BrainMemoryView() {
             </div>
 
             {serverState && (
-              <div className="rounded-[14px] border border-[var(--line-soft)] bg-white p-4">
+              <div className="rounded-[14px] border border-[var(--line-soft)] bg-[color:var(--paper)] p-4">
                 <p className="plat-eyebrow mb-2 flex items-center gap-1.5">
                   <Check className="h-3.5 w-3.5 text-[var(--ok-fg)]" />
                   Server state

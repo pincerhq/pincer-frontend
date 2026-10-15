@@ -3,13 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>3Days.ai</title>
-    <meta name="description" content="AI employees that take on the repeatable work — reclaim three workdays a week." />
+    <!-- Applies the theme before first paint, so a dark reload never flashes white.
+         Must resolve exactly as src/contexts/ThemeContext.tsx does: stored choice, else the OS.
+         The accepted values below are THEMES from ThemeContext; themePreference.test checks
+         this script against every one of them, so a new theme fails there until added here. -->
+    <script data-theme-bootstrap>
+      (function () {
+        var theme = 'system';
+        try {
+          var stored = localStorage.getItem('theme');
+          if (stored === 'light' || stored === 'dark' || stored === 'system') theme = stored;
+        } catch (e) {}
+        var dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var root = document.documentElement;
+        root.classList.toggle('dark', dark);
+        root.style.colorScheme = dark ? 'dark' : 'light';
+      })();
+    </script>
+    <meta name="description" content="Your Pincer agent takes on the repeatable work — reclaim three workdays a week." />
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
     <meta property="og:title" content="3Days.ai" />
-    <meta property="og:description" content="AI employees that take on the repeatable work — reclaim three workdays a week." />
+    <meta property="og:description" content="Your Pincer agent takes on the repeatable work — reclaim three workdays a week." />
     <meta property="og:type" content="website" />
 
     <meta name="twitter:card" content="summary" />

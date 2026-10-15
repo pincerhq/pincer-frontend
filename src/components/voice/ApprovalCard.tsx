@@ -80,7 +80,7 @@ export function ApprovalCard({
   const fraction = Math.max(0, Math.min(1, remaining / windowMs.current));
   const seconds = Math.ceil(remaining / 1000);
 
-  const ringTone = fraction > 0.4 ? 'var(--blue)' : fraction > 0.2 ? '#b45309' : 'var(--bad-fg)';
+  const ringTone = fraction > 0.4 ? 'var(--brand)' : fraction > 0.2 ? 'rgb(var(--st-amber-700))' : 'var(--bad-fg)';
   const args = useMemo(() => Object.entries(approval.args_preview ?? {}), [approval.args_preview]);
 
   if (state !== 'pending') {
@@ -90,7 +90,7 @@ export function ApprovalCard({
       <div
         data-testid="voice-approval-card"
         data-approval-state={state}
-        className="w-[360px] rounded-[14px] border border-[var(--line)] bg-white p-4 shadow-[0_18px_40px_-18px_rgba(20,22,26,0.34)]"
+        className="w-[360px] rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-4 shadow-[0_18px_40px_-18px_color-mix(in_srgb,var(--shade)_34%,transparent)]"
       >
         <div className="flex items-center gap-2.5">
           <Icon className={cn('h-4 w-4', meta.tone)} />
@@ -107,7 +107,7 @@ export function ApprovalCard({
       data-approval-state="pending"
       role="alertdialog"
       aria-label={`Approval required: ${approval.summary}`}
-      className="w-[360px] rounded-[14px] border border-[var(--line)] bg-white p-4 shadow-[0_18px_40px_-18px_rgba(20,22,26,0.34)]"
+      className="w-[360px] rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-4 shadow-[0_18px_40px_-18px_color-mix(in_srgb,var(--shade)_34%,transparent)]"
     >
       <div className="flex items-start gap-3">
         {/* Countdown ring */}
@@ -188,7 +188,7 @@ export function ApprovalCard({
           data-testid="voice-approval-approve"
           disabled={!!deciding}
           onClick={() => onDecide('approve')}
-          className="flex-1 rounded-full bg-[var(--ink)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+          className="flex-1 rounded-full bg-[var(--brand)] hover:bg-[var(--brand-hover)] px-3 py-2 text-xs font-semibold text-[var(--on-brand)] disabled:opacity-40"
         >
           {deciding === 'approve' ? 'Approving…' : 'Approve'}
         </button>

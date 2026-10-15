@@ -97,7 +97,7 @@ export function MaskedNumber({ value, copy = false, static: isStatic = false, cl
           type="button"
           onClick={onCopy}
           aria-label={copied ? t("masked.copied") : t("masked.copy")}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-[6px] p-0.5 text-[var(--text-3)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--blue)] sm:min-h-0 sm:min-w-0"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-[6px] p-0.5 text-[var(--text-3)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] sm:min-h-0 sm:min-w-0"
         >
           {copied ? <Check className="h-3.5 w-3.5 text-[var(--ok-fg)]" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
         </button>

@@ -16,7 +16,7 @@
 | Flow Diagrams | @xyflow/react |
 | Icons | Lucide React |
 | Notifications | Sonner |
-| Theme | next-themes via custom ThemeContext |
+| Theme | custom ThemeContext (`src/contexts/ThemeContext.tsx`) + pre-paint bootstrap in `index.html` |
 
 ## Directory Structure
 

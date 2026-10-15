@@ -60,7 +60,7 @@ const Signup = () => {
   };
 
   const inputCls =
-    'h-11 rounded-[10px] border-[color:var(--line)] bg-white text-[color:var(--ink)] placeholder:text-[color:var(--text-5)]';
+    'h-11 rounded-[10px] border-[color:var(--line)] bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--text-5)]';
   const labelCls = 'text-[13px] font-medium text-[color:var(--text-2)]';
 
   return (
@@ -74,7 +74,7 @@ const Signup = () => {
 
         <div className="py-14 lg:py-0">
           <h1 className="max-w-[13ch] text-[clamp(2.4rem,4.6vw,4.1rem)] text-[color:var(--ink)]">
-            Put your first AI employee to work today
+            Put your Pincer agent to work today
           </h1>
           <p className="mt-8 max-w-md text-[17px] leading-relaxed text-[color:var(--text-3)]">
             Tell us who you are and we'll pass the request to whoever runs your 3Days instance.
@@ -90,7 +90,7 @@ const Signup = () => {
       {/* ── Right: the form, floating on the brand panel ── */}
       <div className="p-4 lg:py-6 lg:pr-6">
         <div className="m-auth-art flex min-h-[560px] items-center justify-center p-6 lg:min-h-full">
-          <div className="relative z-10 w-full max-w-[420px] rounded-[20px] bg-white p-7 shadow-[0_30px_60px_-32px_rgba(10,16,60,0.55)] sm:p-9">
+          <div className="relative z-10 w-full max-w-[420px] rounded-[20px] bg-[color:var(--paper)] p-7 shadow-[0_30px_60px_-32px_color-mix(in_srgb,var(--shade)_55%,transparent)] sm:p-9">
             {submitted ? (
               <div className="text-center">
                 <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-[14px] bg-[color:var(--sand)]">
@@ -179,7 +179,7 @@ const Signup = () => {
 
               <button
                 type="submit"
-                className="mt-1 h-11 w-full rounded-full bg-[color:var(--ink)] text-[15px] font-semibold text-white transition-opacity hover:opacity-85"
+                className="mt-1 h-11 w-full rounded-full bg-[color:var(--brand)] text-[15px] font-semibold text-[color:var(--on-brand)] transition-colors hover:bg-[color:var(--brand-hover)]"
               >
                 Send access request
               </button>

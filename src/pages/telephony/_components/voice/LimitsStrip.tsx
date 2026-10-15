@@ -114,7 +114,7 @@ export default function LimitsStrip() {
         )}
 
         {st.quiet_hours_active && (
-          <span className="flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-700">
+          <span className="flex items-center gap-1 rounded-full bg-[var(--brand-100)] px-2 py-1 text-[10px] font-medium text-[var(--brand)]">
             <Moon className="h-3 w-3" />
             {st.quiet_hours_until
               ? `outbound paused until ${st.quiet_hours_until}`
