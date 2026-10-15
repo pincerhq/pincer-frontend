@@ -112,12 +112,10 @@ const ChatInner = () => {
   // Offline locks everything that would start a request; "checking" does not,
   // so a slow first health answer never shuts anyone out.
   const offline = badge === 'offline';
-  const retry = useRetryCountdown(
-    offline,
-    Math.max(health.errorUpdatedAt ?? 0, health.dataUpdatedAt ?? 0),
-    health.fetchStatus === 'fetching',
-  );
-  const retryText = retry === 'retrying' ? 'retrying…' : `retrying in ${retry} s.`;
+  // The 1 s retry countdown lives in OfflineNotice / PincerStatusBadge, so its
+  // ticks re-render those two, not this page.
+  const lastAttempt = Math.max(health.errorUpdatedAt ?? 0, health.dataUpdatedAt ?? 0);
+  const checking = health.fetchStatus === 'fetching';
   // The box as dictation last saw or wrote it — updated synchronously, so two
   // results that arrive before a re-render still splice onto the latest text.
   const messageRef = useRef(message);
@@ -502,15 +500,7 @@ const ChatInner = () => {
         </div>
       )}
 
-      {offline && (
-        <div
-          role="status"
-          className="mb-2 flex items-center gap-2 rounded-[10px] border border-[color:color-mix(in_srgb,var(--warn-fg)_25%,transparent)] bg-[color:var(--warn-bg)] px-3 py-2 text-xs text-[color:var(--warn-fg)]"
-        >
-          <WifiOff className="h-3.5 w-3.5 shrink-0" />
-          Pincer is offline. Chat is unavailable until it reconnects — {retryText}
-        </div>
-      )}
+      {offline && <OfflineNotice lastAttempt={lastAttempt} checking={checking} />}
 
       {/* Textarea card */}
       <div
@@ -579,21 +569,7 @@ const ChatInner = () => {
     </div>
   );
 
-  const badgeView = PINCER_BADGE[badge];
-  const BadgeIcon = badgeView.icon;
-  const pincerBadge = (
-    <span
-      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${badgeView.tone}`}
-      title={
-        badge === 'offline'
-          ? `Pincer did not answer at ${getAuth()?.apiUrl ?? 'its address'}. ${retry === 'retrying' ? 'Retrying now…' : `Retrying in ${retry} s.`}`
-          : badgeView.title
-      }
-    >
-      <BadgeIcon className="h-3 w-3" />
-      {badgeView.label}
-    </span>
-  );
+  const pincerBadge = <PincerStatusBadge badge={badge} lastAttempt={lastAttempt} checking={checking} />;
 
   return (
     <SidebarProvider className="plat">
@@ -1008,5 +984,41 @@ const Chat = () => (
     <ChatInner />
   </QueryClientProvider>
 );
+
+/** "retrying in N s." / "retrying…" — the countdown to the next real health check. */
+const retryLabel = (retry: number | 'retrying' | null) =>
+  retry === 'retrying' ? 'retrying…' : `retrying in ${retry} s.`;
+
+function OfflineNotice({ lastAttempt, checking }: { lastAttempt: number; checking: boolean }) {
+  const retry = useRetryCountdown(true, lastAttempt, checking);
+  return (
+    <div
+      role="status"
+      className="mb-2 flex items-center gap-2 rounded-[10px] border border-[color:color-mix(in_srgb,var(--warn-fg)_25%,transparent)] bg-[color:var(--warn-bg)] px-3 py-2 text-xs text-[color:var(--warn-fg)]"
+    >
+      <WifiOff className="h-3.5 w-3.5 shrink-0" />
+      Pincer is offline. Chat is unavailable until it reconnects — {retryLabel(retry)}
+    </div>
+  );
+}
+
+function PincerStatusBadge({ badge, lastAttempt, checking }: { badge: PincerBadge; lastAttempt: number; checking: boolean }) {
+  const retry = useRetryCountdown(badge === 'offline', lastAttempt, checking);
+  const view = PINCER_BADGE[badge];
+  const Icon = view.icon;
+  return (
+    <span
+      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${view.tone}`}
+      title={
+        badge === 'offline'
+          ? `Pincer did not answer at ${getAuth()?.apiUrl ?? 'its address'}. ${retry === 'retrying' ? 'Retrying now…' : `Retrying in ${retry} s.`}`
+          : view.title
+      }
+    >
+      <Icon className="h-3 w-3" />
+      {view.label}
+    </span>
+  );
+}
 
 export default Chat;
