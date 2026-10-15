@@ -211,6 +211,49 @@ describe('theme preference', () => {
     expect(seen).toEqual([true]);
   });
 
+  describe('inside the provider, a layout effect reading <html> sees the theme it rendered with', () => {
+    // Children's layout effects run before the provider's, so a component that
+    // measures colours in a layout effect (charts, canvas) must find <html>
+    // already switched when it renders with the new resolvedTheme.
+    function MeasuresInLayoutEffect({ seen }: { seen: string[] }) {
+      const { resolvedTheme } = useTheme();
+      useLayoutEffect(() => {
+        seen.push(`${resolvedTheme}:${root().classList.contains('dark') ? 'dark' : 'light'}`);
+      }, [resolvedTheme, seen]);
+      return null;
+    }
+
+    const renderMeasuring = (seen: string[]) =>
+      render(
+        <ThemeProvider>
+          <Probe />
+          <MeasuresInLayoutEffect seen={seen} />
+        </ThemeProvider>,
+      );
+
+    it('after setTheme', async () => {
+      os = mockOS(false);
+      const seen: string[] = [];
+      renderMeasuring(seen);
+      seen.length = 0;
+
+      await userEvent.click(screen.getByRole('button', { name: 'dark' }));
+
+      expect(seen).toEqual(['dark:dark']);
+    });
+
+    it("after an OS change under 'system'", () => {
+      os = mockOS(false);
+      const seen: string[] = [];
+      renderMeasuring(seen);
+      seen.length = 0;
+
+      os.set(true);
+
+      expect(seen).toEqual(['dark:dark']);
+    });
+  });
+
   it('setTheme persists the choice and toggles html.dark', async () => {
     os = mockOS(false);
     renderTheme();

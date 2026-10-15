@@ -50,6 +50,15 @@ const writeStoredTheme = (theme: Theme) => {
 
 const osPrefersDark = () => window.matchMedia(DARK_QUERY).matches;
 
+const resolve = (theme: Theme): ResolvedTheme => (theme === 'system' ? (osPrefersDark() ? 'dark' : 'light') : theme);
+
+/** Put the theme on the document root: the `dark` class and the native color-scheme. */
+const applyToRoot = (resolved: ResolvedTheme) => {
+  const root = document.documentElement;
+  root.classList.toggle('dark', resolved === 'dark');
+  root.style.colorScheme = resolved;
+};
+
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const [theme, setThemeState] = useState<Theme>(readStoredTheme);
   // The OS preference is read fresh on every render, never cached: a copy kept
@@ -58,26 +67,30 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   // just re-renders when the OS changes.
   const [, osChanged] = useReducer((n: number) => n + 1, 0);
 
+  // Every change reaches <html> BEFORE the re-render it causes: children's
+  // layout effects run before this provider's, so a component that measures
+  // colours in one (charts, canvas) must already find the new class there.
   useEffect(() => {
     if (theme !== 'system') return;
     const mq = window.matchMedia(DARK_QUERY);
-    mq.addEventListener('change', osChanged);
-    return () => mq.removeEventListener('change', osChanged);
+    const onChange = () => {
+      applyToRoot(resolve('system'));
+      osChanged();
+    };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
   }, [theme]);
 
-  const resolvedTheme: ResolvedTheme = theme === 'system' ? (osPrefersDark() ? 'dark' : 'light') : theme;
+  const resolvedTheme = resolve(theme);
 
-  // Layout, not passive: the class has to change in the same frame as the
-  // components that read resolvedTheme, before the browser paints. (Client-only
-  // app, so no server-render warning to avoid.)
-  useLayoutEffect(() => {
-    const root = document.documentElement;
-    root.classList.toggle('dark', resolvedTheme === 'dark');
-    root.style.colorScheme = resolvedTheme;
-  }, [resolvedTheme]);
+  // The backstop for anything that did not go through setTheme or the listener
+  // (first mount without the index.html bootstrap). Layout, not passive, so it
+  // still lands before paint; the app is client-only, so no SSR warning.
+  useLayoutEffect(() => applyToRoot(resolvedTheme), [resolvedTheme]);
 
   const setTheme = (t: Theme) => {
     writeStoredTheme(t);
+    applyToRoot(resolve(t));
     setThemeState(t);
   };
 
