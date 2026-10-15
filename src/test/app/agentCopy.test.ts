@@ -50,6 +50,16 @@ describe('copy describes the one Pincer agent', () => {
     expect(strings(json, '')).toEqual([]);
   });
 
+  it('the page meta (search results, link previews) describes the agent too', () => {
+    const html = readFileSync(path.join(SRC, '../index.html'), 'utf8');
+    const metas = [...html.matchAll(/<meta[^>]+(?:name="description"|property="og:description")[^>]*>/g)].map((m) => m[0]);
+    expect(metas).toHaveLength(2);
+    for (const meta of metas) {
+      expect(meta).not.toMatch(/AI (employees?|workers?|workforce)/i);
+      expect(meta).toContain('Your Pincer agent takes on the repeatable work');
+    }
+  });
+
   it('the dead cross-company marketing block is gone from both locales', () => {
     for (const lang of ['en', 'de']) {
       const product = JSON.parse(readFileSync(path.join(SRC, `i18n/locales/${lang}/translation.json`), 'utf8')).product ?? {};
