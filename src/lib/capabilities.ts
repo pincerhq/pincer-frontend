@@ -75,17 +75,29 @@ export function useHealth() {
   const connected = useVoiceConnected();
   return useQuery<HealthInfo>({
     queryKey: ["health"],
-    queryFn: () => api.get<HealthInfo>("/api/health"),
+    queryFn: checkHealth,
     enabled: connected,
-    // FE1 §5: ['health'] every 30 s. A failed check is retried once after
-    // HEALTH_RETRY_MS, so a single dropped request never reports an error:
-    // Chat locks only when both attempts fail; the telephony banner waits for
-    // two such failed polls.
+    // FE1 §5: ['health'] every 30 s. Chat locks only when a check AND its one
+    // retry fail; the telephony banner waits for two such failed polls.
     staleTime: HEALTH_POLL_MS,
     refetchInterval: HEALTH_POLL_MS,
-    retry: 1,
-    retryDelay: HEALTH_RETRY_MS,
+    // Keep polling in a hidden tab: the offline countdown promises the next
+    // check, and a backgrounded Chat would otherwise sit on "retrying…".
+    refetchIntervalInBackground: true,
+    // The retry lives in checkHealth: react-query pauses its own retries while
+    // the window is unfocused, which would stall a hidden tab mid-check.
+    retry: false,
   });
+}
+
+/** One health check, retried once after HEALTH_RETRY_MS — a single blip never reads as offline. */
+async function checkHealth(): Promise<HealthInfo> {
+  try {
+    return await api.get<HealthInfo>("/api/health");
+  } catch {
+    await new Promise((resolve) => setTimeout(resolve, HEALTH_RETRY_MS));
+    return api.get<HealthInfo>("/api/health");
+  }
 }
 
 /**

@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
 const get = vi.fn();
@@ -21,7 +21,7 @@ vi.mock('@/lib/api/voice', async (importOriginal) => {
   return { ...actual, useVoiceConnected: () => true };
 });
 
-const { useHealth, HEALTH_RETRY_MS } = await import('@/lib/capabilities');
+const { useHealth, HEALTH_RETRY_MS, HEALTH_POLL_MS } = await import('@/lib/capabilities');
 
 function wrapper({ children }: { children: ReactNode }) {
   // The app's own client sets `retry: 1` globally; a bare client keeps the hook's own options honest.
@@ -64,5 +64,45 @@ describe('health check retries one failure', () => {
     await flush();
     expect(get).toHaveBeenCalledTimes(2);
     expect(result.current.status).toBe('error');
+  });
+});
+
+describe('health check in a hidden tab', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    get.mockReset();
+  });
+  afterEach(() => {
+    focusManager.setFocused(undefined);
+    vi.useRealTimers();
+  });
+
+  // The offline countdown promises a check every HEALTH_POLL_MS; a backgrounded
+  // tab must keep that promise, or chat sits on "retrying…" with no poll running.
+  it('keeps polling while the document is hidden', async () => {
+    get.mockResolvedValue({ status: 'ok' });
+    renderHook(() => useHealth(), { wrapper });
+    await flush();
+    expect(get).toHaveBeenCalledTimes(1);
+    act(() => focusManager.setFocused(false));
+    await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_POLL_MS + 10); });
+    await flush();
+    expect(get).toHaveBeenCalledTimes(2);
+  });
+
+  // react-query pauses its own retries while the window is unfocused, so the
+  // one retry must not depend on focus either — or a hidden tab stalls mid-check.
+  it('finishes a failed check (and its retry) while the document is hidden', async () => {
+    get.mockResolvedValueOnce({ status: 'ok' });
+    const { result } = renderHook(() => useHealth(), { wrapper });
+    await flush();
+    act(() => focusManager.setFocused(false));
+    get.mockRejectedValue(new Error('down'));
+    await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_POLL_MS + 10); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
+    await flush();
+    expect(get).toHaveBeenCalledTimes(3);
+    expect(result.current.status).toBe('error');
+    expect(result.current.fetchStatus).toBe('idle');
   });
 });
