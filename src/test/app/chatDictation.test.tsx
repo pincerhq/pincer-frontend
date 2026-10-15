@@ -236,6 +236,31 @@ describe('chat dictation', () => {
     expect(rec.calls).toContain('abort');
   });
 
+  it('an edit while an interim phrase shows: that phrase is never appended again', async () => {
+    const user = userEvent.setup();
+    render(ui());
+    await user.type(box(), 'hi');
+    await user.click(mic());
+    last().emit([['book a', true], [' meeting', false]]);
+    expect(box().value).toBe('hi book a meeting');
+    fireEvent.change(box(), { target: { value: 'hi book a meeting x' } });
+    last().emit([['book a', true], [' meeting tomorrow', true]]);
+    expect(box().value).toBe('hi book a meeting x');
+    last().emit([['book a', true], [' meeting tomorrow', true], [' at ten', false]]);
+    expect(box().value).toBe('hi book a meeting x at ten');
+  });
+
+  it('clearing the box mid-dictation does not bring the cleared words back', async () => {
+    render(ui());
+    await userEvent.click(mic());
+    last().emit([['scratch that', false]]);
+    fireEvent.change(box(), { target: { value: '' } });
+    last().emit([['scratch that', true]]);
+    expect(box().value).toBe('');
+    last().emit([['scratch that', true], [' new words', false]]);
+    expect(box().value).toBe('new words');
+  });
+
   it('stops on a second click', async () => {
     render(ui());
     await userEvent.click(mic());

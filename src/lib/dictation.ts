@@ -68,13 +68,6 @@ function transcriptOf(results: RecognitionResultList, from = 0): string {
   return out;
 }
 
-/** How many results at the start of the list are final (finals never change again). */
-function finalCount(results: RecognitionResultList): number {
-  let n = 0;
-  while (n < results.length && results[n].isFinal) n++;
-  return n;
-}
-
 export function useDictation(opts: { getText: () => string; setText: (text: string) => void; lang: () => string }) {
   const [supported] = useState(() => recognitionCtor() !== undefined);
   const [listening, setListening] = useState(false);
@@ -127,8 +120,9 @@ export function useDictation(opts: { getText: () => string; setText: (text: stri
     // the box: if it still ends with what was dictated last, everything before
     // that (the user's edits included) is kept; if the user changed the dictated
     // words or typed after them, the box is taken as is and only results that
-    // arrive after the edit are appended.
-    const session = { base: '', suffix: '', from: 0, finals: 0 };
+    // arrive after the edit are appended — a phrase that was still interim at
+    // the moment of the edit stays as the user left it, never re-emitted.
+    const session = { base: '', suffix: '', from: 0, shown: 0 };
     rec.onresult = (e) => {
       // Session token: only the live recognizer — or a stopped one that has not
       // settled while no newer session runs — may write to the box.
@@ -140,11 +134,11 @@ export function useDictation(opts: { getText: () => string; setText: (text: stri
         session.base = current.slice(0, current.length - session.suffix.length);
       } else {
         session.base = current;
-        session.from = session.finals;
+        session.from = session.shown;
       }
       const next = dictatedText(session.base, transcriptOf(e.results, session.from));
       session.suffix = next.slice(session.base.length);
-      session.finals = finalCount(e.results);
+      session.shown = e.results.length;
       optsRef.current.setText(next);
     };
     rec.onerror = (e) => {
