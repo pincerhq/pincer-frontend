@@ -188,6 +188,7 @@ describe('chat dictation', () => {
     old.emit([['first', true]]);
     await user.click(mic());
     await user.click(mic());
+    old.settle();
     const current = last();
     expect(current).not.toBe(old);
     current.emit([['second', false]]);
@@ -259,6 +260,57 @@ describe('chat dictation', () => {
     expect(box().value).toBe('');
     last().emit([['scratch that', true], [' new words', false]]);
     expect(box().value).toBe('new words');
+  });
+
+  it('a quick restart waits for the stopped session, so its last words still land', async () => {
+    const user = userEvent.setup();
+    render(ui());
+    await user.click(mic());
+    const old = last();
+    old.lazyStop = true;
+    old.emit([['book a meeting', false]]);
+    await user.click(mic());
+    await user.click(mic());
+    expect(mic()).toHaveAttribute('aria-pressed', 'true');
+    expect(FakeRecognition.instances).toHaveLength(1);
+    old.emit([['book a meeting tomorrow', true]]);
+    expect(box().value).toBe('book a meeting tomorrow');
+    old.settle();
+    expect(FakeRecognition.instances).toHaveLength(2);
+    expect(last().calls).toEqual(['start']);
+    last().emit([['at ten', false]]);
+    expect(box().value).toBe('book a meeting tomorrow at ten');
+  });
+
+  it('a restart does not wait forever for a session that never settles', async () => {
+    const user = userEvent.setup();
+    render(ui());
+    await user.click(mic());
+    const old = last();
+    old.lazyStop = true;
+    await user.click(mic());
+    await user.click(mic());
+    expect(FakeRecognition.instances).toHaveLength(1);
+    await act(() => new Promise((r) => setTimeout(r, 1_700)));
+    expect(old.calls).toContain('abort');
+    expect(FakeRecognition.instances).toHaveLength(2);
+    expect(last().calls).toEqual(['start']);
+  });
+
+  it('clicking again while a restart waits calls it off', async () => {
+    const user = userEvent.setup();
+    render(ui());
+    await user.click(mic());
+    const old = last();
+    old.lazyStop = true;
+    await user.click(mic());
+    await user.click(mic());
+    expect(mic()).toHaveAttribute('aria-pressed', 'true');
+    await user.click(mic());
+    expect(mic()).toHaveAttribute('aria-pressed', 'false');
+    old.settle();
+    await act(() => new Promise((r) => setTimeout(r, 1_700)));
+    expect(FakeRecognition.instances).toHaveLength(1);
   });
 
   it('stops on a second click', async () => {
