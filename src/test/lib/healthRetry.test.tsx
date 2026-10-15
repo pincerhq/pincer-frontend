@@ -31,6 +31,13 @@ const { ApiError } = await import('@/lib/api/client');
 /** What the client throws when the request never left the browser (status 0). */
 const unreachable = () => new ApiError('Could not reach the Pincer backend', 0);
 
+/** An HTTP error as the client throws it; `body` is the JSON body, absent for an HTML page. */
+const httpError = (status: number, body?: unknown) =>
+  Object.assign(new ApiError(`HTTP ${status}`, status), body === undefined ? {} : { body });
+
+/** Pincer's own error body (FastAPI's shape). */
+const PINCER_404 = { detail: 'Not Found' };
+
 // The app's own client sets `retry: 1` globally; a bare client keeps the hook's own options honest.
 let client: QueryClient;
 
@@ -185,7 +192,7 @@ describe('which failures are retried', () => {
   afterEach(() => vi.useRealTimers());
 
   it.each([401, 403, 404])('a %i is an answer: connected at once, one request, no retry delay', async (status) => {
-    get.mockRejectedValue(new ApiError(`HTTP ${status}`, status));
+    get.mockRejectedValue(httpError(status, { detail: `HTTP ${status}` }));
     const { result } = renderHook(() => useHealth(), { wrapper });
     // Well inside HEALTH_RETRY_MS: the answer lands without the retry delay.
     await act(async () => { await vi.advanceTimersByTimeAsync(50); });
@@ -215,7 +222,7 @@ describe('which failures are retried', () => {
   });
 
   it('a 4xx on the retry is an answer too', async () => {
-    get.mockRejectedValueOnce(unreachable()).mockRejectedValue(new ApiError('HTTP 404', 404));
+    get.mockRejectedValueOnce(unreachable()).mockRejectedValue(httpError(404, PINCER_404));
     const { result } = renderHook(() => useHealth(), { wrapper });
     await flush();
     await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
@@ -244,7 +251,7 @@ describe('telephony status banner', () => {
 
   it('stays out of "offline" while health answers 404', async () => {
     const { useBannerState } = await import('@/pages/telephony/_components/shared/StatusBanner');
-    get.mockRejectedValue(new ApiError('HTTP 404', 404));
+    get.mockRejectedValue(httpError(404, PINCER_404));
     const { result } = renderHook(() => useBannerState(), { wrapper });
     await runPolls(3);
     expect(get.mock.calls.length).toBeGreaterThanOrEqual(3);
@@ -254,6 +261,54 @@ describe('telephony status banner', () => {
   it('still goes offline after two polls with no answer', async () => {
     const { useBannerState } = await import('@/pages/telephony/_components/shared/StatusBanner');
     get.mockRejectedValue(unreachable());
+    const { result } = renderHook(() => useBannerState(), { wrapper });
+    await runPolls(3);
+    expect(result.current.state).toBe('offline');
+  });
+});
+
+// Reachable means Pincer answered — and only Pincer answers in JSON with its
+// error shape. An HTML page where the API should be (the SPA's index.html
+// behind a static fallback, a captive portal) is not Pincer: offline, and not
+// retried, since a page like that does not change in 2 s.
+describe('only an answer from Pincer counts as reachable', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    get.mockReset();
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it.each([
+    ['an HTML 200 (the client reports it as a missing endpoint)', httpError(404)],
+    ['an HTML 404', httpError(404)],
+    ['a JSON 4xx that is not Pincer\'s shape (a portal)', httpError(403, { message: 'Log in to the Wi-Fi' })],
+    ['a JSON array 4xx', httpError(404, ['nope'])],
+  ])('%s: offline, one request', async (_name, error) => {
+    get.mockRejectedValue(error);
+    const { result } = renderHook(() => useHealth(), { wrapper });
+    await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
+    expect(result.current.status).toBe('error');
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('a JSON 404 in Pincer\'s error shape is Pincer answering: connected', async () => {
+    get.mockRejectedValue(httpError(404, PINCER_404));
+    const { result } = renderHook(() => useHealth(), { wrapper });
+    await act(async () => { await vi.advanceTimersByTimeAsync(50); });
+    expect(result.current.status).toBe('success');
+  });
+
+  it('an HTML 502 from a proxy is still retried once, like any 5xx', async () => {
+    get.mockRejectedValue(httpError(502));
+    renderHook(() => useHealth(), { wrapper });
+    await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
+    expect(get).toHaveBeenCalledTimes(2);
+  });
+
+  it('the telephony banner goes offline while an HTML page answers', async () => {
+    const { useBannerState } = await import('@/pages/telephony/_components/shared/StatusBanner');
+    get.mockRejectedValue(httpError(404));
     const { result } = renderHook(() => useBannerState(), { wrapper });
     await runPolls(3);
     expect(result.current.state).toBe('offline');
