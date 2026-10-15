@@ -18,10 +18,18 @@ vi.mock('@/lib/api/client', async (importOriginal) => {
 
 vi.mock('@/lib/api/voice', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api/voice')>();
-  return { ...actual, useVoiceConnected: () => true };
+  return {
+    ...actual,
+    useVoiceConnected: () => true,
+    useVoiceStatus: () => ({ data: { enabled: true, voice_configured: true } }),
+  };
 });
 
 const { useHealth, HEALTH_RETRY_MS, HEALTH_POLL_MS } = await import('@/lib/capabilities');
+const { ApiError } = await import('@/lib/api/client');
+
+/** What the client throws when the request never left the browser (status 0). */
+const unreachable = () => new ApiError('Could not reach the Pincer backend', 0);
 
 // The app's own client sets `retry: 1` globally; a bare client keeps the hook's own options honest.
 let client: QueryClient;
@@ -46,7 +54,7 @@ describe('health check retries one failure', () => {
   });
 
   it('one blip, then an answer: never reports an error', async () => {
-    get.mockRejectedValueOnce(new Error('blip')).mockResolvedValue({ status: 'ok' });
+    get.mockRejectedValueOnce(unreachable()).mockResolvedValue({ status: 'ok' });
     const seen: string[] = [];
     const { result } = renderHook(() => { const h = useHealth(); seen.push(h.status); return h; }, { wrapper });
     await flush();
@@ -58,7 +66,7 @@ describe('health check retries one failure', () => {
   });
 
   it('two failures in a row: offline within the retry delay, not after a whole poll', async () => {
-    get.mockRejectedValue(new Error('down'));
+    get.mockRejectedValue(unreachable());
     const { result } = renderHook(() => useHealth(), { wrapper });
     await flush();
     expect(result.current.status).not.toBe('error');
@@ -100,7 +108,7 @@ describe('health check in a hidden tab', () => {
     const { result } = renderHook(() => useHealth(), { wrapper });
     await flush();
     act(() => focusManager.setFocused(false));
-    get.mockRejectedValue(new Error('down'));
+    get.mockRejectedValue(unreachable());
     await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_POLL_MS + 10); });
     await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
     await flush();
@@ -121,7 +129,7 @@ describe('health check can be cancelled', () => {
   afterEach(() => vi.useRealTimers());
 
   it('hands both the check and its retry the query signal, so the fetch itself aborts', async () => {
-    get.mockRejectedValueOnce(new Error('blip')).mockResolvedValue({ status: 'ok' });
+    get.mockRejectedValueOnce(unreachable()).mockResolvedValue({ status: 'ok' });
     renderHook(() => useHealth(), { wrapper });
     await flush();
     await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
@@ -131,7 +139,7 @@ describe('health check can be cancelled', () => {
   });
 
   it('unmounting during the retry delay makes no second request', async () => {
-    get.mockRejectedValue(new Error('down'));
+    get.mockRejectedValue(unreachable());
     const { unmount } = renderHook(() => useHealth(), { wrapper });
     await flush();
     expect(get).toHaveBeenCalledTimes(1);
@@ -142,7 +150,7 @@ describe('health check can be cancelled', () => {
   });
 
   it('cancelling the query during the retry delay makes no second request', async () => {
-    get.mockRejectedValue(new Error('down'));
+    get.mockRejectedValue(unreachable());
     renderHook(() => useHealth(), { wrapper });
     await flush();
     await act(async () => { await client.cancelQueries({ queryKey: ['health'] }); });
@@ -162,5 +170,92 @@ describe('health check can be cancelled', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
     await flush();
     expect(get).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Reachability means "Pincer answered". A 4xx is an answer — retrying cannot
+// change it, and chat must not lock over it; a token 401 already ends the
+// session in authedFetch. Only "no answer" (status 0) and a 5xx are retried.
+describe('which failures are retried', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    get.mockReset();
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it.each([401, 403, 404])('a %i is an answer: connected at once, one request, no retry delay', async (status) => {
+    get.mockRejectedValue(new ApiError(`HTTP ${status}`, status));
+    const { result } = renderHook(() => useHealth(), { wrapper });
+    // Well inside HEALTH_RETRY_MS: the answer lands without the retry delay.
+    await act(async () => { await vi.advanceTimersByTimeAsync(50); });
+    expect(result.current.status).toBe('success');
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(result.current.data).toEqual({ httpStatus: status });
+    await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
+    await flush();
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['a 500', () => new ApiError('HTTP 500', 500)],
+    ['status 0 (no answer)', unreachable],
+  ])('%s gets exactly one retry', async (_name, error) => {
+    get.mockRejectedValue(error());
+    const { result } = renderHook(() => useHealth(), { wrapper });
+    await flush();
+    expect(get).toHaveBeenCalledTimes(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
+    await flush();
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(result.current.status).toBe('error');
+    await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
+    await flush();
+    expect(get).toHaveBeenCalledTimes(2);
+  });
+
+  it('a 4xx on the retry is an answer too', async () => {
+    get.mockRejectedValueOnce(unreachable()).mockRejectedValue(new ApiError('HTTP 404', 404));
+    const { result } = renderHook(() => useHealth(), { wrapper });
+    await flush();
+    await act(async () => { await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS + 10); });
+    await flush();
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(result.current.status).toBe('success');
+  });
+});
+
+/** Let `n` polls run, a second per act — so every outcome renders, as on a real clock. */
+async function runPolls(n: number) {
+  for (let second = 0; second < (n * (HEALTH_POLL_MS + HEALTH_RETRY_MS)) / 1000 + 1; second++) {
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+  }
+}
+
+// The telephony banner shares ['health']: it says "server unreachable" after
+// two failed polls. A server that answers with a 4xx is not unreachable.
+describe('telephony status banner', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    get.mockReset();
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('stays out of "offline" while health answers 404', async () => {
+    const { useBannerState } = await import('@/pages/telephony/_components/shared/StatusBanner');
+    get.mockRejectedValue(new ApiError('HTTP 404', 404));
+    const { result } = renderHook(() => useBannerState(), { wrapper });
+    await runPolls(3);
+    expect(get.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect(result.current.state).toBe('active');
+  });
+
+  it('still goes offline after two polls with no answer', async () => {
+    const { useBannerState } = await import('@/pages/telephony/_components/shared/StatusBanner');
+    get.mockRejectedValue(unreachable());
+    const { result } = renderHook(() => useBannerState(), { wrapper });
+    await runPolls(3);
+    expect(result.current.state).toBe('offline');
   });
 });

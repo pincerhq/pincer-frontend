@@ -13,7 +13,7 @@
  * the status body are mapped here so gating is real where it can be.
  */
 import { useQuery } from "@tanstack/react-query";
-import { api, type Schema } from "@/lib/api/client";
+import { api, ApiError, type Schema } from "@/lib/api/client";
 import { useVoiceConnected, useVoiceStatus } from "@/lib/api/voice";
 
 /** How often `useHealth()` polls /api/health; the offline countdown reads it too. */
@@ -69,6 +69,8 @@ export function capabilitiesFromStatus(status: StatusWithCapabilities | undefine
 export interface HealthInfo {
   status?: string;
   version?: string;
+  /** Set when Pincer answered /api/health with a 4xx: reachable, but no health report. */
+  httpStatus?: number;
 }
 
 export function useHealth() {
@@ -78,7 +80,8 @@ export function useHealth() {
     queryFn: ({ signal }) => checkHealth(signal),
     enabled: connected,
     // FE1 §5: ['health'] every 30 s. Chat locks only when a check AND its one
-    // retry fail; the telephony banner waits for two such failed polls.
+    // retry get no answer (or a 5xx); the telephony banner waits for two such
+    // failed polls. A 4xx is an answer, so it reads as reachable.
     staleTime: HEALTH_POLL_MS,
     refetchInterval: HEALTH_POLL_MS,
     // Keep polling in a hidden tab: the offline countdown promises the next
@@ -92,16 +95,29 @@ export function useHealth() {
 
 /**
  * One health check, retried once after HEALTH_RETRY_MS — a single blip never
- * reads as offline. `signal` is react-query's: a cancelled query (or one whose
- * last observer left) aborts the fetch and the wait, and is never retried.
+ * reads as offline. Only "no answer" (status 0) and a 5xx are retried: a 4xx
+ * is Pincer answering, so it resolves as reachable at once (a dead token's 401
+ * has already ended the session in authedFetch). `signal` is react-query's: a
+ * cancelled query (or one whose last observer left) aborts the fetch and the
+ * wait, and is never retried.
  */
 async function checkHealth(signal: AbortSignal): Promise<HealthInfo> {
   try {
+    return await healthAttempt(signal);
+  } catch (err) {
+    const retryable = err instanceof ApiError && (err.status === 0 || err.status >= 500);
+    if (signal.aborted || !retryable) throw err;
+    await sleep(HEALTH_RETRY_MS, signal);
+    return healthAttempt(signal);
+  }
+}
+
+async function healthAttempt(signal: AbortSignal): Promise<HealthInfo> {
+  try {
     return await api.get<HealthInfo>("/api/health", { signal });
   } catch (err) {
-    if (signal.aborted) throw err;
-    await sleep(HEALTH_RETRY_MS, signal);
-    return api.get<HealthInfo>("/api/health", { signal });
+    if (err instanceof ApiError && err.status > 0 && err.status < 500) return { httpStatus: err.status };
+    throw err;
   }
 }
 
