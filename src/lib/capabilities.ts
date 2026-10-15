@@ -19,6 +19,9 @@ import { useVoiceConnected, useVoiceStatus } from "@/lib/api/voice";
 /** How often `useHealth()` polls /api/health; the offline countdown reads it too. */
 export const HEALTH_POLL_MS = 30_000;
 
+/** Delay before a failed health check is retried once — one blip must not read as offline. */
+export const HEALTH_RETRY_MS = 2_000;
+
 export type CapabilityKey =
   | "voice"
   | "outbound"
@@ -74,10 +77,14 @@ export function useHealth() {
     queryKey: ["health"],
     queryFn: () => api.get<HealthInfo>("/api/health"),
     enabled: connected,
-    // FE1 §5: ['health'] every 30 s; the banner calls it offline after two misses.
+    // FE1 §5: ['health'] every 30 s. A failed check is retried once after
+    // HEALTH_RETRY_MS, so a single dropped request never reports an error:
+    // Chat locks only when both attempts fail; the telephony banner waits for
+    // two such failed polls.
     staleTime: HEALTH_POLL_MS,
     refetchInterval: HEALTH_POLL_MS,
-    retry: false,
+    retry: 1,
+    retryDelay: HEALTH_RETRY_MS,
   });
 }
 
