@@ -338,40 +338,90 @@ describe('chat dictation', () => {
     expect(box().value).toBe('book a meeting tomorrow at ten');
   });
 
-  it('a restart does not wait forever for a session that never settles', async () => {
-    const user = userEvent.setup();
+  it('a restart waits as long as the stopped session keeps delivering — a slow final still lands', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      render(ui());
+      fireEvent.click(mic());
+      const old = last();
+      old.lazyStop = true;
+      old.emit([['table for', false]]);
+      fireEvent.click(mic());
+      fireEvent.click(mic());
+      // A slow network: each result well inside 3 s of the last, the final 3.6 s after the restart.
+      act(() => vi.advanceTimersByTime(1_200));
+      old.emit([['table for four', false]]);
+      act(() => vi.advanceTimersByTime(1_200));
+      old.emit([['table for four at', false]]);
+      act(() => vi.advanceTimersByTime(1_200));
+      old.emit([['table for four at seven', true]]);
+      expect(box().value).toBe('table for four at seven');
+      expect(FakeRecognition.instances).toHaveLength(1);
+      old.settle();
+      expect(FakeRecognition.instances).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a restart waits for onend, not the first final: a phrase still buffered behind it lands too', async () => {
     render(ui());
-    await user.click(mic());
+    fireEvent.click(mic());
     const old = last();
     old.lazyStop = true;
-    await user.click(mic());
-    await user.click(mic());
-    expect(FakeRecognition.instances).toHaveLength(1);
-    await act(() => new Promise((r) => setTimeout(r, 1_700)));
-    expect(old.calls).toContain('abort');
+    old.emit([['call Anna', false]]);
+    fireEvent.click(mic());
+    fireEvent.click(mic());
+    old.emit([['call Anna', true]]);
+    old.emit([['call Anna', true], [' then Ben', true]]);
+    old.settle();
+    expect(box().value).toBe('call Anna then Ben');
     expect(FakeRecognition.instances).toHaveLength(2);
-    expect(last().calls).toEqual(['start']);
+  });
+
+  it('a restart does not wait forever for a session that never settles: 3 s of silence ends the wait', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      render(ui());
+      fireEvent.click(mic());
+      const old = last();
+      old.lazyStop = true;
+      fireEvent.click(mic());
+      fireEvent.click(mic());
+      act(() => vi.advanceTimersByTime(2_900));
+      expect(FakeRecognition.instances).toHaveLength(1);
+      act(() => vi.advanceTimersByTime(200));
+      expect(old.calls).toContain('abort');
+      expect(FakeRecognition.instances).toHaveLength(2);
+      expect(last().calls).toEqual(['start']);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('clicking again while a restart waits calls it off', async () => {
-    const user = userEvent.setup();
-    render(ui());
-    await user.click(mic());
-    const old = last();
-    old.lazyStop = true;
-    await user.click(mic());
-    await user.click(mic());
-    expect(mic()).toHaveAttribute('aria-pressed', 'true');
-    await user.click(mic());
-    expect(mic()).toHaveAttribute('aria-pressed', 'false');
-    // Still stopping: one more click queues again, never a second live recognizer.
-    expect(mic()).toHaveAttribute('title', 'Finishing dictation…');
-    await user.click(mic());
-    expect(FakeRecognition.instances).toHaveLength(1);
-    await user.click(mic());
-    old.settle();
-    await act(() => new Promise((r) => setTimeout(r, 1_700)));
-    expect(FakeRecognition.instances).toHaveLength(1);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      render(ui());
+      fireEvent.click(mic());
+      const old = last();
+      old.lazyStop = true;
+      fireEvent.click(mic());
+      fireEvent.click(mic());
+      expect(mic()).toHaveAttribute('aria-pressed', 'true');
+      fireEvent.click(mic());
+      expect(mic()).toHaveAttribute('aria-pressed', 'false');
+      // Still stopping: one more click queues again, never a second live recognizer.
+      expect(mic()).toHaveAttribute('title', 'Finishing dictation…');
+      fireEvent.click(mic());
+      expect(FakeRecognition.instances).toHaveLength(1);
+      fireEvent.click(mic());
+      old.settle();
+      act(() => vi.advanceTimersByTime(10_000));
+      expect(FakeRecognition.instances).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('names each state on the mic: idle, live, stopping, and a restart waiting for the stop', async () => {

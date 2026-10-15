@@ -8,8 +8,12 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-/** How long a restart waits for a stopped session's last words before giving up on them. */
-const SETTLE_TIMEOUT_MS = 1_500;
+/**
+ * How long a restart waits on a stopped session that has gone quiet before
+ * giving up on it. Each result it delivers restarts the wait, so a slow
+ * network still delivering its final is never cut off; only silence is.
+ */
+const SETTLE_QUIET_MS = 3_000;
 
 /** UI language → recognition language. Unlisted codes are passed through. */
 const SPEECH_LANGS: Record<string, string> = { en: 'en-US', de: 'de-DE', uk: 'uk-UA' };
@@ -155,6 +159,8 @@ export function useDictation(opts: { getText: () => string; setText: (text: stri
   const settlingRef = useRef<Recognition | null>(null);
   /** While `queued`: gives up on a stopped recognizer that never settles. */
   const fallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Restarts the `queued` wait; set below, once `begin` exists. */
+  const armFallbackRef = useRef(() => {});
   const optsRef = useRef(opts);
   optsRef.current = opts;
 
@@ -187,6 +193,8 @@ export function useDictation(opts: { getText: () => string; setText: (text: stri
       // Session token: only the live recognizer, or a stopped one that has not
       // settled yet, may write — a restart waits for that settling to finish.
       if (recRef.current !== rec && settlingRef.current !== rec) return;
+      // Still delivering after stop: a restart waiting on it keeps waiting.
+      if (settlingRef.current === rec && stateRef.current === 'queued') armFallbackRef.current();
       const next = followDictation(track, optsRef.current.getText(), e.results);
       track = next.track;
       optsRef.current.setText(next.text);
@@ -262,15 +270,21 @@ export function useDictation(opts: { getText: () => string; setText: (text: stri
     }
     if (stateRef.current !== 'stopping') return;
     // The stopped session is still delivering the phrase on screen: let it
-    // finish, then begin. Should the engine never settle, give up on it.
+    // settle (onend — not its first final, which can leave a next phrase
+    // still buffered), then begin. Should it go quiet and never settle, give up.
     setError(null);
     go('queued');
+    armFallbackRef.current();
+  }, [begin, go]);
+
+  armFallbackRef.current = () => {
+    if (fallbackRef.current !== null) clearTimeout(fallbackRef.current);
     fallbackRef.current = setTimeout(() => {
       fallbackRef.current = null;
       dropSettling();
       begin();
-    }, SETTLE_TIMEOUT_MS);
-  }, [begin, dropSettling, go]);
+    }, SETTLE_QUIET_MS);
+  };
 
   const stop = useCallback(() => end('stop'), [end]);
   const cancel = useCallback(() => end('abort'), [end]);
