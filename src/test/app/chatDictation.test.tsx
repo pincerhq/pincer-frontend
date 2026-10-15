@@ -50,8 +50,11 @@ class FakeRecognition {
   constructor() {
     FakeRecognition.instances.push(this);
   }
+  /** When true, stop() does not end the session until settle() — like a real engine finishing its last result. */
+  lazyStop = false;
   start() { this.calls.push('start'); }
-  stop() { this.calls.push('stop'); this.onend?.(); }
+  stop() { this.calls.push('stop'); if (!this.lazyStop) this.onend?.(); }
+  settle() { act(() => this.onend?.()); }
   abort() { this.calls.push('abort'); this.onend?.(); }
   /** Emit the session's results so far, as [transcript, isFinal] pairs. */
   emit(results: Array<[string, boolean]>) {
@@ -158,6 +161,39 @@ describe('chat dictation', () => {
     expect(box().value).toBe('hello world how are you');
     last().emit([['helo world', true], [' how are you', true]]);
     expect(box().value).toBe('hello world how are you');
+  });
+
+  it('lets the final words of a stopped session land, then ignores it', async () => {
+    const user = userEvent.setup();
+    render(ui());
+    await user.click(mic());
+    const rec = last();
+    rec.lazyStop = true;
+    rec.emit([['send the', false]]);
+    await user.click(mic());
+    rec.emit([['send the report', true]]);
+    expect(box().value).toBe('send the report');
+    rec.settle();
+    fireEvent.change(box(), { target: { value: 'send the report now' } });
+    rec.emit([['send the report', true], [' again', false]]);
+    expect(box().value).toBe('send the report now');
+  });
+
+  it('drops late results from an old session once a new one has started', async () => {
+    const user = userEvent.setup();
+    render(ui());
+    await user.click(mic());
+    const old = last();
+    old.lazyStop = true;
+    old.emit([['first', true]]);
+    await user.click(mic());
+    await user.click(mic());
+    const current = last();
+    expect(current).not.toBe(old);
+    current.emit([['second', false]]);
+    expect(box().value).toBe('first second');
+    old.emit([['first', true], [' stale', false]]);
+    expect(box().value).toBe('first second');
   });
 
   it('stops on a second click', async () => {

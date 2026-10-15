@@ -80,6 +80,8 @@ export function useDictation(opts: { getText: () => string; setText: (text: stri
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recRef = useRef<Recognition | null>(null);
+  /** A stopped session still delivering its last words, until its onend settles it. */
+  const settlingRef = useRef<Recognition | null>(null);
   const optsRef = useRef(opts);
   optsRef.current = opts;
 
@@ -88,9 +90,19 @@ export function useDictation(opts: { getText: () => string; setText: (text: stri
     const rec = recRef.current;
     if (!rec) return;
     recRef.current = null;
-    if (how === 'abort') rec.onresult = null;
     rec.onerror = null;
-    rec.onend = null;
+    if (how === 'abort') {
+      rec.onresult = null;
+      rec.onend = null;
+    } else {
+      // Stop: the engine may still deliver what it already heard; once it
+      // settles (onend), nothing more from it reaches the box.
+      settlingRef.current = rec;
+      rec.onend = () => {
+        rec.onresult = null;
+        if (settlingRef.current === rec) settlingRef.current = null;
+      };
+    }
     rec[how]();
     setListening(false);
   }, []);
@@ -109,6 +121,11 @@ export function useDictation(opts: { getText: () => string; setText: (text: stri
     // arrive after the edit are appended.
     const session = { base: '', suffix: '', from: 0, finals: 0 };
     rec.onresult = (e) => {
+      // Session token: only the live recognizer — or a stopped one that has not
+      // settled while no newer session runs — may write to the box.
+      const live = recRef.current === rec;
+      const settling = settlingRef.current === rec && recRef.current === null;
+      if (!live && !settling) return;
       const current = optsRef.current.getText();
       if (current.endsWith(session.suffix)) {
         session.base = current.slice(0, current.length - session.suffix.length);
