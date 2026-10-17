@@ -46,6 +46,7 @@ describe("resultGroupOf — every backend state maps to exactly one chip", () =>
     [{ status: "completed", outcome: { outcome: "declined" } }, "declined"],
     [{ status: "completed", failure_code: "briefing_lost" }, "failed"],
     [{ status: "failed" }, "failed"],
+    [{ status: "active" }, "in_progress"],
     [{ status: "in-progress" }, "in_progress"],
     [{ status: "ringing", failure_code: "x" }, "in_progress"],
     [{ status: "completed", failure_code: "transfer_failed", appointment: { status: "calendar_created" } }, "failed"],
@@ -54,7 +55,7 @@ describe("resultGroupOf — every backend state maps to exactly one chip", () =>
     expect(resultGroupOf(base(over as Partial<CallSummary>))).toBe(expected);
   });
   it("only ever returns a known group", () => {
-    for (const status of ["completed", "no-answer", "busy", "failed", "canceled", "in-progress", "queued", "weird", ""]) {
+    for (const status of ["completed", "no-answer", "busy", "failed", "canceled", "active", "in-progress", "queued", "weird", ""]) {
       expect(RESULT_GROUPS).toContain(resultGroupOf(base({ status })));
     }
   });
