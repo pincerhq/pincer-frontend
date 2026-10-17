@@ -18,6 +18,7 @@ import {
 import { useActiveCalls, useVoiceConnected, useVoiceStatus, type ActiveCall } from '@/lib/api/voice';
 import LiveCallModal from '@/pages/telephony/_components/voice/LiveCallModal';
 import ListenIn from '@/components/voice/listen/ListenIn';
+import EndCallButton from '@/components/voice/EndCallButton';
 import StartCallModal from '@/pages/telephony/_components/voice/StartCallModal';
 import { cn } from '@/lib/utils';
 
@@ -159,8 +160,9 @@ export default function LiveView() {
                     </span>
                   </div>
                 </button>
-                  <div className="mt-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
                     <ListenIn call={c} />
+                    <EndCallButton callSid={c.call_sid} />
                   </div>
                 </div>
               ))}

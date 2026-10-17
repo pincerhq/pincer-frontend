@@ -42,7 +42,7 @@ export type ResultGroup =
 
 export const RESULT_GROUPS: ResultGroup[] = ["booked", "message", "handoff", "done", "not_reached", "declined", "failed", "in_progress"];
 
-const LIVE_STATUSES = new Set(["in-progress", "in_progress", "ringing", "queued", "initiated", "answered"]);
+const LIVE_STATUSES = new Set(["active", "in-progress", "in_progress", "ringing", "queued", "initiated", "answered"]);
 const NOT_REACHED = new Set(["no-answer", "no_answer", "busy", "voicemail", "canceled", "cancelled"]);
 const BOOKED = new Set(["calendar_created", "invitations_sent", "confirmed", "booked"]);
 
