@@ -67,7 +67,11 @@
     "title": "On a call right now",
     "listen": "Listen in",
     "listenHint": "Listen-in lives in the operations console; the player in this app is deferred (post-GA).",
-    "listenSprint": "post-GA"
+    "listenSprint": "post-GA",
+    "end": "End call",
+    "ending": "Ending…",
+    "endRetry": "Retry end call",
+    "endFailed": "Could not end the call: {{reason}}"
   },
   "export": {
     "button": "Export CSV",

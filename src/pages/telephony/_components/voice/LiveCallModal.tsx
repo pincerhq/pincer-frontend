@@ -7,7 +7,7 @@
  * /api/voice/calls/{sid} every 2s, approvals over the v3 stream, model switch
  * applied to the agent's next turn.
  *
- * MOCKED (badged): listen-in, whisper and hang-up. No media proxy yet.
+ * MOCKED (badged): listen-in and whisper. No media proxy yet.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -20,7 +20,6 @@ import {
   Cpu,
   Headphones,
   MessageSquare,
-  PhoneOff,
   ShieldQuestion,
   Zap,
 } from 'lucide-react';
@@ -59,6 +58,7 @@ import {
 } from '@/pages/telephony/_lib/voiceMeta';
 import { msRemaining } from '@/components/voice/ApprovalCard';
 import { useClaimCallApprovals } from '@/components/voice/approvalFocus';
+import EndCallButton from '@/components/voice/EndCallButton';
 import { cn } from '@/lib/utils';
 
 function fmtDuration(s: number) {
@@ -399,7 +399,6 @@ export default function LiveCallModal({
   const controls = [
     { icon: Headphones, label: 'Listen in' },
     { icon: MessageSquare, label: 'Whisper to agent' },
-    { icon: PhoneOff, label: 'Hang up', danger: true },
   ];
 
   return (
@@ -602,22 +601,18 @@ export default function LiveCallModal({
           {controlsDeclared && (
           <div className="border-t border-[var(--line-soft)] px-6 py-3">
             <div className="flex flex-wrap gap-2 opacity-60">
-              {controls.map(({ icon: Icon, label, danger }) => (
+              {controls.map(({ icon: Icon, label }) => (
                 <button
                   key={label}
                   type="button"
                   disabled
-                  className={cn(
-                    'flex cursor-not-allowed items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium',
-                    danger
-                      ? 'border-red-200 bg-[var(--paper)] text-red-600'
-                      : 'border-[var(--line)] bg-[var(--paper)] text-[var(--text-3)]',
-                  )}
+                  className="flex cursor-not-allowed items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--paper)] px-3.5 py-1.5 text-xs font-medium text-[var(--text-3)]"
                 >
                   <Icon className="h-3.5 w-3.5" />
                   {label}
                 </button>
               ))}
+              <EndCallButton callSid={call.call_sid} />
             </div>
           </div>
           )}

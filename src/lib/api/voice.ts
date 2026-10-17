@@ -449,11 +449,24 @@ export function useUpdateVoiceConfig() {
 }
 
 export function useActiveCalls() {
-  return useQuery<ActiveCall[], PincerError>({
+  const q = useQuery<ActiveCall[], PincerError>({
     queryKey: ["voice", "active"],
     queryFn: () => apiFetch("/api/voice/active"),
     refetchInterval: 2_000, // live section polls faster than the history
     enabled: isConnected(),
+  });
+  // A failed poll must not keep the last call list on screen as if still live.
+  return q.isError ? { ...q, data: undefined } : q;
+}
+
+export function useEndCall() {
+  const qc = useQueryClient();
+  return useMutation<unknown, PincerError, string>({
+    mutationFn: (callSid) => apiFetch(`/api/voice/calls/${encodeURIComponent(callSid)}/end`, { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["voice", "active"] });
+      qc.invalidateQueries({ queryKey: ["voice", "calls"] });
+    },
   });
 }
 

@@ -110,7 +110,7 @@ export function computeTodayStats(
   for (const c of today) {
     if (c.direction === "inbound") stats.inbound++;
     else stats.outbound++;
-    const missed = MISSED_STATUSES.has(c.status) || (c.duration_seconds === 0 && c.status !== "in-progress");
+    const missed = MISSED_STATUSES.has(c.status) || (c.duration_seconds === 0 && c.status !== "active");
     if (missed) stats.missed++;
     else stats.answered++;
     if (c.inbound_intent === "after_hours" || (c.direction === "inbound" && isAfterHours(c.started_at, profile))) stats.afterHours++;

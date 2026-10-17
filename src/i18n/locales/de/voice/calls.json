@@ -67,7 +67,11 @@
     "title": "Gerade im Gespräch",
     "listen": "Mithören",
     "listenHint": "Mithören gibt es in der Betriebskonsole; der Player in dieser App ist zurückgestellt (nach GA).",
-    "listenSprint": "nach GA"
+    "listenSprint": "nach GA",
+    "end": "Anruf beenden",
+    "ending": "Wird beendet…",
+    "endRetry": "Erneut beenden",
+    "endFailed": "Anruf konnte nicht beendet werden: {{reason}}"
   },
   "export": {
     "button": "CSV exportieren",

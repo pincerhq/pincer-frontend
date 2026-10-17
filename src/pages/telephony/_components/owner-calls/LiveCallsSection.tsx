@@ -3,6 +3,7 @@ import { useActiveCalls } from "@/lib/api/voice";
 import { useSession, useCan } from "@/stores/session";
 import { useVoiceT } from "@/i18n/voice";
 import { MaskedNumber } from "@/components/voice/MaskedNumber";
+import EndCallButton from "@/components/voice/EndCallButton";
 
 /**
  * Active calls above the history (FE2 §1.3). Listen-in is deferred in the
@@ -46,6 +47,7 @@ export default function LiveCallsSection() {
                   </a>
                 </span>
               )}
+              <EndCallButton callSid={c.call_sid} />
             </li>
           );
         })}

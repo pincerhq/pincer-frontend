@@ -10,6 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MaskedNumber } from "@/components/voice/MaskedNumber";
+import EndCallButton from "@/components/voice/EndCallButton";
 import CallActionsTimeline from "@/pages/telephony/_components/voice/CallActionsTimeline";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCallDetail, useContacts, useLiveCallDetail, type CallDetail } from "@/lib/api/voice";
@@ -177,6 +178,7 @@ export default function CallDetailPage({ callSid }: { callSid: string }) {
               {handled ? t("detail.markOpen") : t("detail.markHandled")}
             </button>
             <InfoTag kind="local" label={t("detail.handledLocalTag")} title={t("detail.handledLocalHint")} />
+            {isLive(call) && <EndCallButton callSid={call.call_sid} />}
             {outboundAllowed && (
               <button type="button" onClick={() => setCallBack(true)} className="inline-flex items-center gap-1.5 rounded-[10px] bg-[var(--brand)] hover:bg-[var(--brand-hover)] px-3 py-1.5 text-sm text-[var(--on-brand)]">
                 <CallBackIcon className="h-4 w-4" aria-hidden="true" />

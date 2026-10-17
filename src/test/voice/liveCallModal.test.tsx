@@ -4,7 +4,7 @@
  * as, and the caller's history is there while you are still talking to them.
  */
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ActiveCall, CallDetail, VoiceApproval } from '@/lib/api/voice';
 
@@ -103,6 +103,7 @@ const MINE: VoiceApproval = {
 const SOMEONE_ELSES: VoiceApproval = { ...MINE, id: 'apr_other', call_sid: 'CA-other' };
 
 let declared = true;
+const endCall = vi.fn();
 vi.mock('@/lib/capabilities', () => ({
   // FE10: operator features with no backend show only when the capability is declared; tests toggle it.
   useCapabilities: () => ({ caps: {}, isLoading: false, isOff: () => false, isDeclared: () => declared }),
@@ -118,6 +119,7 @@ vi.mock('@/lib/api/voice', async (importOriginal) => {
       data: { voice_turn_model: 'sonnet', default_model: 'sonnet', choices: [{ value: 'sonnet', label: 'Sonnet' }] },
     }),
     useUpdateVoiceConfig: () => ({ mutate: updateModel, isPending: false }),
+    useEndCall: () => ({ mutate: endCall, isPending: false, isError: false }),
     usePendingApprovals: () => ({ approvals: [MINE, SOMEONE_ELSES], streaming: true, isLoading: false }),
     useDecideApproval: () => ({ mutate: decideMutate }),
     useCallHistoryAll: () => ({
@@ -217,9 +219,11 @@ describe('live call modal', () => {
     });
   });
 
-  it('FE10: call controls exist only when the backend declares them, and are inert until it serves them', () => {
+  it('FE10: call controls exist only when the backend declares them; End call hangs up the real call', () => {
     renderModal();
-    expect(screen.getByRole('button', { name: /hang up/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /whisper/i })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /end call/i }));
+    expect(endCall).toHaveBeenCalledWith(CALL.call_sid);
     // …while the things that DO work are enabled.
     expect(screen.getByRole('button', { name: /copy transcript/i })).toBeEnabled();
   });
@@ -228,7 +232,7 @@ describe('live call modal', () => {
     declared = false;
     try {
       renderModal();
-      expect(screen.queryByRole('button', { name: /hang up/i })).toBeNull();
+      expect(screen.queryByRole('button', { name: /end call/i })).toBeNull();
       expect(screen.getByRole('button', { name: /copy transcript/i })).toBeEnabled();
     } finally {
       declared = true;
