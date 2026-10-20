@@ -7,6 +7,8 @@
  * memento grows a list tool, this becomes a cache instead of the source.
  */
 
+import { storageKeys } from '@/lib/api/storage';
+
 export interface BrainKey {
   key: string;
   /** Last content this console stored (inspection may show newer server state). */
@@ -36,3 +38,11 @@ export function dropKey(key: string): BrainKey[] {
   localStorage.setItem(KEYS_KEY, JSON.stringify(next));
   return next;
 }
+
+/** TanStack Query keys of the Company pages (Documents shares the storage API's). */
+export const brainQueryKeys = {
+  /** Every Documents listing, for invalidating after a change. */
+  documentsAll: storageKeys.listAll,
+  /** One folder of the storage root ("" is the root). */
+  documents: storageKeys.list,
+};

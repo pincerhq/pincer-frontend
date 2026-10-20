@@ -2,10 +2,12 @@
  * Company — the memento knowledge-brain console. An operating surface, not a
  * page: mini-rail app in the platform pattern (like Telephony).
  *
- *   Search   REAL   agent runs memento `search`, answers with sources
- *   Memory   REAL   store / inspect / forget keys via memento tools
- *                    (key inventory is local — memento has no list tool)
- *   Sync     REAL-ish  health check runs memento `sync_status` via the agent
+ *   Search     REAL   agent runs memento `search`, answers with sources
+ *   Memory     REAL   store / inspect / forget keys via memento tools
+ *                      (key inventory is local — memento has no list tool)
+ *   Documents  REAL   Pincer's storage root via /api/storage — browse,
+ *                      preview, edit text, upload, move, delete
+ *   Sync       REAL-ish  health check runs memento `sync_status` via the agent
  *
  * Library and Photos used to sit between Memory and Sync. Both needed a REST
  * proxy for the MCP tools that nobody built, so both rendered demo documents
@@ -13,12 +15,14 @@
  */
 import { useLocation, useNavigate } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from '@/components/ui/sonner';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { MobileMenuBar } from '@/components/dashboard/MobileMenuBar';
 import {
   Brain,
   Database,
+  FileText,
   RefreshCw,
   Search,
 } from 'lucide-react';
@@ -28,11 +32,13 @@ import { isConnected } from '@/lib/pincerClient';
 import { findMemento, useIntegrations } from '@/lib/api/company';
 import BrainSearchView from '@/pages/company/_components/BrainSearchView';
 import BrainMemoryView from '@/pages/company/_components/BrainMemoryView';
+import BrainDocumentsView from '@/pages/company/_components/BrainDocumentsView';
 import BrainSyncView from '@/pages/company/_components/BrainSyncView';
 
 const NAV = [
   { href: '/company-brain', label: 'Search', icon: Search, exact: true },
   { href: '/company-brain/memory', label: 'Memory', icon: Database },
+  { href: '/company-brain/documents', label: 'Documents', icon: FileText },
   { href: '/company-brain/sync', label: 'Sync', icon: RefreshCw },
 ];
 
@@ -104,6 +110,7 @@ const CompanyHomeInner = () => {
 
   const renderView = () => {
     if (pathname === '/company-brain/memory') return <BrainMemoryView />;
+    if (pathname === '/company-brain/documents') return <BrainDocumentsView />;
     if (pathname === '/company-brain/sync') return <BrainSyncView />;
     return <BrainSearchView />;
   };
@@ -122,6 +129,8 @@ const CompanyHomeInner = () => {
           </SidebarInset>
         </div>
       </SidebarProvider>
+      {/* Documents reports through `sonner`, which the app shell does not mount. */}
+      <Toaster position="bottom-right" />
     </div>
   );
 };

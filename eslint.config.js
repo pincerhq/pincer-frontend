@@ -44,6 +44,9 @@ const OWNER_APP_FILES = [
   "src/components/voice/MaskedNumber.tsx",
   "src/components/ui/empty-state.tsx",
   "src/components/ui/data-table.tsx",
+  // Company Brain views that already ship translated (src/pages/company/_lib/i18n.ts).
+  "src/pages/company/_components/BrainDocumentsView.tsx",
+  "src/pages/company/_components/StorageFileDialog.tsx",
 ];
 
 export default tseslint.config(

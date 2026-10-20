@@ -56,8 +56,8 @@ function App() {
 
             {/* Protected routes — require authentication, use platform layout */}
             <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
-            {/* Company Brain — driven by /api/integrations and /api/chat/message */}
-            {(['', '/memory', '/sync'] as const).map((sub) => (
+            {/* Company Brain — driven by /api/integrations, /api/chat/message and /api/storage */}
+            {(['', '/memory', '/documents', '/sync'] as const).map((sub) => (
               <Route key={sub} path={`/company-brain${sub}`} element={<Protected><CompanyHome /></Protected>} />
             ))}
             <Route path="/chat" element={<Protected><Chat /></Protected>} />
