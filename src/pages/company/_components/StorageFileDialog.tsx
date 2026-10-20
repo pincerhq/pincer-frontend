@@ -274,7 +274,7 @@ export default function StorageFileDialog({ file, onClose, canWrite }: StorageFi
                   type="button"
                   aria-pressed={preview}
                   onClick={() => setPreview((p) => !p)}
-                  className={cn('plat-btn-ghost h-8 px-3 text-xs', preview && 'bg-[rgba(20,22,26,0.07)]')}
+                  className={cn('plat-btn-ghost h-8 px-3 text-xs', preview && 'bg-[color-mix(in_srgb,var(--ink)_7%,transparent)]')}
                 >
                   <Eye className="h-3.5 w-3.5" /> {t('dialog.preview')}
                 </button>

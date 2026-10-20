@@ -351,7 +351,7 @@ export default function BrainDocumentsView() {
             <button
               type="button"
               aria-label={t('actions.menu', { name: row.name })}
-              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[var(--text-3)] hover:bg-[rgba(20,22,26,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink)]/25"
+              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[var(--text-3)] hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink)]/25"
             >
               <MoreHorizontal className="h-4 w-4" />
             </button>
@@ -497,7 +497,7 @@ export default function BrainDocumentsView() {
       </nav>
 
       {progress && (
-        <div className="mx-6 mt-3 rounded-[12px] border border-[var(--line-soft)] bg-white px-4 py-2.5" role="status">
+        <div className="mx-6 mt-3 rounded-[12px] border border-[var(--line-soft)] bg-[color:var(--paper)] px-4 py-2.5" role="status">
           <div className="flex items-center justify-between gap-3 text-xs text-[var(--text-2)]">
             <span className="truncate">
               {progress.count > 1
@@ -563,7 +563,7 @@ export default function BrainDocumentsView() {
       </div>
 
       {dragging && (
-        <div className="pointer-events-none absolute inset-3 flex items-center justify-center rounded-[16px] border-2 border-dashed border-[var(--ink)]/40 bg-white/80">
+        <div className="pointer-events-none absolute inset-3 flex items-center justify-center rounded-[16px] border-2 border-dashed border-[var(--ink)]/40 bg-[color-mix(in_srgb,var(--paper)_80%,transparent)]">
           <p className="flex items-center gap-2 text-sm font-semibold text-[var(--ink)]">
             <Upload className="h-4 w-4" /> {t('upload.drop', { folder: here })}
           </p>
