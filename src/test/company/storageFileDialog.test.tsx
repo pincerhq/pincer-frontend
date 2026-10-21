@@ -1,18 +1,23 @@
 /**
  * Documents → the file dialog: images from a presigned inline link, text that
  * is read-only until Edit and saved with its etag, the 409 a stale save gets,
- * and a markdown preview that stays off until it is asked for.
+ * and a markdown preview that stays off until it is asked for. A presigned
+ * link is replaced before it runs out, and a text file changed elsewhere is
+ * read again when reopened.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { StorageFile } from '@/lib/api/storage';
+import { invalidateStorage, type StorageFile } from '@/lib/api/storage';
 import { clearAuth } from '@/lib/pincerClient';
 import StorageFileDialog from '@/pages/company/_components/StorageFileDialog';
 import { fileKind } from '@/pages/company/_lib/storageFiles';
-import { API, fakeBackend, json, signIn, withProviders, type Call } from './storageBackend';
+import { API, fakeBackend, json, signIn, testQueryClient, withProviders, type Call } from './storageBackend';
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('@/hooks/use-toast', () => {
+  const toast = vi.fn();
+  return { useToast: () => ({ toast }), toast };
+});
 
 const entry = (key: string, content_type: string, size = 100): StorageFile => ({
   key,
@@ -30,8 +35,13 @@ const TEXTS: Record<string, { content: string; etag: string }> = {
 
 let calls: Call[];
 let saveResponse: (call: Call) => Response;
+let presignTtl: number;
+let presignCount: number;
 
 function route(call: Call): Response {
+  if (call.path === '/api/storage') {
+    return json({ backend: 's3', root: 's3://acme/', protected: [], presign_ttl: presignTtl, max_text_bytes: 2097152 });
+  }
   if (call.path === '/api/storage/text' && call.method === 'GET') {
     const key = call.params.get('key')!;
     const text = TEXTS[key];
@@ -44,6 +54,8 @@ function route(call: Call): Response {
     const url = key.startsWith('local/')
       ? `/api/storage/signed/token-for-${call.params.get('disposition')}`
       : `https://bucket.test/${key}?X-Amz-Expires=900&disposition=${call.params.get('disposition')}`;
+    presignCount += 1;
+    if (key.startsWith('fresh/')) return json({ url: `${url}&n=${presignCount}`, expires_at: '2026-10-18T16:23:36+00:00' });
     return json({ url, expires_at: '2026-10-18T16:23:36+00:00' });
   }
   if (call.path === '/api/storage/list') return json({ prefix: '', folders: [], files: [], truncated: false });
@@ -62,6 +74,8 @@ beforeEach(() => {
     return json({ key: body.key, etag: 'etag-2', size: body.content.length });
   };
   signIn('owner');
+  presignTtl = 900;
+  presignCount = 0;
 });
 
 afterEach(() => {
@@ -193,5 +207,69 @@ describe('StorageFileDialog', () => {
     const tab = await screen.findByRole('link', { name: /open in new tab/i });
     expect(tab).toHaveAttribute('href', 'https://bucket.test/docs/report.pdf?X-Amz-Expires=900&disposition=inline');
     expect(tab).toHaveAttribute('target', '_blank');
+  });
+
+  it('drops the conflict with the discarded draft, so Overwrite cannot save an empty file', async () => {
+    saveResponse = () => json({ detail: 'changed on the server' }, 409);
+    const user = setup();
+    renderDialog(entry('notes/plan.txt', 'text/plain'));
+    await user.click(await screen.findByRole('button', { name: /edit/i }));
+    await user.type(screen.getByRole('textbox', { name: 'File content' }), '!');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Discard' }));
+    expect(await screen.findByTestId('text-content')).toHaveTextContent('first draft');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Overwrite' })).not.toBeInTheDocument();
+
+    // Editing again starts without the old conflict.
+    await user.click(screen.getByRole('button', { name: /edit/i }));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(1);
+  });
+
+  it('replaces the open-in-new-tab link before it runs out, while the dialog stays open', async () => {
+    presignTtl = 60; // handed out for 30 s
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      renderDialog(entry('fresh/report.pdf', 'application/pdf'));
+      const tab = await screen.findByRole('link', { name: /open in new tab/i });
+      expect(tab.getAttribute('href')).toMatch(/&n=1$/);
+
+      await act(() => vi.advanceTimersByTimeAsync(31_000));
+      await waitFor(() => expect(screen.getByRole('link', { name: /open in new tab/i }).getAttribute('href')).toMatch(/&n=2$/));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reads a text file again when it is reopened after files changed', async () => {
+    const client = testQueryClient();
+    const file = entry('notes/plan.txt', 'text/plain');
+    const textGets = () => calls.filter((c) => c.path === '/api/storage/text' && c.method === 'GET');
+    const { rerender } = render(withProviders(<StorageFileDialog file={file} onClose={onClose} canWrite />, undefined, client));
+    await screen.findByTestId('text-content');
+    rerender(withProviders(<StorageFileDialog file={null} onClose={onClose} canWrite />, undefined, client));
+
+    // Reopened with nothing changed: the cached text, no request.
+    rerender(withProviders(<StorageFileDialog file={file} onClose={onClose} canWrite />, undefined, client));
+    await screen.findByTestId('text-content');
+    expect(textGets()).toHaveLength(1);
+    rerender(withProviders(<StorageFileDialog file={null} onClose={onClose} canWrite />, undefined, client));
+
+    // An upload, move or delete in between: reopening reads it again.
+    const original = TEXTS['notes/plan.txt'];
+    TEXTS['notes/plan.txt'] = { content: 'replaced by an upload', etag: 'etag-up' };
+    try {
+      await act(() => invalidateStorage(client));
+      expect(textGets()).toHaveLength(1);
+      rerender(withProviders(<StorageFileDialog file={file} onClose={onClose} canWrite />, undefined, client));
+      await waitFor(() => expect(screen.getByTestId('text-content')).toHaveTextContent('replaced by an upload'));
+      expect(textGets()).toHaveLength(2);
+    } finally {
+      TEXTS['notes/plan.txt'] = original;
+    }
   });
 });

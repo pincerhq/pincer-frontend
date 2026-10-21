@@ -21,7 +21,9 @@
     "newFolder": "New folder",
     "refresh": "Refresh",
     "retry": "Try again",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "uploadFolder": "Upload folder",
+    "cancelUpload": "Cancel upload"
   },
   "empty": {
     "notConnected": "Not connected",
@@ -29,7 +31,7 @@
     "loadFailed": "Could not load documents",
     "folder": "This folder is empty",
     "root": "No documents yet",
-    "uploadHint": "Upload files or drop them here.",
+    "uploadHint": "Upload files or folders, or drop them here.",
     "readOnly": "Nothing has been added here yet."
   },
   "upload": {
@@ -76,7 +78,11 @@
     "moveProtected": "{{to}} is in a protected folder; nothing can be moved there.",
     "deleted": "Deleted {{name}}",
     "deleteFailed": "Could not delete it",
-    "tooLarge": "{{name}} is larger than {{max}}, the most one upload may be"
+    "tooLarge": "{{name}} is larger than {{max}}, the most one upload may be",
+    "uploadBusy": "An upload is already in progress",
+    "uploadBusyBody": "Drop the files again once it has finished, or cancel it first.",
+    "uploadCancelled": "Upload cancelled",
+    "dropFailed": "Could not read the dropped files"
   },
   "dialog": {
     "loading": "Loading…",
@@ -96,5 +102,6 @@
     "keepEditing": "Keep editing",
     "discard": "Discard"
   },
-  "loadingMore": "Loading more…"
+  "loadingMore": "Loading more…",
+  "loadMoreFailed": "Could not load more entries."
 }

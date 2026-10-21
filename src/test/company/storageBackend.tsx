@@ -45,8 +45,11 @@ export function signIn(role: 'owner' | null = 'owner') {
   useSession.setState({ role });
 }
 
-export function withProviders(ui: ReactNode, initial = '/company-brain/documents') {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+export const testQueryClient = () =>
+  new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+
+/** `client` is shared across renders when given, as one app session's cache is. */
+export function withProviders(ui: ReactNode, initial = '/company-brain/documents', client = testQueryClient()) {
   return (
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[initial]}>{ui}</MemoryRouter>

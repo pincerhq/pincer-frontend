@@ -21,7 +21,9 @@
     "newFolder": "Neuer Ordner",
     "refresh": "Aktualisieren",
     "retry": "Erneut versuchen",
-    "cancel": "Abbrechen"
+    "cancel": "Abbrechen",
+    "uploadFolder": "Ordner hochladen",
+    "cancelUpload": "Hochladen abbrechen"
   },
   "empty": {
     "notConnected": "Nicht verbunden",
@@ -29,7 +31,7 @@
     "loadFailed": "Dokumente konnten nicht geladen werden",
     "folder": "Dieser Ordner ist leer",
     "root": "Noch keine Dokumente",
-    "uploadHint": "Laden Sie Dateien hoch oder ziehen Sie sie hierher.",
+    "uploadHint": "Laden Sie Dateien oder Ordner hoch oder ziehen Sie sie hierher.",
     "readOnly": "Hier wurde noch nichts hinzugefügt."
   },
   "upload": {
@@ -76,7 +78,11 @@
     "moveProtected": "{{to}} liegt in einem geschützten Ordner; dorthin kann nichts verschoben werden.",
     "deleted": "{{name}} gelöscht",
     "deleteFailed": "Konnte nicht gelöscht werden",
-    "tooLarge": "{{name}} ist größer als {{max}}, das Maximum für einen Upload"
+    "tooLarge": "{{name}} ist größer als {{max}}, das Maximum für einen Upload",
+    "uploadBusy": "Es läuft bereits ein Upload",
+    "uploadBusyBody": "Ziehen Sie die Dateien erneut hierher, wenn er fertig ist, oder brechen Sie ihn zuerst ab.",
+    "uploadCancelled": "Hochladen abgebrochen",
+    "dropFailed": "Die abgelegten Dateien konnten nicht gelesen werden"
   },
   "dialog": {
     "loading": "Wird geladen…",
@@ -96,5 +102,6 @@
     "keepEditing": "Weiter bearbeiten",
     "discard": "Verwerfen"
   },
-  "loadingMore": "Weitere werden geladen…"
+  "loadingMore": "Weitere werden geladen…",
+  "loadMoreFailed": "Weitere Einträge konnten nicht geladen werden."
 }

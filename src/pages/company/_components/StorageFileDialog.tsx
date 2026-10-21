@@ -2,8 +2,8 @@
  * Documents → one file, in a modal: preview, and for text files an editor.
  *
  *   Image     <img> from a presigned inline link (it lives the server's
- *             presign_ttl; a reopened dialog gets a fresh one once the
- *             cached link is close to its expires_at)
+ *             presign_ttl, and is replaced shortly before it runs out, also
+ *             while the dialog stays open)
  *   Text      loaded through GET /api/storage/text — editing needs its etag,
  *             and a fetch of a presigned URL would need CORS on the bucket.
  *             Read-only until Edit; Save sends the etag, so a file changed on
@@ -16,7 +16,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { toast } from 'sonner';
 import { AlertTriangle, Download, ExternalLink, Eye, Loader2, Lock, Pencil } from 'lucide-react';
 import {
   Dialog,
@@ -37,13 +36,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 import { ApiError } from '@/lib/api/client';
 import { presign, usePresignedUrl, useSaveText, useTextFile, type StorageFile } from '@/lib/api/storage';
 import { useDocumentsT } from '@/pages/company/_lib/i18n';
-import { fileKind, formatSize } from '@/pages/company/_lib/storageFiles';
+import { errorText, fileKind, formatSize } from '@/pages/company/_lib/storageFiles';
 import { cn } from '@/lib/utils';
-
-const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 function Markdown({ source }: { source: string }) {
   return (
@@ -63,6 +61,7 @@ interface StorageFileDialogProps {
 
 export default function StorageFileDialog({ file, onClose, canWrite }: StorageFileDialogProps) {
   const t = useDocumentsT();
+  const { toast } = useToast();
   const open = file !== null;
   const kind = file ? fileKind(file) : 'other';
   const isText = kind === 'text' || kind === 'markdown';
@@ -125,6 +124,8 @@ export default function StorageFileDialog({ file, onClose, canWrite }: StorageFi
     setConfirmDiscard(null);
     setEditing(false);
     setDraft('');
+    // The conflict was about the discarded draft; an Overwrite left behind would save an empty file.
+    setConflict(false);
     if (reason === 'close') onClose();
   };
 
@@ -136,11 +137,11 @@ export default function StorageFileDialog({ file, onClose, canWrite }: StorageFi
         onSuccess: () => {
           setConflict(false);
           setEditing(false);
-          toast.success(t('dialog.saved', { name: file.name }));
+          toast({ title: t('dialog.saved', { name: file.name }) });
         },
         onError: (err) => {
           if (err instanceof ApiError && err.status === 409) setConflict(true);
-          else toast.error(t('dialog.saveFailed'), { description: errorText(err) });
+          else toast({ title: t('dialog.saveFailed'), description: errorText(err), variant: 'destructive' });
         },
       },
     );
@@ -157,7 +158,7 @@ export default function StorageFileDialog({ file, onClose, canWrite }: StorageFi
       const { url } = await presign(file.key, 'attachment');
       window.location.assign(url);
     } catch (err) {
-      toast.error(t('toast.downloadFailed', { name: file.name }), { description: errorText(err) });
+      toast({ title: t('toast.downloadFailed', { name: file.name }), description: errorText(err), variant: 'destructive' });
     }
   };
 
@@ -302,7 +303,8 @@ export default function StorageFileDialog({ file, onClose, canWrite }: StorageFi
             </div>
           )}
 
-          {conflict && (
+          {/* Only while editing: Overwrite saves the draft, which exists only then. */}
+          {editing && conflict && (
             <div
               role="alert"
               className="flex flex-wrap items-center gap-3 rounded-[10px] border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"

@@ -15,7 +15,6 @@
  */
 import { useLocation, useNavigate } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from '@/components/ui/sonner';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { MobileMenuBar } from '@/components/dashboard/MobileMenuBar';
@@ -129,8 +128,6 @@ const CompanyHomeInner = () => {
           </SidebarInset>
         </div>
       </SidebarProvider>
-      {/* Documents reports through `sonner`, which the app shell does not mount. */}
-      <Toaster position="bottom-right" />
     </div>
   );
 };

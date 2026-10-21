@@ -2,23 +2,25 @@
  * Company → Documents: the folder list from `/api/storage/list`, navigating it
  * through `?prefix=`, write controls only for those who may add knowledge,
  * protected rows that cannot be deleted or moved (nor anything moved into),
- * uploads and their replace prompt, and a delete that asks first. `fetch` is faked (storageBackend.tsx); uploads go through XHR,
- * so `uploadFile` is mocked.
+ * uploads (files and folders, cancel, the replace prompt), a failed next page,
+ * the drop overlay, and a delete that asks first. `fetch` is faked
+ * (storageBackend.tsx); uploads go through XHR, so `uploadFile` is mocked.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate, type NavigateFunction } from 'react-router-dom';
 import type { StorageListing } from '@/lib/api/storage';
 import { fakeBackend, json, signIn, withProviders, type Call } from './storageBackend';
 
-const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
-vi.mock('sonner', () => ({ toast }));
+const toast = vi.hoisted(() => vi.fn());
+vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }), toast }));
 
-const uploadFile = vi.fn(async (_prefix: string, _file: File, _opts?: unknown) => ({}));
+type UploadOpts = { path?: string; overwrite?: boolean; signal?: AbortSignal };
+const uploadFile = vi.fn<(prefix: string, file: File, opts?: UploadOpts) => Promise<unknown>>();
 vi.mock('@/lib/api/storage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api/storage')>();
-  return { ...actual, uploadFile: (prefix: string, file: File, opts?: unknown) => uploadFile(prefix, file, opts) };
+  return { ...actual, uploadFile: (prefix: string, file: File, opts?: UploadOpts) => uploadFile(prefix, file, opts) };
 });
 
 const { default: BrainDocumentsView } = await import('@/pages/company/_components/BrainDocumentsView');
@@ -68,12 +70,17 @@ const INFO = {
 };
 
 let calls: Call[];
+/** When set, every page of `many` after the first fails. */
+let failNextPages = false;
 
 function route(call: Call): Response {
   if (call.path === '/api/storage') return json(INFO);
   if (call.path === '/api/storage/list') {
     const prefix = call.params.get('prefix') ?? '';
-    if (prefix === 'many') return json(manyPage(call.params.get('cursor'), Number(call.params.get('limit'))));
+    if (prefix === 'many') {
+      if (failNextPages && call.params.has('cursor')) return json({ detail: 'Storage is unavailable' }, 503);
+      return json(manyPage(call.params.get('cursor'), Number(call.params.get('limit'))));
+    }
     return json(LISTINGS[prefix] ?? { prefix, folders: [], files: [], next_cursor: null, truncated: false });
   }
   if (call.path === '/api/storage/object' && call.method === 'DELETE') {
@@ -87,8 +94,10 @@ function route(call: Call): Response {
 }
 
 let location = '';
+let navigate: NavigateFunction;
 function LocationProbe() {
   location = useLocation().search;
+  navigate = useNavigate();
   return null;
 }
 
@@ -104,11 +113,40 @@ const renderView = (initial?: string) =>
   );
 
 const setup = () => userEvent.setup({ pointerEventsCheck: 0 });
+/** The view's root, which takes the drag events. */
+const dropZone = () => screen.getByTestId('documents-scroller').parentElement as HTMLElement;
+
+/** An upload that runs until its signal aborts it. */
+const hangingUpload = async (_prefix: string, _file: File, opts?: UploadOpts) =>
+  new Promise<unknown>((_resolve, reject) =>
+    opts?.signal?.addEventListener('abort', () => reject(new ApiError('Upload cancelled', 0)), { once: true }),
+  );
+
+const fileEntry = (file: File) => ({ isFile: true, isDirectory: false, name: file.name, file: (ok: (f: File) => void) => ok(file) });
+const dirEntry = (name: string, children: unknown[]) => ({
+  isFile: false,
+  isDirectory: true,
+  name,
+  createReader: () => {
+    let read = false;
+    return {
+      readEntries: (ok: (entries: unknown[]) => void) => {
+        ok(read ? [] : children);
+        read = true;
+      },
+    };
+  },
+});
+
 const listCalls = () => calls.filter((c) => c.path === '/api/storage/list').map((c) => c.params.get('prefix') ?? '');
 
 beforeEach(() => {
   ({ calls } = fakeBackend(route));
   signIn('owner');
+  failNextPages = false;
+  // Reset, not just cleared: a test's own implementation must not leak into the next.
+  uploadFile.mockReset();
+  uploadFile.mockResolvedValue({});
 });
 
 afterEach(() => {
@@ -290,7 +328,10 @@ describe('Documents view', () => {
     await user.upload(screen.getByTestId('documents-file-input'), [big, small]);
     await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(1));
     expect(uploadFile.mock.calls[0][1]).toBe(small);
-    expect(toast.error).toHaveBeenCalledWith('big.bin is larger than 1.0 KB, the most one upload may be');
+    expect(toast).toHaveBeenCalledWith({
+      title: 'big.bin is larger than 1.0 KB, the most one upload may be',
+      variant: 'destructive',
+    });
   });
 
   it('refuses a move into a protected prefix without asking the server', async () => {
@@ -306,8 +347,10 @@ describe('Documents view', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith('Could not move it', {
+      expect(toast).toHaveBeenCalledWith({
+        title: 'Could not move it',
         description: 'team/skills/handbook.pdf is in a protected folder; nothing can be moved there.',
+        variant: 'destructive',
       }),
     );
     expect(calls.some((c) => c.path === '/api/storage/move')).toBe(false);
@@ -315,7 +358,7 @@ describe('Documents view', () => {
 
   it('asks to replace on a 409, and reports a 409 on the replace instead of asking again', async () => {
     uploadFile.mockImplementation(async (_prefix, _file, opts) => {
-      throw (opts as { overwrite?: boolean }).overwrite
+      throw opts?.overwrite
         ? new ApiError('notes is a file, so notes/a.txt cannot be stored under it', 409)
         : new ApiError('notes.txt already exists', 409);
     });
@@ -331,10 +374,146 @@ describe('Documents view', () => {
     await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(2));
     expect(uploadFile.mock.calls[1][2]).toMatchObject({ overwrite: true });
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith('notes.txt could not be replaced', {
+      expect(toast).toHaveBeenCalledWith({
+        title: 'notes.txt could not be replaced',
         description: 'notes is a file, so notes/a.txt cannot be stored under it',
+        variant: 'destructive',
       }),
     );
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('replaces into the folder the upload went to, not the one open now', async () => {
+    uploadFile.mockImplementation(async (_prefix, _file, opts) => {
+      if (!opts?.overwrite) throw new ApiError('notes.txt already exists', 409);
+      return {};
+    });
+    const user = setup();
+    renderView('/company-brain/documents?prefix=hr');
+    await screen.findAllByText('contract.docx');
+    await user.upload(screen.getByTestId('documents-file-input'), new File(['hello'], 'notes.txt'));
+    const dialog = await screen.findByRole('alertdialog');
+
+    // Back to another folder with the prompt still open.
+    act(() => navigate('/company-brain/documents?prefix=finance'));
+    await waitFor(() => expect(location).toBe('?prefix=finance'));
+    await user.click(within(dialog).getByRole('button', { name: 'Replace' }));
+
+    await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(2));
+    expect(uploadFile.mock.calls[1][0]).toBe('hr');
+    expect(uploadFile.mock.calls[1][2]).toMatchObject({ overwrite: true, path: 'notes.txt' });
+  });
+
+  it('keeps the loaded rows when a next page fails, and retries it inline', async () => {
+    failNextPages = true;
+    const user = setup();
+    renderView('/company-brain/documents?prefix=many');
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Could not load more entries. Storage is unavailable');
+    expect(screen.getAllByText('f049.txt')).not.toHaveLength(0);
+    expect(screen.queryByText('Could not load documents')).not.toBeInTheDocument();
+
+    failNextPages = false;
+    await user.click(within(alert).getByRole('button', { name: 'Try again' }));
+    expect(await screen.findAllByText('f119.txt')).not.toHaveLength(0);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('clears the drop overlay when the drag leaves the view from a row, not when it moves between rows', async () => {
+    renderView();
+    const [row] = await screen.findAllByRole('button', { name: 'hr' });
+    fireEvent.dragOver(dropZone(), { dataTransfer: { types: ['Files'] } });
+    expect(screen.getByText('Drop to upload to Documents')).toBeInTheDocument();
+
+    // jsdom has no DragEvent, and fireEvent.dragLeave would drop relatedTarget.
+    const leave = (relatedTarget: Element | null) =>
+      fireEvent(row, new MouseEvent('dragleave', { bubbles: true, relatedTarget }));
+    const [other] = screen.getAllByRole('button', { name: 'handbook.pdf' });
+    leave(other);
+    expect(screen.getByText('Drop to upload to Documents')).toBeInTheDocument();
+
+    leave(null);
+    expect(screen.queryByText('Drop to upload to Documents')).not.toBeInTheDocument();
+  });
+
+  it('does not invite a drop while an upload runs, and says so when files are dropped anyway', async () => {
+    uploadFile.mockImplementation(hangingUpload);
+    const user = setup();
+    renderView('/company-brain/documents?prefix=hr');
+    await screen.findAllByText('contract.docx');
+    await user.upload(screen.getByTestId('documents-file-input'), new File(['a'], 'first.txt'));
+    await screen.findByRole('button', { name: 'Cancel upload' });
+
+    const dropped = new File(['b'], 'second.txt');
+    fireEvent.dragOver(dropZone(), { dataTransfer: { types: ['Files'] } });
+    expect(screen.queryByText(/Drop to upload/)).not.toBeInTheDocument();
+    fireEvent.drop(dropZone(), { dataTransfer: { types: ['Files'], files: [dropped] } });
+
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'An upload is already in progress', variant: 'destructive' }),
+      ),
+    );
+    expect(uploadFile).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels the running upload and sends none of the rest', async () => {
+    uploadFile.mockImplementation(hangingUpload);
+    const user = setup();
+    renderView('/company-brain/documents?prefix=hr');
+    await screen.findAllByText('contract.docx');
+    await user.upload(screen.getByTestId('documents-file-input'), [new File(['a'], 'a.txt'), new File(['b'], 'b.txt')]);
+
+    await user.click(await screen.findByRole('button', { name: 'Cancel upload' }));
+    await waitFor(() => expect(toast).toHaveBeenCalledWith({ title: 'Upload cancelled', description: undefined }));
+    expect(uploadFile).toHaveBeenCalledTimes(1);
+    expect(uploadFile.mock.calls[0][2]?.signal?.aborted).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Cancel upload' })).not.toBeInTheDocument();
+  });
+
+  it('aborts the upload when the view is left, without reporting afterwards', async () => {
+    uploadFile.mockImplementation(hangingUpload);
+    const user = setup();
+    const { unmount } = renderView('/company-brain/documents?prefix=hr');
+    await screen.findAllByText('contract.docx');
+    await user.upload(screen.getByTestId('documents-file-input'), [new File(['a'], 'a.txt'), new File(['b'], 'b.txt')]);
+    await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(1));
+
+    unmount();
+    expect(uploadFile.mock.calls[0][2]?.signal?.aborted).toBe(true);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(uploadFile).toHaveBeenCalledTimes(1);
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it('uploads a dropped folder, keeping the path of every file in it', async () => {
+    renderView('/company-brain/documents?prefix=hr');
+    await screen.findAllByText('contract.docx');
+    const q1 = new File(['1'], 'q1.pdf');
+    const a = new File(['2'], 'a.txt');
+    const folder = dirEntry('reports', [fileEntry(q1), dirEntry('2026', [fileEntry(a)])]);
+    fireEvent.drop(dropZone(), {
+      dataTransfer: { types: ['Files'], files: [], items: [{ kind: 'file', webkitGetAsEntry: () => folder }] },
+    });
+
+    await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(2));
+    expect(uploadFile.mock.calls.map(([prefix, file, opts]) => [prefix, file, opts?.path])).toEqual([
+      ['hr', q1, 'reports/q1.pdf'],
+      ['hr', a, 'reports/2026/a.txt'],
+    ]);
+  });
+
+  it('uploads a picked folder with each file\'s path in it', async () => {
+    const user = setup();
+    renderView('/company-brain/documents?prefix=hr');
+    await screen.findAllByText('contract.docx');
+    const input = screen.getByTestId('documents-folder-input');
+    expect(input).toHaveAttribute('webkitdirectory');
+    const picked = new File(['1'], 'q1.pdf');
+    Object.defineProperty(picked, 'webkitRelativePath', { value: 'reports/q1.pdf' });
+    await user.upload(input, picked);
+
+    await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(1));
+    expect(uploadFile.mock.calls[0][2]).toMatchObject({ path: 'reports/q1.pdf' });
   });
 });

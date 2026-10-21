@@ -27,6 +27,9 @@ export function fileKind(file: Pick<StorageFile, 'name' | 'content_type' | 'size
   return 'other';
 }
 
+/** An error's message, for a toast or an error state. */
+export const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
+
 export function formatSize(bytes: number | null | undefined): string {
   if (bytes == null) return '—';
   if (bytes < 1024) return `${bytes} B`;
