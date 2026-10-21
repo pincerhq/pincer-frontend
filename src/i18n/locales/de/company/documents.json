@@ -68,8 +68,6 @@
   "toast": {
     "uploaded_one": "1 Datei hochgeladen",
     "uploaded_other": "{{count}} Dateien hochgeladen",
-    "uploadFailed": "{{name}} konnte nicht hochgeladen werden",
-    "uploadFolderConflict": "{{name}} konnte nicht ersetzt werden",
     "downloadFailed": "{{name}} konnte nicht heruntergeladen werden",
     "folderCreated": "Ordner {{name}} erstellt",
     "folderFailed": "Der Ordner konnte nicht erstellt werden",
@@ -78,11 +76,15 @@
     "moveProtected": "{{to}} liegt in einem geschützten Ordner; dorthin kann nichts verschoben werden.",
     "deleted": "{{name}} gelöscht",
     "deleteFailed": "Konnte nicht gelöscht werden",
-    "tooLarge": "{{name}} ist größer als {{max}}, das Maximum für einen Upload",
+    "tooLarge": "größer als {{max}}, das Maximum für einen Upload",
     "uploadBusy": "Es läuft bereits ein Upload",
     "uploadBusyBody": "Ziehen Sie die Dateien erneut hierher, wenn er fertig ist, oder brechen Sie ihn zuerst ab.",
     "uploadCancelled": "Hochladen abgebrochen",
-    "dropFailed": "Die abgelegten Dateien konnten nicht gelesen werden"
+    "dropFailed": "Die abgelegten Dateien konnten nicht gelesen werden",
+    "uploadFailures_one": "1 Datei konnte nicht hochgeladen werden",
+    "uploadFailures_other": "{{count}} Dateien konnten nicht hochgeladen werden",
+    "uploadedWithFailures_one": "{{uploaded}}; 1 konnte nicht hochgeladen werden",
+    "uploadedWithFailures_other": "{{uploaded}}; {{count}} konnten nicht hochgeladen werden"
   },
   "dialog": {
     "loading": "Wird geladen…",

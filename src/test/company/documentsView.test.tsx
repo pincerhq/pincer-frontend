@@ -9,11 +9,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
+import { flushSync } from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { useLocation, useNavigate, type NavigateFunction } from 'react-router-dom';
 import type { StorageListing } from '@/lib/api/storage';
 import { fakeBackend, json, signIn, withProviders, type Call } from './storageBackend';
 
-const toast = vi.hoisted(() => vi.fn());
+const toast = vi.hoisted(() => vi.fn<(props: { title?: ReactNode; description?: ReactNode; variant?: string }) => void>());
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }), toast }));
 
 type UploadOpts = { path?: string; overwrite?: boolean; signal?: AbortSignal };
@@ -113,6 +116,16 @@ const renderView = (initial?: string) =>
   );
 
 const setup = () => userEvent.setup({ pointerEventsCheck: 0 });
+/** The text a toast description (a string or a list) shows. */
+const textOf = (node: ReactNode) => {
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  flushSync(() => root.render(node));
+  const text = host.textContent;
+  root.unmount();
+  return text;
+};
+
 /** The view's root, which takes the drag events. */
 const dropZone = () => screen.getByTestId('documents-scroller').parentElement as HTMLElement;
 
@@ -328,10 +341,12 @@ describe('Documents view', () => {
     await user.upload(screen.getByTestId('documents-file-input'), [big, small]);
     await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(1));
     expect(uploadFile.mock.calls[0][1]).toBe(small);
-    expect(toast).toHaveBeenCalledWith({
-      title: 'big.bin is larger than 1.0 KB, the most one upload may be',
-      variant: 'destructive',
-    });
+    // One summary for the run, naming the file left out.
+    await waitFor(() => expect(toast).toHaveBeenCalledTimes(1));
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Uploaded 1 file; 1 could not be uploaded', variant: 'destructive' }),
+    );
+    expect(textOf(toast.mock.calls[0][0].description)).toBe('big.bin: larger than 1.0 KB, the most one upload may be');
   });
 
   it('refuses a move into a protected prefix without asking the server', async () => {
@@ -374,11 +389,12 @@ describe('Documents view', () => {
     await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(2));
     expect(uploadFile.mock.calls[1][2]).toMatchObject({ overwrite: true });
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith({
-        title: 'notes.txt could not be replaced',
-        description: 'notes is a file, so notes/a.txt cannot be stored under it',
-        variant: 'destructive',
-      }),
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: '1 file could not be uploaded', variant: 'destructive' }),
+      ),
+    );
+    expect(textOf(toast.mock.calls[0][0].description)).toBe(
+      'notes.txt: notes is a file, so notes/a.txt cannot be stored under it',
     );
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
@@ -515,5 +531,27 @@ describe('Documents view', () => {
 
     await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(1));
     expect(uploadFile.mock.calls[0][2]).toMatchObject({ path: 'reports/q1.pdf' });
+  });
+
+  it('stops reading a dropped folder when the view is left, and uploads nothing from it', async () => {
+    const { unmount } = renderView('/company-brain/documents?prefix=hr');
+    await screen.findAllByText('contract.docx');
+    // A slow walk: the folder's entries arrive only when the test says so.
+    let answer: (entries: unknown[]) => void = () => {};
+    const slow = {
+      isFile: false,
+      isDirectory: true,
+      name: 'big',
+      createReader: () => ({ readEntries: (ok: (entries: unknown[]) => void) => (answer = ok) }),
+    };
+    fireEvent.drop(dropZone(), {
+      dataTransfer: { types: ['Files'], files: [], items: [{ kind: 'file', webkitGetAsEntry: () => slow }] },
+    });
+
+    unmount();
+    answer([fileEntry(new File(['1'], 'a.txt')), fileEntry(new File(['2'], 'b.txt'))]);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(uploadFile).not.toHaveBeenCalled();
+    expect(toast).not.toHaveBeenCalled();
   });
 });

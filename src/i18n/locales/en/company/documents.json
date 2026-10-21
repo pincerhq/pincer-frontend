@@ -68,8 +68,6 @@
   "toast": {
     "uploaded_one": "Uploaded 1 file",
     "uploaded_other": "Uploaded {{count}} files",
-    "uploadFailed": "Could not upload {{name}}",
-    "uploadFolderConflict": "{{name}} could not be replaced",
     "downloadFailed": "Could not download {{name}}",
     "folderCreated": "Created folder {{name}}",
     "folderFailed": "Could not create the folder",
@@ -78,11 +76,15 @@
     "moveProtected": "{{to}} is in a protected folder; nothing can be moved there.",
     "deleted": "Deleted {{name}}",
     "deleteFailed": "Could not delete it",
-    "tooLarge": "{{name}} is larger than {{max}}, the most one upload may be",
+    "tooLarge": "larger than {{max}}, the most one upload may be",
     "uploadBusy": "An upload is already in progress",
     "uploadBusyBody": "Drop the files again once it has finished, or cancel it first.",
     "uploadCancelled": "Upload cancelled",
-    "dropFailed": "Could not read the dropped files"
+    "dropFailed": "Could not read the dropped files",
+    "uploadFailures_one": "1 file could not be uploaded",
+    "uploadFailures_other": "{{count}} files could not be uploaded",
+    "uploadedWithFailures_one": "{{uploaded}}; 1 could not be uploaded",
+    "uploadedWithFailures_other": "{{uploaded}}; {{count}} could not be uploaded"
   },
   "dialog": {
     "loading": "Loading…",

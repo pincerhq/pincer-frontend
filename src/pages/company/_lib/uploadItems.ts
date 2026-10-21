@@ -19,19 +19,21 @@ export function pickedItems(files: Iterable<File>): UploadItem[] {
  * an unreadable stand-in, so folders are read through `webkitGetAsEntry()`.
  *
  * The entries are taken before the first `await`: the browser empties the
- * DataTransfer once the drop event has been dispatched.
+ * DataTransfer once the drop event has been dispatched. An aborted `signal`
+ * stops the walk, which rejects.
  */
-export async function droppedItems(transfer: DataTransfer): Promise<UploadItem[]> {
+export async function droppedItems(transfer: DataTransfer, signal?: AbortSignal): Promise<UploadItem[]> {
   const entries = Array.from(transfer.items ?? [])
     .filter((item) => item.kind === 'file')
     .map((item) => item.webkitGetAsEntry?.() ?? null);
   if (entries.length === 0 || entries.includes(null)) return pickedItems(transfer.files);
   const items: UploadItem[] = [];
-  for (const entry of entries as FileSystemEntry[]) await walk(entry, '', items);
+  for (const entry of entries as FileSystemEntry[]) await walk(entry, '', items, signal);
   return items;
 }
 
-async function walk(entry: FileSystemEntry, folder: string, into: UploadItem[]): Promise<void> {
+async function walk(entry: FileSystemEntry, folder: string, into: UploadItem[], signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
   const path = folder ? `${folder}/${entry.name}` : entry.name;
   if (entry.isFile) {
     const file = await new Promise<File>((resolve, reject) => (entry as FileSystemFileEntry).file(resolve, reject));
@@ -44,6 +46,6 @@ async function walk(entry: FileSystemEntry, folder: string, into: UploadItem[]):
   for (;;) {
     const batch = await new Promise<FileSystemEntry[]>((resolve, reject) => reader.readEntries(resolve, reject));
     if (batch.length === 0) return;
-    for (const child of batch) await walk(child, path, into);
+    for (const child of batch) await walk(child, path, into, signal);
   }
 }

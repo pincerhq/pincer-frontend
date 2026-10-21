@@ -39,7 +39,7 @@ import {
 import StorageFileDialog from '@/pages/company/_components/StorageFileDialog';
 import { useDocumentsT } from '@/pages/company/_lib/i18n';
 import { errorText } from '@/pages/company/_lib/storageFiles';
-import { droppedItems, pickedItems } from '@/pages/company/_lib/uploadItems';
+import { pickedItems } from '@/pages/company/_lib/uploadItems';
 import { useUploadQueue } from '@/pages/company/_lib/useUploadQueue';
 import { cn } from '@/lib/utils';
 
@@ -127,10 +127,7 @@ export default function BrainDocumentsView() {
     if (!canWrite) return;
     e.preventDefault();
     setDragging(false);
-    droppedItems(e.dataTransfer).then(
-      (items) => uploads.upload(items),
-      (err) => toast({ title: t('toast.dropFailed'), description: errorText(err), variant: 'destructive' }),
-    );
+    uploads.uploadDropped(e.dataTransfer);
   };
 
   // ── view ───────────────────────────────────────────────────────────
