@@ -1,0 +1,109 @@
+{
+  "eyebrow": "Company Brain",
+  "title": "Documents",
+  "breadcrumbs": "Folder",
+  "loading": "Loading documents…",
+  "protected": "Protected: holds the skills directory",
+  "sortBy": "Sort by {{column}}",
+  "truncated": "This folder has more entries than can be listed. Only the first 100,000 are shown.",
+  "columns": {
+    "name": "Name",
+    "size": "Size",
+    "modified": "Modified"
+  },
+  "actions": {
+    "menu": "Actions for {{name}}",
+    "open": "Open",
+    "download": "Download",
+    "move": "Rename / move",
+    "delete": "Delete",
+    "upload": "Upload",
+    "newFolder": "New folder",
+    "refresh": "Refresh",
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "uploadFolder": "Upload folder",
+    "cancelUpload": "Cancel upload"
+  },
+  "empty": {
+    "notConnected": "Not connected",
+    "notConnectedBody": "Sign in to Pincer to browse company documents.",
+    "loadFailed": "Could not load documents",
+    "folder": "This folder is empty",
+    "root": "No documents yet",
+    "uploadHint": "Upload files or folders, or drop them here.",
+    "readOnly": "Nothing has been added here yet."
+  },
+  "upload": {
+    "progress": "Uploading {{name}}",
+    "progressMany": "Uploading {{name}} ({{index}} of {{count}})",
+    "drop": "Drop to upload to {{folder}}"
+  },
+  "newFolder": {
+    "title": "New folder",
+    "in": "In {{folder}}",
+    "name": "Name",
+    "create": "Create"
+  },
+  "move": {
+    "title": "Rename or move",
+    "fileHint": "The full path from the top of Documents. Change the folder part to move the file.",
+    "folderHint": "The full path from the top of Documents. Change the folder part to move the folder and everything in it.",
+    "path": "Path",
+    "save": "Save"
+  },
+  "delete": {
+    "title": "Delete {{name}}?",
+    "fileBody": "The file is deleted for good.",
+    "folderBody": "The folder and every file in it are deleted for good."
+  },
+  "replace": {
+    "titleOne": "{{name}} already exists",
+    "titleMany": "{{count}} files already exist",
+    "body_one": "Replace it with the file you uploaded? The current version is lost.",
+    "body_other": "Replace them with the files you uploaded? The current versions are lost.",
+    "keep": "Keep existing",
+    "confirm": "Replace"
+  },
+  "toast": {
+    "uploaded_one": "Uploaded 1 file",
+    "uploaded_other": "Uploaded {{count}} files",
+    "downloadFailed": "Could not download {{name}}",
+    "folderCreated": "Created folder {{name}}",
+    "folderFailed": "Could not create the folder",
+    "moved": "Moved to {{to}}",
+    "moveFailed": "Could not move it",
+    "moveProtected": "{{to}} is in a protected folder; nothing can be moved there.",
+    "deleted": "Deleted {{name}}",
+    "deleteFailed": "Could not delete it",
+    "tooLarge": "larger than {{max}}, the most one upload may be",
+    "uploadBusy": "An upload is already in progress",
+    "uploadBusyBody": "Drop the files again once it has finished, or cancel it first.",
+    "uploadCancelled": "Upload cancelled",
+    "dropFailed": "Could not read the dropped files",
+    "uploadFailures_one": "1 file could not be uploaded",
+    "uploadFailures_other": "{{count}} files could not be uploaded",
+    "uploadedWithFailures_one": "{{uploaded}}; 1 could not be uploaded",
+    "uploadedWithFailures_other": "{{uploaded}}; {{count}} could not be uploaded"
+  },
+  "dialog": {
+    "loading": "Loading…",
+    "noPreview": "There is no preview for this kind of file.",
+    "openInNewTab": "Open in new tab",
+    "preview": "Preview",
+    "edit": "Edit",
+    "save": "Save",
+    "saved": "Saved {{name}}",
+    "saveFailed": "Could not save the file",
+    "editorLabel": "File content",
+    "conflict": "This file changed on the server since you opened it. Reload to see the new version (your edits are lost), or overwrite it with yours.",
+    "reload": "Reload",
+    "overwrite": "Overwrite",
+    "discardTitle": "Discard unsaved changes?",
+    "discardBody": "Your edits to {{name}} have not been saved.",
+    "keepEditing": "Keep editing",
+    "discard": "Discard"
+  },
+  "loadingMore": "Loading more…",
+  "loadMoreFailed": "Could not load more entries."
+}

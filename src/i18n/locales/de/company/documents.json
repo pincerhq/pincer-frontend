@@ -1,0 +1,109 @@
+{
+  "eyebrow": "Company Brain",
+  "title": "Dokumente",
+  "breadcrumbs": "Ordner",
+  "loading": "Dokumente werden geladen…",
+  "protected": "Geschützt: enthält das Skills-Verzeichnis",
+  "sortBy": "Nach {{column}} sortieren",
+  "truncated": "Dieser Ordner hat mehr Einträge, als aufgelistet werden können. Nur die ersten 100.000 werden angezeigt.",
+  "columns": {
+    "name": "Name",
+    "size": "Größe",
+    "modified": "Geändert"
+  },
+  "actions": {
+    "menu": "Aktionen für {{name}}",
+    "open": "Öffnen",
+    "download": "Herunterladen",
+    "move": "Umbenennen / verschieben",
+    "delete": "Löschen",
+    "upload": "Hochladen",
+    "newFolder": "Neuer Ordner",
+    "refresh": "Aktualisieren",
+    "retry": "Erneut versuchen",
+    "cancel": "Abbrechen",
+    "uploadFolder": "Ordner hochladen",
+    "cancelUpload": "Hochladen abbrechen"
+  },
+  "empty": {
+    "notConnected": "Nicht verbunden",
+    "notConnectedBody": "Melden Sie sich bei Pincer an, um die Firmendokumente zu durchsuchen.",
+    "loadFailed": "Dokumente konnten nicht geladen werden",
+    "folder": "Dieser Ordner ist leer",
+    "root": "Noch keine Dokumente",
+    "uploadHint": "Laden Sie Dateien oder Ordner hoch oder ziehen Sie sie hierher.",
+    "readOnly": "Hier wurde noch nichts hinzugefügt."
+  },
+  "upload": {
+    "progress": "{{name}} wird hochgeladen",
+    "progressMany": "{{name}} wird hochgeladen ({{index}} von {{count}})",
+    "drop": "Zum Hochladen nach {{folder}} loslassen"
+  },
+  "newFolder": {
+    "title": "Neuer Ordner",
+    "in": "In {{folder}}",
+    "name": "Name",
+    "create": "Erstellen"
+  },
+  "move": {
+    "title": "Umbenennen oder verschieben",
+    "fileHint": "Der vollständige Pfad ab der obersten Ebene der Dokumente. Ändern Sie den Ordnerteil, um die Datei zu verschieben.",
+    "folderHint": "Der vollständige Pfad ab der obersten Ebene der Dokumente. Ändern Sie den Ordnerteil, um den Ordner mit seinem gesamten Inhalt zu verschieben.",
+    "path": "Pfad",
+    "save": "Speichern"
+  },
+  "delete": {
+    "title": "{{name}} löschen?",
+    "fileBody": "Die Datei wird endgültig gelöscht.",
+    "folderBody": "Der Ordner und alle Dateien darin werden endgültig gelöscht."
+  },
+  "replace": {
+    "titleOne": "{{name}} ist bereits vorhanden",
+    "titleMany": "{{count}} Dateien sind bereits vorhanden",
+    "body_one": "Durch die hochgeladene Datei ersetzen? Die aktuelle Version geht verloren.",
+    "body_other": "Durch die hochgeladenen Dateien ersetzen? Die aktuellen Versionen gehen verloren.",
+    "keep": "Vorhandene behalten",
+    "confirm": "Ersetzen"
+  },
+  "toast": {
+    "uploaded_one": "1 Datei hochgeladen",
+    "uploaded_other": "{{count}} Dateien hochgeladen",
+    "downloadFailed": "{{name}} konnte nicht heruntergeladen werden",
+    "folderCreated": "Ordner {{name}} erstellt",
+    "folderFailed": "Der Ordner konnte nicht erstellt werden",
+    "moved": "Nach {{to}} verschoben",
+    "moveFailed": "Konnte nicht verschoben werden",
+    "moveProtected": "{{to}} liegt in einem geschützten Ordner; dorthin kann nichts verschoben werden.",
+    "deleted": "{{name}} gelöscht",
+    "deleteFailed": "Konnte nicht gelöscht werden",
+    "tooLarge": "größer als {{max}}, das Maximum für einen Upload",
+    "uploadBusy": "Es läuft bereits ein Upload",
+    "uploadBusyBody": "Ziehen Sie die Dateien erneut hierher, wenn er fertig ist, oder brechen Sie ihn zuerst ab.",
+    "uploadCancelled": "Hochladen abgebrochen",
+    "dropFailed": "Die abgelegten Dateien konnten nicht gelesen werden",
+    "uploadFailures_one": "1 Datei konnte nicht hochgeladen werden",
+    "uploadFailures_other": "{{count}} Dateien konnten nicht hochgeladen werden",
+    "uploadedWithFailures_one": "{{uploaded}}; 1 konnte nicht hochgeladen werden",
+    "uploadedWithFailures_other": "{{uploaded}}; {{count}} konnten nicht hochgeladen werden"
+  },
+  "dialog": {
+    "loading": "Wird geladen…",
+    "noPreview": "Für diese Art von Datei gibt es keine Vorschau.",
+    "openInNewTab": "In neuem Tab öffnen",
+    "preview": "Vorschau",
+    "edit": "Bearbeiten",
+    "save": "Speichern",
+    "saved": "{{name}} gespeichert",
+    "saveFailed": "Die Datei konnte nicht gespeichert werden",
+    "editorLabel": "Dateiinhalt",
+    "conflict": "Diese Datei wurde auf dem Server geändert, seit Sie sie geöffnet haben. Laden Sie neu, um die neue Version zu sehen (Ihre Änderungen gehen verloren), oder überschreiben Sie sie mit Ihrer Fassung.",
+    "reload": "Neu laden",
+    "overwrite": "Überschreiben",
+    "discardTitle": "Ungespeicherte Änderungen verwerfen?",
+    "discardBody": "Ihre Änderungen an {{name}} wurden nicht gespeichert.",
+    "keepEditing": "Weiter bearbeiten",
+    "discard": "Verwerfen"
+  },
+  "loadingMore": "Weitere werden geladen…",
+  "loadMoreFailed": "Weitere Einträge konnten nicht geladen werden."
+}

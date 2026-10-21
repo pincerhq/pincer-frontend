@@ -276,7 +276,11 @@ export function onAuthLost(fn: AuthLostListener): () => void {
   };
 }
 
-function loseSession() {
+/**
+ * End the session and tell `onAuthLost` listeners. For transports that cannot
+ * go through `authedFetch` (the XHR upload), on the same 401s it ends one on.
+ */
+export function loseSession() {
   clearAuth();
   for (const fn of authLostListeners) {
     try {
