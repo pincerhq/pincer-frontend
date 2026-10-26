@@ -510,6 +510,18 @@ export async function sendChat(text: string, conversationId?: string): Promise<C
   });
 }
 
+/**
+ * One message in a conversation of its own, for work that is not a chat (call
+ * summaries, company-brain questions): no earlier turn is in the model's
+ * context, and the exchange stays out of the person's chats. Pincer still
+ * answers as the signed-in identity, so its long-term memory is not isolated.
+ */
+export async function sendOneOffChat(text: string): Promise<string> {
+  const { reply } = await sendChat(text, crypto.randomUUID());
+  if (!reply) throw new PincerError("Empty reply from agent", 500);
+  return reply;
+}
+
 // ───────────────────── chat: streaming ─────────────────────
 
 export type StreamEvent =

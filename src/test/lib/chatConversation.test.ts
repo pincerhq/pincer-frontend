@@ -1,7 +1,8 @@
 /**
  * Pincer keys a signed-in conversation on the identity and ignores
  * `X-Pincer-User`, so a chat of its own is a `conversation_id` on the request:
- * the page's chats, call summaries and company-brain questions each send one.
+ * the page's chats send their own, and call summaries and company-brain
+ * questions a new one per request.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearAuth, sendChat, setAuth, streamChat } from "@/lib/pincerClient";
@@ -49,18 +50,20 @@ describe("chat conversation ids", () => {
     expect(lastBody()).toEqual({ text: "hi", conversation_id: CONV });
   });
 
-  it("runs call summaries and the company brain in conversations of their own", async () => {
+  it("runs every call summary and company-brain request in a new conversation", async () => {
     await generateCallSummary("transcript");
     const summary = lastBody().conversation_id;
     expect(summary).toMatch(/^[0-9a-f-]{36}$/);
     expect(lastHeaders()["X-Pincer-User"]).not.toMatch(/call-summarizer/);
 
     await generateCallSummary("another transcript");
-    expect(lastBody().conversation_id).toBe(summary);
+    expect(lastBody().conversation_id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(lastBody().conversation_id).not.toBe(summary);
 
     await askCompanyBrain("what is our refund policy?");
     const brain = lastBody().conversation_id;
-    expect(brain).toMatch(/^[0-9a-f-]{36}$/);
-    expect(brain).not.toBe(summary);
+    await askCompanyBrain("what is our refund policy?");
+    expect(lastBody().conversation_id).not.toBe(brain);
+    expect([summary, brain]).not.toContain(lastBody().conversation_id);
   });
 });
