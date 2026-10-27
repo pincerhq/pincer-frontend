@@ -8,13 +8,17 @@
  * for the model, not a transcript. Until the backend stores threads, the
  * browser is the only place the whole conversation exists, so it is kept here.
  *
+ * That makes history device-local: another browser or device, or cleared site
+ * data, shows none of it. The exchange records Pincer already holds are still
+ * listed beside it, read-only (src/lib/api/conversations.ts).
+ *
  * Transcripts are scoped to the signed-in identity (`ownerId`, the
  * `pincer_user_id`), so a second person signing in on the same browser does
  * not see them. Messages are only ever added or replaced by id, never dropped:
  * a write carries the messages it is about, not a whole copy of the thread.
  */
 
-import { createStore, entries, get, set, type UseStore } from 'idb-keyval';
+import { createStore, entries, get, update, type UseStore } from 'idb-keyval';
 
 export interface StoredChatMessage {
   id: string;
@@ -49,50 +53,46 @@ export async function listTranscripts(ownerId: string): Promise<ChatTranscript[]
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id));
 }
 
-// Writes to one transcript run one after another: each is a read-merge-write,
-// and two of them interleaving would lose whichever finished first.
-const pending = new Map<string, Promise<unknown>>();
-
-/** Reads after this tab's queued writes to it, so a just-sent reply is in it. */
+/** IndexedDB runs transactions in the order they were opened, so a read issued
+ * after `saveMessages` sees that write. */
 export async function getTranscript(ownerId: string, id: string): Promise<ChatTranscript | null> {
-  const key = keyOf(ownerId, id);
-  await pending.get(key)?.catch(() => undefined);
-  return (await get<ChatTranscript>(key, db())) ?? null;
+  return (await get<ChatTranscript>(keyOf(ownerId, id), db())) ?? null;
 }
 
 /**
  * Add `messages` to a transcript, creating it if needed. A message whose id is
  * already stored replaces it in place; a new one goes to the end.
+ *
+ * The read and the write share one `readwrite` transaction, so two writes to
+ * the same transcript (from this tab or another) never interleave and drop
+ * each other's messages.
  */
-export function saveMessages(
+export async function saveMessages(
   ownerId: string,
   id: string,
   messages: StoredChatMessage[],
 ): Promise<ChatTranscript> {
-  const key = keyOf(ownerId, id);
-  const run = async () => {
-    const now = new Date().toISOString();
-    const current = await get<ChatTranscript>(key, db());
-    const merged = current ? current.messages.slice() : [];
-    for (const m of messages) {
-      const at = merged.findIndex(x => x.id === m.id);
-      if (at === -1) merged.push(m);
-      else merged[at] = m;
-    }
-    const next: ChatTranscript = {
-      id,
-      ownerId,
-      createdAt: current?.createdAt ?? now,
-      updatedAt: now,
-      messages: merged,
-    };
-    await set(key, next, db());
-    return next;
-  };
-  const result = (pending.get(key) ?? Promise.resolve()).catch(() => undefined).then(run);
-  pending.set(key, result);
-  void result.finally(() => {
-    if (pending.get(key) === result) pending.delete(key);
-  }).catch(() => undefined);
-  return result;
+  let next!: ChatTranscript;
+  await update<ChatTranscript>(
+    keyOf(ownerId, id),
+    current => {
+      const now = new Date().toISOString();
+      const merged = current ? current.messages.slice() : [];
+      for (const m of messages) {
+        const at = merged.findIndex(x => x.id === m.id);
+        if (at === -1) merged.push(m);
+        else merged[at] = m;
+      }
+      next = {
+        id,
+        ownerId,
+        createdAt: current?.createdAt ?? now,
+        updatedAt: now,
+        messages: merged,
+      };
+      return next;
+    },
+    db(),
+  );
+  return next;
 }

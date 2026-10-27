@@ -13,12 +13,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, within, waitFor, fireEvent, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { StreamEvent } from '@/lib/pincerClient';
+import type { Conversation } from '@/lib/api/conversations';
 
 let owner = '';
 // Each streamed turn plays the next script; a script is its frames in order.
 let scripts: StreamEvent[][] = [];
 // Lets a test hold or fail a transcript read.
 let getHook: ((ownerId: string, id: string) => Promise<unknown>) | null = null;
+// What `/api/conversations` lists: Pincer's own exchange records.
+let pincerRecords: Conversation[] = [];
+// Lets a test hold the result of a transcript listing (read before the hold).
+let listHook: (() => Promise<unknown>) | null = null;
 
 // Pincer answers its health check, so the composer is never locked offline.
 vi.mock('@/lib/capabilities', async (importOriginal) => {
@@ -62,8 +67,19 @@ vi.mock('@/lib/chatTranscripts', async (importOriginal) => {
       if (getHook) await getHook(ownerId, id);
       return actual.getTranscript(ownerId, id);
     },
+    listTranscripts: async (ownerId: string) => {
+      const list = await actual.listTranscripts(ownerId);
+      const hook = listHook;
+      listHook = null;
+      if (hook) await hook();
+      return list;
+    },
   };
 });
+
+vi.mock('@/lib/api/conversations', () => ({
+  listConversations: async () => ({ conversations: pincerRecords, limit: 50, offset: 0 }),
+}));
 
 const { default: Chat } = await import('@/pages/Chat');
 const { getTranscript, listTranscripts, saveMessages } = await import('@/lib/chatTranscripts');
@@ -122,6 +138,8 @@ beforeEach(() => {
   owner = crypto.randomUUID();
   scripts = [];
   getHook = null;
+  listHook = null;
+  pincerRecords = [];
   vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 404 })));
 });
 
@@ -289,5 +307,73 @@ describe('chat page history', () => {
     fireEvent.click(main().getByRole('button', { name: /try again/i }));
     await main().findByText('alpha answer 1');
     expect(main().queryByText(/could not be loaded/i)).not.toBeInTheDocument();
+  });
+
+  it('stays on a chat started before the boot load lands', async () => {
+    const at = new Date().toISOString();
+    await saveMessages(owner, 'old', [
+      { id: 'o1', role: 'user', text: 'old question', at },
+      { id: 'o2', role: 'assistant', text: 'old answer', at },
+    ]);
+    let releaseBoot!: () => void;
+    const bootHeld = new Promise<void>(r => (releaseBoot = r));
+    listHook = () => bootHeld;
+
+    renderChat();
+    await send('fresh question 1', 'fresh answer 1');
+    releaseBoot();
+    await new Promise(r => setTimeout(r, 20));
+    expect(main().queryByText('old answer')).not.toBeInTheDocument();
+    expect(visibleTexts(exchange('fresh', 1))).toEqual(exchange('fresh', 1));
+  });
+
+  it('stays on a new chat opened before the boot load lands', async () => {
+    const at = new Date().toISOString();
+    await saveMessages(owner, 'old', [
+      { id: 'o1', role: 'user', text: 'old question', at },
+      { id: 'o2', role: 'assistant', text: 'old answer', at },
+    ]);
+    let releaseBoot!: () => void;
+    const bootHeld = new Promise<void>(r => (releaseBoot = r));
+    listHook = () => bootHeld;
+
+    renderChat();
+    fireEvent.click(screen.getAllByRole('button', { name: /new chat/i })[0]);
+    // The new chat's own sidebar refresh is not held; its listing shows `old`.
+    await screen.findByRole('button', { name: 'old question' });
+    releaseBoot();
+    await new Promise(r => setTimeout(r, 20));
+    expect(main().queryByText('old answer')).not.toBeInTheDocument();
+  });
+});
+
+describe('exchanges Pincer stored', () => {
+  beforeEach(() => {
+    pincerRecords = [
+      {
+        id: 'x1', user_id: owner, category: 'exchange', tags: [], preview: 'legacy question',
+        messages: [{ role: 'user', content: 'legacy question' }, { role: 'assistant', content: 'legacy answer' }],
+        created_at: '2026-10-01T10:00:00Z',
+      },
+    ];
+  });
+
+  it('lists them beside the stored chats and opens one', async () => {
+    renderChat();
+    fireEvent.click(await screen.findByRole('button', { name: 'legacy question' }));
+    await main().findByText('legacy answer');
+    expect(visibleTexts(['legacy question', 'legacy answer'])).toEqual(['legacy question', 'legacy answer']);
+  });
+
+  it('continues one as a stored chat that keeps its exchange', async () => {
+    renderChat();
+    fireEvent.click(await screen.findByRole('button', { name: 'legacy question' }));
+    await main().findByText('legacy answer');
+    await send('follow-up question', 'follow-up answer');
+
+    const texts = ['legacy question', 'legacy answer', 'follow-up question', 'follow-up answer'];
+    expect(visibleTexts(texts)).toEqual(texts);
+    const [t] = await listTranscripts(owner);
+    expect(t.messages.map(m => m.text)).toEqual(texts);
   });
 });

@@ -11,12 +11,14 @@
  */
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { loginAsOwner, mockBackend } from "./helpers";
+import { E2E_USER, loginAsOwner, mockBackend } from "./helpers";
 
 type Route = {
   name: string;
   path: string;
   auth: boolean;
+  /** Runs before the page loads. */
+  setup?: (page: Page) => Promise<void>;
   /** Extra mocked responses for this route. */
   fixtures?: Record<string, unknown>;
   /** Bring the page to the state worth checking; resolve once it is there. */
@@ -46,26 +48,44 @@ const CHAT_STREAM = [
   sse("done", { text: REPLY }),
 ].join("");
 
+// Pincer's own exchange records, listed read-only under "Saved in Pincer".
 const CONVERSATIONS = {
   "/api/conversations": {
     conversations: [
       {
-        id: "c1", user_id: "alice", channel: "web", category: "general", tags: [],
-        preview: "What is on my calendar?", created_at: "2026-10-14T11:00:00Z", updated_at: "2026-10-14T11:00:00Z",
-        messages: [{ role: "user", content: "What is on my calendar?" }, { role: "assistant", content: "Two meetings: `standup` at 10:00." }],
+        id: "c1", user_id: E2E_USER.name, category: "exchange", tags: [],
+        preview: "What did I decide last week?", created_at: "2026-10-07T09:00:00Z",
+        messages: [{ role: "user", content: "What did I decide last week?" }, { role: "assistant", content: "To ship on Friday." }],
       },
     ],
-    limit: 20,
+    limit: 50,
     offset: 0,
   },
-  "/api/conversations/c1": {
-    id: "c1",
-    messages: [
-      { role: "user", content: "What is on my calendar?", timestamp: "2026-10-14T11:00:00Z" },
-      { role: "assistant", content: "Two meetings: `standup` at 10:00 and a review at 15:00.", timestamp: "2026-10-14T11:00:05Z" },
-    ],
-  },
 };
+
+// The chat the page reopens on boot: a transcript in this browser's store
+// (src/lib/chatTranscripts.ts), written while the database is created so the
+// app's first read already sees it.
+const TRANSCRIPT = {
+  id: "t1",
+  ownerId: E2E_USER.name,
+  createdAt: "2026-10-14T11:00:00Z",
+  updatedAt: "2026-10-14T11:00:05Z",
+  messages: [
+    { id: "m1", role: "user", text: "What is on my calendar?", at: "2026-10-14T11:00:00Z" },
+    { id: "m2", role: "assistant", text: "Two meetings: `standup` at 10:00 and a review at 15:00.", at: "2026-10-14T11:00:05Z" },
+  ],
+};
+
+async function seedTranscript(page: Page) {
+  await page.addInitScript((t: typeof TRANSCRIPT) => {
+    const open = indexedDB.open("pincer-chat");
+    open.onupgradeneeded = () => {
+      open.result.createObjectStore("transcripts").put(t, `${t.ownerId}/${t.id}`);
+    };
+    open.onsuccess = () => open.result.close();
+  }, TRANSCRIPT);
+}
 
 const firstHeading = async (page: Page) => {
   await page.getByRole("heading").first().waitFor();
@@ -80,6 +100,7 @@ const ROUTES: Route[] = [
     path: "/chat",
     auth: true,
     fixtures: CONVERSATIONS,
+    setup: seedTranscript,
     ready: async (page) => {
       await page.route(
         (url) => url.pathname === "/api/chat/stream",
@@ -127,6 +148,7 @@ const DARK_LUMINANCE = 0.2;
 async function open(page: Page, route: Route) {
   await mockBackend(page, { "/api/costs/today": null, ...route.fixtures });
   if (route.auth) await loginAsOwner(page);
+  await route.setup?.(page);
   await page.goto(route.path);
   await route.ready(page);
   await page.addStyleTag({ content: RESOLVABLE });

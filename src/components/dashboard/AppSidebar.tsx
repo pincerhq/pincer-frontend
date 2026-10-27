@@ -60,6 +60,8 @@ interface ChatHistoryItem {
 
 interface AppSidebarProps {
   chatHistory?: ChatHistoryItem[];
+  /** Exchanges Pincer itself stored; opened read-only. */
+  pincerHistory?: ChatHistoryItem[];
   currentChatId?: string;
   onSelectChat?: (id: string) => void;
   onNewChat?: () => void;
@@ -120,7 +122,7 @@ const languages = [
 ];
 
 
-export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat }: AppSidebarProps = {}) {
+export function AppSidebar({ chatHistory, pincerHistory, currentChatId, onSelectChat, onNewChat }: AppSidebarProps = {}) {
   const location = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const navigate = useNavigate();
@@ -242,6 +244,25 @@ export function AppSidebar({ chatHistory, currentChatId, onSelectChat, onNewChat
                     <>
                       <p className="text-[10px] font-semibold text-[color:var(--text-5)] uppercase tracking-widest px-2 pt-3 pb-1">Earlier</p>
                       {chatHistory.map(chat => (
+                        <button
+                          key={chat.id}
+                          onClick={() => onSelectChat?.(chat.id)}
+                          className={`w-full text-left px-2 py-1.5 rounded-md transition-colors text-xs truncate ${
+                            currentChatId === chat.id
+                              ? 'bg-[color:color-mix(in_srgb,var(--ink)_6%,transparent)] font-semibold text-[color:var(--ink)]'
+                              : 'hover:bg-[color:color-mix(in_srgb,var(--ink)_4%,transparent)] text-[color:var(--text-2)]'
+                          }`}
+                        >
+                          {chat.title}
+                        </button>
+                      ))}
+                    </>
+                  )}
+
+                  {pincerHistory && pincerHistory.length > 0 && (
+                    <>
+                      <p className="text-[10px] font-semibold text-[color:var(--text-5)] uppercase tracking-widest px-2 pt-3 pb-1" title="Single exchanges saved by Pincer. Writing in one continues it as a new chat.">Saved in Pincer</p>
+                      {pincerHistory.map(chat => (
                         <button
                           key={chat.id}
                           onClick={() => onSelectChat?.(chat.id)}

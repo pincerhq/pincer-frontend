@@ -50,6 +50,14 @@ const identity = useSession((s) => s.identity); // { id, displayName, email } | 
 useSession.getState().logout();
 ```
 
+### 4a. Chat transcripts — IndexedDB
+
+The web chat keeps each conversation whole in this browser's IndexedDB (database `pincer-chat`, store `transcripts`, key `{userId}/{chatId}`), through `src/lib/chatTranscripts.ts`. Pincer's backend has no thread record of a web chat: `/api/conversations` lists single user/assistant exchanges with no thread id, and the streaming endpoint writes none.
+
+**Scope: chat history is device-local.** Another browser or device, a private window, or cleared site data shows none of it. The exchange records Pincer does hold are listed read-only under "Saved in Pincer" in the sidebar; writing in one continues it as a new local chat that starts with that exchange. History that follows the person across devices needs the backend to store threads (a thread id on stored exchanges and a complete listing).
+
+Writes merge by message id inside one `readwrite` transaction (idb-keyval `update`), so two tabs writing to the same chat never drop each other's messages.
+
 ### 5. Server State — TanStack React Query
 
 `@tanstack/react-query` is installed and a `QueryClient` is provided at the app root. Use it for any real API calls to avoid manual loading/error state.
@@ -75,6 +83,7 @@ Currently the app uses mock/static data in most pages. When real endpoints are w
 | Form values | `useForm` (React Hook Form) |
 | Currently selected item | `useState` or URL param |
 | Theme | `ThemeContext` + localStorage |
+| Chat history | `src/lib/chatTranscripts.ts` (IndexedDB, this browser only) |
 | Auth status | `useSession` (`src/stores/session.ts`) |
 | API data (future) | TanStack React Query |
 | Shared page-level data | Prop drilling or co-located context |

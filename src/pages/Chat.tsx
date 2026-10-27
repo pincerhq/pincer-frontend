@@ -27,6 +27,7 @@ import {
   type ChatTranscript,
   type StoredChatMessage,
 } from '@/lib/chatTranscripts';
+import { listConversations, type Conversation } from '@/lib/api/conversations';
 import { cleanAssistantText, renderAssistantText, renderTextWithLinks } from '@/lib/formatChat';
 import { useHealth } from '@/lib/capabilities';
 import { pincerBadgeState, useRetryCountdown, type PincerBadge } from '@/lib/pincerReachability';
@@ -106,6 +107,9 @@ const PINCER_BADGE: Record<PincerBadge, { label: string; title: string; tone: st
 
 // The sidebar's "Current Chat": a new conversation nothing has been sent in yet.
 const NEW_CHAT = 'current';
+// Sidebar ids of the exchange records Pincer itself holds (read-only).
+const PINCER_RECORD = 'pincer:';
+const isPincerRecord = (id: string) => id.startsWith(PINCER_RECORD);
 
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
@@ -120,6 +124,7 @@ const ChatInner = () => {
   const [messages, setMessages]           = useState<ChatMessage[]>([]);
   const [attachments, setAttachments]     = useState<File[]>([]);
   const [chatHistory, setChatHistory]     = useState<ChatHistory[]>([]);
+  const [pincerHistory, setPincerHistory] = useState<ChatHistory[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string>(NEW_CHAT);
   const [isStreaming, setIsStreaming]     = useState(false);
   const [loadingChat, setLoadingChat]     = useState(false);
@@ -192,6 +197,8 @@ const ChatInner = () => {
   // Bumped on every switch, so a load that lands after the next one is dropped.
   const loadSeqRef = useRef(0);
   const saveFailedRef = useRef(false);
+  // Pincer's own exchange records by sidebar id, so opening one needs no request.
+  const pincerRecordsRef = useRef<Map<string, Conversation>>(new Map());
 
   const ownerId = () => (pincerConnected() ? getAuth()?.userId ?? null : null);
 
@@ -209,6 +216,21 @@ const ChatInner = () => {
     } catch {
       setHistoryError(true);
       return null;
+    }
+  };
+
+  // What Pincer stored before transcripts were kept here (and what other
+  // channels store): one exchange per record. Listed read-only; a nicety, so a
+  // failure only leaves the list empty.
+  const refreshPincerHistory = async () => {
+    const owner = ownerId();
+    if (!owner) return;
+    try {
+      const { conversations } = await listConversations(owner);
+      pincerRecordsRef.current = new Map(conversations.map(c => [PINCER_RECORD + c.id, c]));
+      setPincerHistory(conversations.map(pincerHistoryItem));
+    } catch {
+      /* never block the chat on it */
     }
   };
 
@@ -237,6 +259,7 @@ const ChatInner = () => {
     setMessages([WELCOME_MESSAGE]);
     const seq = loadSeqRef.current;
     let cancelled = false;
+    void refreshPincerHistory();
     (async () => {
       const list = await refreshHistory();
       // Someone who already opened or started a chat has moved on.
@@ -274,10 +297,14 @@ const ChatInner = () => {
     dictation.cancel();
 
     // Writing in a conversation continues it; the first message of a new one
-    // gives it the id it is stored under.
+    // gives it the id it is stored under. Pincer's records are read-only, so
+    // writing in one continues it as a new stored conversation that starts
+    // with its exchange.
     let convId = currentChatId;
+    let carried: ChatMessage[] = [];
     if (pincerOn) {
-      if (convId === NEW_CHAT) {
+      if (convId === NEW_CHAT || isPincerRecord(convId)) {
+        if (isPincerRecord(convId)) carried = messages.filter(m => m.id !== WELCOME_MESSAGE.id);
         convId = crypto.randomUUID();
         loadSeqRef.current++;
         setCurrentChatId(convId);
@@ -294,7 +321,7 @@ const ChatInner = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
 
     if (pincerOn) {
-      void persist(convId, [userMsg]);
+      void persist(convId, [...carried, userMsg]);
       void dispatchToPincer(convId, userText);
     } else {
       // No backend, no answer. The old fallback echoed the question back as if
@@ -499,6 +526,14 @@ const ChatInner = () => {
       showNewChat();
       return;
     }
+    const record = pincerRecordsRef.current.get(target);
+    if (record) {
+      setCurrentChatId(target);
+      setLoadingChat(false);
+      setLoadError(null);
+      setMessages(fromPincerRecord(record));
+      return;
+    }
     setCurrentChatId(target);
     setLoadError(null);
     setLoadingChat(true);
@@ -615,6 +650,7 @@ const ChatInner = () => {
     <SidebarProvider className="plat">
       <AppSidebar
         chatHistory={chatHistory}
+        pincerHistory={pincerHistory}
         currentChatId={currentChatId}
         onSelectChat={selectChat}
         onNewChat={startNewChat}
@@ -1044,6 +1080,30 @@ function fromStored(m: StoredChatMessage): ChatMessage {
     sender: m.role,
     timestamp: new Date(m.at),
     attachments: m.attachments?.map(a => ({ ...a })),
+  };
+}
+
+function fromPincerRecord(c: Conversation): ChatMessage[] {
+  const at = new Date(c.created_at);
+  return c.messages
+    .filter(m => m.content.trim())
+    .map((m, i) => ({
+      id: `${PINCER_RECORD}${c.id}:${i}`,
+      text: m.content,
+      sender: m.role === 'assistant' ? ('assistant' as const) : ('user' as const),
+      timestamp: at,
+    }));
+}
+
+function pincerHistoryItem(c: Conversation): ChatHistory {
+  const user = c.messages.find(m => m.role === 'user')?.content ?? c.preview;
+  const assistant = c.messages.find(m => m.role === 'assistant')?.content ?? '';
+  return {
+    id: PINCER_RECORD + c.id,
+    title: user.length > 44 ? `${user.slice(0, 44)}…` : user || 'Conversation',
+    lastMessage: assistant.length > 60 ? `${assistant.slice(0, 60)}…` : assistant,
+    timestamp: new Date(c.created_at),
+    messageCount: c.messages.length,
   };
 }
 
