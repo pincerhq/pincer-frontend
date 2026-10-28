@@ -193,7 +193,9 @@ const ChatInner = () => {
   // Transcripts live in this browser (src/lib/chatTranscripts.ts): the
   // backend keeps single exchanges and a trimmed model context, not threads.
   // The conversation the person last wrote in — what "Current Chat" opens.
+  // The ref is what handlers read; the state copy drives the sidebar.
   const liveChatIdRef = useRef<string>(NEW_CHAT);
+  const [liveChatId, setLiveChatId] = useState<string>(NEW_CHAT);
   // Bumped on every switch, so a load that lands after the next one is dropped.
   const loadSeqRef = useRef(0);
   const saveFailedRef = useRef(false);
@@ -266,6 +268,7 @@ const ChatInner = () => {
       if (cancelled || !list?.length || loadSeqRef.current !== seq) return;
       const latest = list[0];
       liveChatIdRef.current = latest.id;
+      setLiveChatId(latest.id);
       setCurrentChatId(latest.id);
       setMessages(latest.messages.map(fromStored));
     })();
@@ -310,6 +313,7 @@ const ChatInner = () => {
         setCurrentChatId(convId);
       }
       liveChatIdRef.current = convId;
+      setLiveChatId(convId);
     }
     const atts = attachments.map(f => ({ name: f.name, type: f.type, size: f.size, url: URL.createObjectURL(f) }));
     const userText = message;
@@ -342,7 +346,8 @@ const ChatInner = () => {
   // assistant bubble. Tool starts/dones and approval requests are merged
   // into a single `chain` timeline on that bubble so the user sees one
   // vertical sequence of steps. Falls back to POST /api/chat/message on
-  // stream failure. Only the settled reply is stored, once, under `convId`.
+  // stream failure. Only a completed reply is stored, once, under `convId`:
+  // a stopped stream's partial text and an error stay on screen only.
   const dispatchToPincer = async (convId: string, userText: string) => {
     const assistantId = crypto.randomUUID();
     const startedAt = new Date();
@@ -370,16 +375,16 @@ const ChatInner = () => {
         ),
       );
     };
-    const settle = (text: string) => {
+    const settle = (text: string, save = true) => {
       setMessages(p =>
         p.map(m => (m.id === assistantId ? { ...m, text, streaming: false } : m)),
       );
-      if (text) {
+      if (text && save) {
         void persist(convId, [{ id: assistantId, text, sender: 'assistant', timestamp: startedAt }]);
       }
     };
-    const finish = (finalText?: string) =>
-      settle(finalText && finalText.length > streamed.length ? finalText : streamed);
+    const finish = (finalText?: string, save = true) =>
+      settle(finalText && finalText.length > streamed.length ? finalText : streamed, save);
 
     try {
       let gotChunk = false;
@@ -441,7 +446,7 @@ const ChatInner = () => {
       else throw new PincerError('Empty stream', 500);
     } catch (streamErr) {
       if (controller.signal.aborted) {
-        finish();
+        finish(undefined, false);
         return;
       }
       // Fall back to the non-streaming endpoint so the user still gets a reply.
@@ -455,7 +460,7 @@ const ChatInner = () => {
             : streamErr instanceof Error
               ? streamErr.message
               : 'Unknown error';
-        settle(`⚠️ ${msg}`);
+        settle(`⚠️ ${msg}`, false);
         if (fallbackErr instanceof PincerError && fallbackErr.status === 401) {
           setPincerOn(false);
         }
@@ -511,11 +516,12 @@ const ChatInner = () => {
     if (pincerOn) resetUserId();
     loadSeqRef.current++;
     liveChatIdRef.current = NEW_CHAT;
+    setLiveChatId(NEW_CHAT);
     showNewChat();
     void refreshHistory();
   };
 
-  // Switching stops a reply still streaming (what arrived is kept) and always
+  // Switching stops a reply still streaming (what arrived is not stored) and always
   // reads the whole transcript from the store, never a cached copy.
   const selectChat = async (id: string) => {
     const target = id === NEW_CHAT ? liveChatIdRef.current : id;
@@ -649,9 +655,10 @@ const ChatInner = () => {
   return (
     <SidebarProvider className="plat">
       <AppSidebar
-        chatHistory={chatHistory}
+        chatHistory={chatHistory.filter(c => c.id !== liveChatId)}
         pincerHistory={pincerHistory}
         currentChatId={currentChatId}
+        liveChatId={liveChatId}
         onSelectChat={selectChat}
         onNewChat={startNewChat}
       />

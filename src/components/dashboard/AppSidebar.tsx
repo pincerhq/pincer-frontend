@@ -63,6 +63,8 @@ interface AppSidebarProps {
   /** Exchanges Pincer itself stored; opened read-only. */
   pincerHistory?: ChatHistoryItem[];
   currentChatId?: string;
+  /** The conversation "Current Chat" opens; it is not listed again under Earlier. */
+  liveChatId?: string;
   onSelectChat?: (id: string) => void;
   onNewChat?: () => void;
 }
@@ -122,7 +124,7 @@ const languages = [
 ];
 
 
-export function AppSidebar({ chatHistory, pincerHistory, currentChatId, onSelectChat, onNewChat }: AppSidebarProps = {}) {
+export function AppSidebar({ chatHistory, pincerHistory, currentChatId, liveChatId, onSelectChat, onNewChat }: AppSidebarProps = {}) {
   const location = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const navigate = useNavigate();
@@ -231,7 +233,7 @@ export function AppSidebar({ chatHistory, pincerHistory, currentChatId, onSelect
                   <button
                     onClick={() => onSelectChat?.('current')}
                     className={`w-full text-left px-2 py-1.5 rounded-md transition-colors text-xs flex items-center gap-1.5 ${
-                      currentChatId === 'current'
+                      currentChatId === (liveChatId ?? 'current')
                         ? 'bg-[color:color-mix(in_srgb,var(--ink)_6%,transparent)] font-semibold text-[color:var(--ink)]'
                         : 'hover:bg-[color:color-mix(in_srgb,var(--ink)_4%,transparent)] text-[color:var(--text-2)]'
                     }`}

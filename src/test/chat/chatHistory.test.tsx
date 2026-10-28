@@ -17,7 +17,9 @@ import type { Conversation } from '@/lib/api/conversations';
 
 let owner = '';
 // Each streamed turn plays the next script; a script is its frames in order.
-let scripts: StreamEvent[][] = [];
+// HOLD keeps the stream open until it is aborted, which fails it as fetch does.
+const HOLD = 'hold';
+let scripts: (StreamEvent | typeof HOLD)[][] = [];
 // Lets a test hold or fail a transcript read.
 let getHook: ((ownerId: string, id: string) => Promise<unknown>) | null = null;
 // What `/api/conversations` lists: Pincer's own exchange records.
@@ -48,11 +50,17 @@ vi.mock('@/lib/pincerClient', async (importOriginal) => {
     }),
     resetUserId: () => 'reset',
     sendChat: vi.fn(async () => ({ reply: 'fallback reply' })),
-    streamChat: async function* (): AsyncGenerator<StreamEvent> {
+    streamChat: async function* (_text: string, signal?: AbortSignal): AsyncGenerator<StreamEvent> {
       const script = scripts.shift();
       if (!script) throw new Error('no script for this turn');
+      const aborted = () => new DOMException('The operation was aborted.', 'AbortError');
       for (const ev of script) {
         await Promise.resolve();
+        if (signal?.aborted) throw aborted();
+        if (ev === HOLD) {
+          await new Promise((_, reject) => signal?.addEventListener('abort', () => reject(aborted())));
+          continue;
+        }
         yield ev;
       }
     },
@@ -83,6 +91,7 @@ vi.mock('@/lib/api/conversations', () => ({
 
 const { default: Chat } = await import('@/pages/Chat');
 const { getTranscript, listTranscripts, saveMessages } = await import('@/lib/chatTranscripts');
+const { sendChat, PincerError } = await import('@/lib/pincerClient');
 
 const reply = (text: string): StreamEvent[] => {
   const half = Math.ceil(text.length / 2);
@@ -103,6 +112,8 @@ const renderChat = () =>
 const main = () => within(screen.getByRole('main'));
 const input = () => screen.getByPlaceholderText(/Message AI assistant/);
 const sidebarChat = (title: string) => screen.getByRole('button', { name: title });
+const currentChat = () => screen.getByRole('button', { name: 'Current Chat' });
+const highlighted = (el: HTMLElement) => el.className.includes('font-semibold');
 
 /** Send `text` and wait until its streamed reply has settled and been stored. */
 async function send(text: string, answer: string) {
@@ -211,7 +222,7 @@ describe('chat page history', () => {
     await main().findByText('alpha answer 2');
     expect(visibleTexts(all)).toEqual(exchange('alpha', 2));
 
-    fireEvent.click(sidebarChat('gamma question 1'));
+    fireEvent.click(currentChat());
     await main().findByText('gamma answer 2');
     expect(visibleTexts(all)).toEqual(exchange('gamma', 2));
   });
@@ -282,7 +293,7 @@ describe('chat page history', () => {
     };
 
     fireEvent.click(sidebarChat('alpha question 1'));
-    fireEvent.click(sidebarChat('gamma question 1'));
+    fireEvent.click(currentChat());
     await main().findByText('gamma answer 1');
     releaseAlpha();
     await new Promise(r => setTimeout(r, 20));
@@ -307,6 +318,55 @@ describe('chat page history', () => {
     fireEvent.click(main().getByRole('button', { name: /try again/i }));
     await main().findByText('alpha answer 1');
     expect(main().queryByText(/could not be loaded/i)).not.toBeInTheDocument();
+  });
+
+  it('lists the live chat once, as the highlighted Current Chat', async () => {
+    renderChat();
+    expect(highlighted(currentChat())).toBe(true);
+    await send('omega question 1', 'omega answer 1');
+
+    expect(highlighted(currentChat())).toBe(true);
+    expect(screen.queryByRole('button', { name: 'omega question 1' })).not.toBeInTheDocument();
+
+    // Once the person moves on, it is listed under Earlier again.
+    fireEvent.click(screen.getAllByRole('button', { name: /new chat/i })[0]);
+    expect(await screen.findByRole('button', { name: 'omega question 1' })).toBeInTheDocument();
+    expect(highlighted(currentChat())).toBe(true);
+  });
+
+  it('does not store an error as the reply', async () => {
+    vi.mocked(sendChat).mockRejectedValueOnce(new PincerError('backend down', 503));
+    scripts.push([{ event: 'error', data: { message: 'stream broke' } }]);
+    renderChat();
+    await waitFor(() => expect(input()).not.toBeDisabled());
+    fireEvent.change(input(), { target: { value: 'failing question' } });
+    fireEvent.keyDown(input(), { key: 'Enter' });
+
+    await main().findByText(/⚠️ backend down/);
+    await waitFor(() => expect(input()).not.toBeDisabled());
+    await new Promise(r => setTimeout(r, 20));
+    const [t] = await listTranscripts(owner);
+    expect((await getTranscript(owner, t.id))?.messages.map(m => [m.role, m.text])).toEqual([
+      ['user', 'failing question'],
+    ]);
+  });
+
+  it('does not store the partial text of a stopped reply', async () => {
+    scripts.push([{ event: 'chunk', data: { delta: 'half an answ' } }, HOLD]);
+    renderChat();
+    await waitFor(() => expect(input()).not.toBeDisabled());
+    fireEvent.change(input(), { target: { value: 'stopped question' } });
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    await main().findByText('half an answ');
+
+    // Leaving the chat stops the stream.
+    fireEvent.click(screen.getAllByRole('button', { name: /new chat/i })[0]);
+    fireEvent.click(await screen.findByRole('button', { name: 'stopped question' }));
+    await main().findByText('stopped question');
+    await new Promise(r => setTimeout(r, 20));
+    expect(main().queryByText('half an answ')).not.toBeInTheDocument();
+    const [t] = await listTranscripts(owner);
+    expect(t.messages.map(m => [m.role, m.text])).toEqual([['user', 'stopped question']]);
   });
 
   it('stays on a chat started before the boot load lands', async () => {
