@@ -1,7 +1,8 @@
 // src/lib/api/conversations.ts
 // Client for /api/conversations — the Pincer memory backend's stored
-// exchanges. Plain async functions (no react-query) because Chat.tsx drives
-// its state imperatively around a streaming loop.
+// exchanges: one user/assistant pair each, with no thread id. The chat lists
+// them read-only beside the browser's own transcripts (src/lib/chatTranscripts.ts),
+// so history saved before transcripts existed stays reachable.
 
 import { apiFetch } from "@/lib/api/voice";
 
@@ -27,10 +28,6 @@ export interface ConversationList {
   offset: number;
 }
 
-export function listConversations(userId: string, limit = 20): Promise<ConversationList> {
+export function listConversations(userId: string, limit = 50): Promise<ConversationList> {
   return apiFetch(`/api/conversations?user_id=${encodeURIComponent(userId)}&limit=${limit}`);
-}
-
-export function getConversation(convId: string): Promise<Conversation> {
-  return apiFetch(`/api/conversations/${encodeURIComponent(convId)}`);
 }

@@ -15,13 +15,18 @@ import {
   isConnected as pincerConnected,
   streamChat,
   sendChat,
-  fetchLatestConversation,
   resetUserId,
   respondApproval,
   PincerError,
-  type PincerMessage,
   getAuth,
 } from '@/lib/pincerClient';
+import {
+  getTranscript,
+  listTranscripts,
+  saveMessages,
+  type ChatTranscript,
+  type StoredChatMessage,
+} from '@/lib/chatTranscripts';
 import { listConversations, type Conversation } from '@/lib/api/conversations';
 import { cleanAssistantText, renderAssistantText, renderTextWithLinks } from '@/lib/formatChat';
 import { useHealth } from '@/lib/capabilities';
@@ -48,11 +53,12 @@ type ChainStep =
     };
 
 interface ChatMessage {
-  id: number;
+  id: string;
   text: string;
   sender: 'user' | 'assistant';
   timestamp: Date;
-  attachments?: Array<{ name: string; type: string; size: number; url: string }>;
+  // `url` is a blob URL that dies with the page, so stored messages have none.
+  attachments?: Array<{ name: string; type: string; size: number; url?: string }>;
   streaming?: boolean;
   chain?: ChainStep[];
 }
@@ -99,8 +105,14 @@ const PINCER_BADGE: Record<PincerBadge, { label: string; title: string; tone: st
   },
 };
 
+// The sidebar's "Current Chat": a new conversation nothing has been sent in yet.
+const NEW_CHAT = 'current';
+// Sidebar ids of the exchange records Pincer itself holds (read-only).
+const PINCER_RECORD = 'pincer:';
+const isPincerRecord = (id: string) => id.startsWith(PINCER_RECORD);
+
 const WELCOME_MESSAGE: ChatMessage = {
-  id: 1,
+  id: 'welcome',
   text: "Hello! Welcome to 3days.ai. I'm your AI assistant. Try asking me to help you with tasks like 'Create a marketing plan for my new product' or 'Analyze my sales data'. How can I help you today?",
   sender: 'assistant',
   timestamp: new Date(),
@@ -112,8 +124,12 @@ const ChatInner = () => {
   const [messages, setMessages]           = useState<ChatMessage[]>([]);
   const [attachments, setAttachments]     = useState<File[]>([]);
   const [chatHistory, setChatHistory]     = useState<ChatHistory[]>([]);
-  const [currentChatId, setCurrentChatId] = useState<string>('current');
+  const [pincerHistory, setPincerHistory] = useState<ChatHistory[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string>(NEW_CHAT);
   const [isStreaming, setIsStreaming]     = useState(false);
+  const [loadingChat, setLoadingChat]     = useState(false);
+  const [loadError, setLoadError]         = useState<string | null>(null);
+  const [historyError, setHistoryError]   = useState(false);
   const [pincerOn, setPincerOn]           = useState<boolean>(() => pincerConnected());
   const health = useHealth();
   const badge = pincerBadgeState(pincerOn, health);
@@ -171,69 +187,98 @@ const ChatInner = () => {
   const abortRef       = useRef<AbortController | null>(null);
 
   const hasStarted = messages.some(m => m.sender === 'user');
+  // Nothing is sent into a conversation that has not finished opening.
+  const inputBlocked = isStreaming || loadingChat || loadError !== null;
 
-  // Real conversation history from /api/conversations (the memory backend's
-  // stored exchanges). Kept in a ref keyed by id so selecting one renders
-  // instantly without a second request.
-  const convByIdRef = useRef<Map<string, Conversation>>(new Map());
-  const liveMessagesRef = useRef<ChatMessage[] | null>(null);
+  // Transcripts live in this browser (src/lib/chatTranscripts.ts): the
+  // backend keeps single exchanges and a trimmed model context, not threads.
+  // The conversation the person last wrote in — what "Current Chat" opens.
+  // The ref is what handlers read; the state copy drives the sidebar.
+  const liveChatIdRef = useRef<string>(NEW_CHAT);
+  const [liveChatId, setLiveChatId] = useState<string>(NEW_CHAT);
+  // Bumped on every switch, so a load that lands after the next one is dropped.
+  const loadSeqRef = useRef(0);
+  const saveFailedRef = useRef(false);
+  // Pincer's own exchange records by sidebar id, so opening one needs no request.
+  const pincerRecordsRef = useRef<Map<string, Conversation>>(new Map());
 
-  const refreshHistory = async () => {
-    if (!pincerConnected()) {
+  const ownerId = () => (pincerConnected() ? getAuth()?.userId ?? null : null);
+
+  const refreshHistory = async (): Promise<ChatTranscript[] | null> => {
+    const owner = ownerId();
+    if (!owner) {
       setChatHistory([]);
-      return;
+      return null;
     }
     try {
-      const { conversations } = await listConversations(getAuth()?.userId ?? '', 20);
-      convByIdRef.current = new Map(conversations.map(c => [c.id, c]));
-      setChatHistory(
-        conversations.map(c => {
-          const user = c.messages.find(m => m.role === 'user')?.content ?? c.preview;
-          const assistant = c.messages.find(m => m.role === 'assistant')?.content ?? '';
-          return {
-            id: c.id,
-            title: user.length > 44 ? `${user.slice(0, 44)}…` : user || 'Conversation',
-            lastMessage: assistant.length > 60 ? `${assistant.slice(0, 60)}…` : assistant,
-            timestamp: new Date(c.created_at),
-            messageCount: c.messages.length,
-          };
-        }),
-      );
+      const list = await listTranscripts(owner);
+      setChatHistory(list.map(toHistoryItem));
+      setHistoryError(false);
+      return list;
     } catch {
-      /* history is a nicety — never block the chat on it */
+      setHistoryError(true);
+      return null;
     }
   };
 
-  // Boot: show welcome and, if Pincer is connected, hydrate past thread.
+  // What Pincer stored before transcripts were kept here (and what other
+  // channels store): one exchange per record. Listed read-only; a nicety, so a
+  // failure only leaves the list empty.
+  const refreshPincerHistory = async () => {
+    const owner = ownerId();
+    if (!owner) return;
+    try {
+      const { conversations } = await listConversations(owner);
+      pincerRecordsRef.current = new Map(conversations.map(c => [PINCER_RECORD + c.id, c]));
+      setPincerHistory(conversations.map(pincerHistoryItem));
+    } catch {
+      /* never block the chat on it */
+    }
+  };
+
+  const persist = async (convId: string, msgs: ChatMessage[]) => {
+    const owner = ownerId();
+    if (!owner || convId === NEW_CHAT) return;
+    try {
+      await saveMessages(owner, convId, msgs.map(toStored));
+      saveFailedRef.current = false;
+    } catch {
+      if (!saveFailedRef.current) {
+        saveFailedRef.current = true;
+        toast({
+          title: 'Chat not saved',
+          description: 'This browser refused to store the conversation, so it will be incomplete when you reopen it.',
+          variant: 'destructive',
+        });
+      }
+      return;
+    }
+    void refreshHistory();
+  };
+
+  // Boot: show welcome, then reopen the conversation the person left off in.
   useEffect(() => {
     setMessages([WELCOME_MESSAGE]);
-    void refreshHistory();
-
-    if (!pincerConnected()) return;
-
+    const seq = loadSeqRef.current;
     let cancelled = false;
+    void refreshPincerHistory();
     (async () => {
-      try {
-        const history = await fetchLatestConversation();
-        if (cancelled || !history || history.length === 0) return;
-        const hydrated = mapHistory(history);
-        if (hydrated.length > 0) setMessages(hydrated);
-      } catch (err) {
-        if (err instanceof PincerError && err.status === 401) {
-          setPincerOn(false);
-          toast({
-            title: 'Session expired',
-            description: 'Sign in again to continue.',
-            variant: 'destructive',
-          });
-        }
-      }
+      const list = await refreshHistory();
+      // Someone who already opened or started a chat has moved on.
+      if (cancelled || !list?.length || loadSeqRef.current !== seq) return;
+      const latest = list[0];
+      liveChatIdRef.current = latest.id;
+      setLiveChatId(latest.id);
+      setCurrentChatId(latest.id);
+      setMessages(latest.messages.map(fromStored));
     })();
     return () => {
       cancelled = true;
       abortRef.current?.abort();
     };
-  }, [toast]);
+    // Once per mount: later refreshes come from the handlers that change history.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (hasStarted) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -250,18 +295,29 @@ const ChatInner = () => {
   };
 
   const handleSend = () => {
-    if (isStreaming) return;
+    if (inputBlocked) return;
     if (offline || (!message.trim() && attachments.length === 0)) return;
     dictation.cancel();
 
-    // Typing while viewing a past exchange always continues the live thread.
-    if (currentChatId !== 'current') {
-      setCurrentChatId('current');
-      liveMessagesRef.current = null;
+    // Writing in a conversation continues it; the first message of a new one
+    // gives it the id it is stored under. Pincer's records are read-only, so
+    // writing in one continues it as a new stored conversation that starts
+    // with its exchange.
+    let convId = currentChatId;
+    let carried: ChatMessage[] = [];
+    if (pincerOn) {
+      if (convId === NEW_CHAT || isPincerRecord(convId)) {
+        if (isPincerRecord(convId)) carried = messages.filter(m => m.id !== WELCOME_MESSAGE.id);
+        convId = crypto.randomUUID();
+        loadSeqRef.current++;
+        setCurrentChatId(convId);
+      }
+      liveChatIdRef.current = convId;
+      setLiveChatId(convId);
     }
     const atts = attachments.map(f => ({ name: f.name, type: f.type, size: f.size, url: URL.createObjectURL(f) }));
     const userText = message;
-    const userMsg: ChatMessage = { id: messages.length + 1, text: userText, sender: 'user', timestamp: new Date(), attachments: atts.length ? atts : undefined };
+    const userMsg: ChatMessage = { id: crypto.randomUUID(), text: userText, sender: 'user', timestamp: new Date(), attachments: atts.length ? atts : undefined };
     setMessages(p => [...p, userMsg]);
     setMessage('');
     setAttachments([]);
@@ -269,14 +325,15 @@ const ChatInner = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
 
     if (pincerOn) {
-      void dispatchToPincer(userText);
+      void persist(convId, [...carried, userMsg]);
+      void dispatchToPincer(convId, userText);
     } else {
       // No backend, no answer. The old fallback echoed the question back as if
       // the agent had replied, which reads as a working assistant and is not.
       setMessages(p => [
         ...p,
         {
-          id: Date.now(),
+          id: crypto.randomUUID(),
           text: 'Not connected to a Pincer backend — nothing was sent and there is no reply.',
           sender: 'assistant',
           timestamp: new Date(),
@@ -289,12 +346,14 @@ const ChatInner = () => {
   // assistant bubble. Tool starts/dones and approval requests are merged
   // into a single `chain` timeline on that bubble so the user sees one
   // vertical sequence of steps. Falls back to POST /api/chat/message on
-  // stream failure.
-  const dispatchToPincer = async (userText: string) => {
-    const assistantId = Date.now();
+  // stream failure. Only a completed reply is stored, once, under `convId`:
+  // a stopped stream's partial text and an error stay on screen only.
+  const dispatchToPincer = async (convId: string, userText: string) => {
+    const assistantId = crypto.randomUUID();
+    const startedAt = new Date();
     setMessages(p => [
       ...p,
-      { id: assistantId, text: '', sender: 'assistant', timestamp: new Date(), streaming: true },
+      { id: assistantId, text: '', sender: 'assistant', timestamp: startedAt, streaming: true },
     ]);
 
     const controller = new AbortController();
@@ -302,7 +361,9 @@ const ChatInner = () => {
     abortRef.current = controller;
     setIsStreaming(true);
 
+    let streamed = '';
     const appendDelta = (delta: string) => {
+      streamed += delta;
       setMessages(p =>
         p.map(m => (m.id === assistantId ? { ...m, text: m.text + delta } : m)),
       );
@@ -314,15 +375,16 @@ const ChatInner = () => {
         ),
       );
     };
-    const finish = (finalText?: string) => {
+    const settle = (text: string, save = true) => {
       setMessages(p =>
-        p.map(m =>
-          m.id === assistantId
-            ? { ...m, text: finalText && finalText.length > m.text.length ? finalText : m.text, streaming: false }
-            : m,
-        ),
+        p.map(m => (m.id === assistantId ? { ...m, text, streaming: false } : m)),
       );
+      if (text && save) {
+        void persist(convId, [{ id: assistantId, text, sender: 'assistant', timestamp: startedAt }]);
+      }
     };
+    const finish = (finalText?: string, save = true) =>
+      settle(finalText && finalText.length > streamed.length ? finalText : streamed, save);
 
     try {
       let gotChunk = false;
@@ -384,15 +446,13 @@ const ChatInner = () => {
       else throw new PincerError('Empty stream', 500);
     } catch (streamErr) {
       if (controller.signal.aborted) {
-        finish();
+        finish(undefined, false);
         return;
       }
       // Fall back to the non-streaming endpoint so the user still gets a reply.
       try {
         const { reply } = await sendChat(userText);
-        setMessages(p =>
-          p.map(m => (m.id === assistantId ? { ...m, text: reply, streaming: false } : m)),
-        );
+        settle(reply);
       } catch (fallbackErr) {
         const msg =
           fallbackErr instanceof PincerError
@@ -400,22 +460,15 @@ const ChatInner = () => {
             : streamErr instanceof Error
               ? streamErr.message
               : 'Unknown error';
-        setMessages(p =>
-          p.map(m =>
-            m.id === assistantId
-              ? { ...m, text: `⚠️ ${msg}`, streaming: false }
-              : m,
-          ),
-        );
+        settle(`⚠️ ${msg}`, false);
         if (fallbackErr instanceof PincerError && fallbackErr.status === 401) {
           setPincerOn(false);
         }
       }
     } finally {
       setIsStreaming(false);
-      abortRef.current = null;
-      // The finished exchange is now in memory — pick it up for the sidebar.
-      void refreshHistory();
+      // A newer turn may already own the ref; only clear our own controller.
+      if (abortRef.current === controller) abortRef.current = null;
     }
   };
 
@@ -423,7 +476,7 @@ const ChatInner = () => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  const handleApproval = async (msgId: number, approvalId: string, approved: boolean) => {
+  const handleApproval = async (msgId: string, approvalId: string, approved: boolean) => {
     const setDecision = (decision: 'approved' | 'denied' | 'error', error?: string) => {
       setMessages(p =>
         p.map(m => {
@@ -451,43 +504,63 @@ const ChatInner = () => {
     }
   };
 
+  const showNewChat = () => {
+    setCurrentChatId(NEW_CHAT);
+    setLoadingChat(false);
+    setLoadError(null);
+    setMessages([WELCOME_MESSAGE]);
+  };
+
   const startNewChat = () => {
     abortRef.current?.abort();
     if (pincerOn) resetUserId();
-    liveMessagesRef.current = null;
-    setCurrentChatId('current');
-    setMessages([WELCOME_MESSAGE]);
+    loadSeqRef.current++;
+    liveChatIdRef.current = NEW_CHAT;
+    setLiveChatId(NEW_CHAT);
+    showNewChat();
     void refreshHistory();
   };
 
-  const selectChat = (id: string) => {
-    if (id === currentChatId) return;
-    if (id === 'current') {
-      setCurrentChatId('current');
-      setMessages(liveMessagesRef.current ?? [WELCOME_MESSAGE]);
-      liveMessagesRef.current = null;
+  // Switching stops a reply still streaming (what arrived is not stored) and always
+  // reads the whole transcript from the store, never a cached copy.
+  const selectChat = async (id: string) => {
+    const target = id === NEW_CHAT ? liveChatIdRef.current : id;
+    if (target === currentChatId && !loadError) return;
+    abortRef.current?.abort();
+    const seq = ++loadSeqRef.current;
+    if (target === NEW_CHAT) {
+      showNewChat();
       return;
     }
-    const conv = convByIdRef.current.get(id);
-    if (!conv) return;
-    // Park the live thread so "Current chat" restores it untouched.
-    if (currentChatId === 'current') liveMessagesRef.current = messages;
-    setCurrentChatId(id);
-    const at = new Date(conv.created_at);
-    setMessages(
-      conv.messages.map((m, i) => ({
-        id: i + 1,
-        text: m.content,
-        sender: m.role === 'assistant' ? ('assistant' as const) : ('user' as const),
-        timestamp: at,
-      })),
-    );
+    const record = pincerRecordsRef.current.get(target);
+    if (record) {
+      setCurrentChatId(target);
+      setLoadingChat(false);
+      setLoadError(null);
+      setMessages(fromPincerRecord(record));
+      return;
+    }
+    setCurrentChatId(target);
+    setLoadError(null);
+    setLoadingChat(true);
+    setMessages([]);
+    try {
+      const owner = ownerId();
+      const transcript = owner ? await getTranscript(owner, target) : null;
+      if (seq !== loadSeqRef.current) return;
+      if (!transcript) throw new Error('Conversation not found');
+      setMessages(transcript.messages.map(fromStored));
+    } catch {
+      if (seq === loadSeqRef.current) setLoadError(target);
+    } finally {
+      if (seq === loadSeqRef.current) setLoadingChat(false);
+    }
   };
 
   const getFileIcon = (type: string) => type.startsWith('image/') ? Image : FileText;
   const fmt = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  const canSend = !isStreaming && !offline && (message.trim().length > 0 || attachments.length > 0);
+  const canSend = !inputBlocked && !offline && (message.trim().length > 0 || attachments.length > 0);
 
   /* ── Bottom input bar (shared) ── */
   const inputBar = (
@@ -522,7 +595,7 @@ const ChatInner = () => {
           onKeyDown={handleKeyDown}
           placeholder={isStreaming ? 'Generating reply…' : 'Message AI assistant… (Shift+Enter for new line)'}
           rows={1}
-          disabled={isStreaming || offline}
+          disabled={inputBlocked || offline}
           className="w-full resize-none bg-transparent text-base text-[color:var(--ink)] placeholder:text-[color:var(--text-5)] px-5 pt-5 pb-2 focus:outline-none leading-relaxed disabled:opacity-60"
           style={{ minHeight: '88px', maxHeight: '240px' }}
         />
@@ -582,8 +655,10 @@ const ChatInner = () => {
   return (
     <SidebarProvider className="plat">
       <AppSidebar
-        chatHistory={chatHistory}
+        chatHistory={chatHistory.filter(c => c.id !== liveChatId)}
+        pincerHistory={pincerHistory}
         currentChatId={currentChatId}
+        liveChatId={liveChatId}
         onSelectChat={selectChat}
         onNewChat={startNewChat}
       />
@@ -593,7 +668,17 @@ const ChatInner = () => {
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <MobileMenuBar />
 
-          {!hasStarted ? (
+          {historyError && (
+            <div role="alert" className="flex items-center justify-center gap-2 px-4 py-2 text-xs text-[color:var(--bad-fg)] bg-[color:color-mix(in_srgb,var(--bad-fg)_8%,transparent)] border-b border-[color:color-mix(in_srgb,var(--bad-fg)_20%,transparent)]">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              <span>Could not load your saved chats from this browser.</span>
+              <button type="button" onClick={() => void refreshHistory()} className="font-medium underline">
+                Retry
+              </button>
+            </div>
+          )}
+
+          {!hasStarted && !loadingChat && loadError === null ? (
             /* ── Empty / welcome state ── */
             <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto px-6 py-16">
               <div className="w-full max-w-2xl flex flex-col items-center gap-8">
@@ -689,6 +774,21 @@ const ChatInner = () => {
               {/* Messages */}
               <div className="flex-1 overflow-y-auto">
                 <div className="max-w-2xl mx-auto py-10 px-4 space-y-8">
+                  {loadError !== null && (
+                    <div role="alert" className="flex flex-col items-center gap-2 py-10 text-sm text-[color:var(--text-3)]">
+                      <AlertCircle className="h-5 w-5 text-[color:var(--bad-fg)]" />
+                      <span>This conversation could not be loaded, so nothing of it is shown.</span>
+                      <button type="button" onClick={() => void selectChat(loadError)} className="plat-btn-ghost !h-8">
+                        Try again
+                      </button>
+                    </div>
+                  )}
+                  {loadingChat && (
+                    <div className="flex items-center justify-center gap-2 py-10 text-sm text-[color:var(--text-5)]">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Loading conversation…</span>
+                    </div>
+                  )}
                   {messages.map(msg => (
                     <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
                       {/* Content */}
@@ -785,9 +885,9 @@ function ChainTimeline({
   locked,
 }: {
   steps: ChainStep[];
-  msgId: number;
+  msgId: string;
   streaming: boolean;
-  onDecide: (msgId: number, approvalId: string, approved: boolean) => void;
+  onDecide: (msgId: string, approvalId: string, approved: boolean) => void;
   /** Pincer is offline: decisions cannot be sent. */
   locked: boolean;
 }) {
@@ -821,8 +921,8 @@ function ChainRow({
   step: ChainStep;
   isLast: boolean;
   streaming: boolean;
-  msgId: number;
-  onDecide: (msgId: number, approvalId: string, approved: boolean) => void;
+  msgId: string;
+  onDecide: (msgId: string, approvalId: string, approved: boolean) => void;
   locked: boolean;
 }) {
   // Active = the latest in-flight thing the agent is doing right now; this
@@ -915,8 +1015,8 @@ function ApprovalStepBody({
   locked,
 }: {
   step: Extract<ChainStep, { kind: 'approval' }>;
-  msgId: number;
-  onDecide: (msgId: number, approvalId: string, approved: boolean) => void;
+  msgId: string;
+  onDecide: (msgId: string, approvalId: string, approved: boolean) => void;
   locked: boolean;
 }) {
   if (step.decision === 'approved' || step.decision === 'denied') {
@@ -970,21 +1070,60 @@ function ApprovalStepBody({
   );
 }
 
-// Turn Pincer's stored message log into local ChatMessage bubbles.
-function mapHistory(history: PincerMessage[]): ChatMessage[] {
-  const out: ChatMessage[] = [];
-  let counter = 1;
-  for (const m of history) {
-    if (m.role !== 'user' && m.role !== 'assistant') continue;
-    if (!m.content || !m.content.trim()) continue;
-    out.push({
-      id: counter++,
+function toStored(m: ChatMessage): StoredChatMessage {
+  return {
+    id: m.id,
+    role: m.sender,
+    text: m.text,
+    at: m.timestamp.toISOString(),
+    attachments: m.attachments?.map(({ name, type, size }) => ({ name, type, size })),
+  };
+}
+
+function fromStored(m: StoredChatMessage): ChatMessage {
+  return {
+    id: m.id,
+    text: m.text,
+    sender: m.role,
+    timestamp: new Date(m.at),
+    attachments: m.attachments?.map(a => ({ ...a })),
+  };
+}
+
+function fromPincerRecord(c: Conversation): ChatMessage[] {
+  const at = new Date(c.created_at);
+  return c.messages
+    .filter(m => m.content.trim())
+    .map((m, i) => ({
+      id: `${PINCER_RECORD}${c.id}:${i}`,
       text: m.content,
-      sender: m.role,
-      timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
-    });
-  }
-  return out;
+      sender: m.role === 'assistant' ? ('assistant' as const) : ('user' as const),
+      timestamp: at,
+    }));
+}
+
+function pincerHistoryItem(c: Conversation): ChatHistory {
+  const user = c.messages.find(m => m.role === 'user')?.content ?? c.preview;
+  const assistant = c.messages.find(m => m.role === 'assistant')?.content ?? '';
+  return {
+    id: PINCER_RECORD + c.id,
+    title: user.length > 44 ? `${user.slice(0, 44)}…` : user || 'Conversation',
+    lastMessage: assistant.length > 60 ? `${assistant.slice(0, 60)}…` : assistant,
+    timestamp: new Date(c.created_at),
+    messageCount: c.messages.length,
+  };
+}
+
+function toHistoryItem(t: ChatTranscript): ChatHistory {
+  const user = t.messages.find(m => m.role === 'user')?.text ?? '';
+  const assistant = [...t.messages].reverse().find(m => m.role === 'assistant')?.text ?? '';
+  return {
+    id: t.id,
+    title: user.length > 44 ? `${user.slice(0, 44)}…` : user || 'Conversation',
+    lastMessage: assistant.length > 60 ? `${assistant.slice(0, 60)}…` : assistant,
+    timestamp: new Date(t.updatedAt),
+    messageCount: t.messages.length,
+  };
 }
 
 const Chat = () => (

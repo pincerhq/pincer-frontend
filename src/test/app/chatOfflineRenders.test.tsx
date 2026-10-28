@@ -34,8 +34,10 @@ vi.mock('@/lib/pincerClient', async (importOriginal) => {
   };
 });
 
-vi.mock('@/lib/api/conversations', () => ({
-  listConversations: async () => ({ conversations: [], limit: 20, offset: 0 }),
+vi.mock('@/lib/chatTranscripts', () => ({
+  listTranscripts: async () => [],
+  getTranscript: async () => null,
+  saveMessages: async () => {},
 }));
 
 const { default: Chat } = await import('@/pages/Chat');
