@@ -497,27 +497,34 @@ export interface ChatReply {
  * The chat request body. Pincer keys a conversation on whoever the request is
  * (the signed-in identity, whatever `X-Pincer-User` says), so a chat of its
  * own is a `conversation_id` under that identity; without one the message
- * goes to the identity's main web conversation.
+ * goes to the identity's main web conversation. `memory: false` keeps the
+ * identity's long-term memory out of the turn, both ways.
  */
-function chatBody(text: string, conversationId?: string): string {
-  return JSON.stringify(conversationId ? { text, conversation_id: conversationId } : { text });
+function chatBody(text: string, conversationId?: string, memory = true): string {
+  return JSON.stringify({
+    text,
+    ...(conversationId && { conversation_id: conversationId }),
+    ...(!memory && { memory: false }),
+  });
 }
 
-export async function sendChat(text: string, conversationId?: string): Promise<ChatReply> {
+export async function sendChat(text: string, conversationId?: string, memory = true): Promise<ChatReply> {
   return request<ChatReply>("/api/chat/message", {
     method: "POST",
-    body: chatBody(text, conversationId),
+    body: chatBody(text, conversationId, memory),
   });
 }
 
 /**
  * One message in a conversation of its own, for work that is not a chat (call
  * summaries, company-brain questions): no earlier turn is in the model's
- * context, and the exchange stays out of the person's chats. Pincer still
- * answers as the signed-in identity, so its long-term memory is not isolated.
+ * context, the exchange stays out of the person's chats, and with
+ * `memory: false` Pincer neither reads their long-term memory for it nor
+ * writes the exchange there (pincerhq/pincer#285; an older backend
+ * ignores the field and still uses memory).
  */
 export async function sendOneOffChat(text: string): Promise<string> {
-  const { reply } = await sendChat(text, crypto.randomUUID());
+  const { reply } = await sendChat(text, crypto.randomUUID(), false);
   if (!reply) throw new PincerError("Empty reply from agent", 500);
   return reply;
 }

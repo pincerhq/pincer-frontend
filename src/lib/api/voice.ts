@@ -544,8 +544,9 @@ export function useLiveCallDetail(callSid: string | null) {
  * /api/chat/message is stateful per conversation: in the user's own chat, the
  * agent answers inside the ongoing conversation — which produced replies about
  * *previous* chat context instead of the transcript. So each summary runs in a
- * conversation of its own: no other call's transcript is in context, and the
- * exchange stays out of the user's chat.
+ * conversation of its own, without the user's long-term memory: no other
+ * call's transcript or remembered fact is in context, and the exchange stays
+ * out of both the user's chat and their memory.
  */
 export async function generateCallSummary(transcript: string): Promise<string> {
   const prompt =

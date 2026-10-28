@@ -50,6 +50,14 @@ describe("chat conversation ids", () => {
     expect(lastBody()).toEqual({ text: "hi", conversation_id: CONV });
   });
 
+  it("keeps call summaries and company-brain requests out of the person's memory", async () => {
+    await generateCallSummary("transcript");
+    expect(lastBody().memory).toBe(false);
+
+    await askCompanyBrain("what is our refund policy?");
+    expect(lastBody().memory).toBe(false);
+  });
+
   it("runs every call summary and company-brain request in a new conversation", async () => {
     await generateCallSummary("transcript");
     const summary = lastBody().conversation_id;
