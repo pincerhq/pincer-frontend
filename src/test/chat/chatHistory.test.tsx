@@ -14,12 +14,15 @@ import { render, screen, within, waitFor, fireEvent, cleanup } from '@testing-li
 import { MemoryRouter } from 'react-router-dom';
 import type { StreamEvent } from '@/lib/pincerClient';
 import type { Conversation } from '@/lib/api/conversations';
+import { createStore, set } from 'idb-keyval';
 
 let owner = '';
 // Each streamed turn plays the next script; a script is its frames in order.
 // HOLD keeps the stream open until it is aborted, which fails it as fetch does.
 const HOLD = 'hold';
 let scripts: (StreamEvent | typeof HOLD)[][] = [];
+// The conversation id each streamed turn was sent with, in order.
+let sentIds: (string | undefined)[] = [];
 // Lets a test hold or fail a transcript read.
 let getHook: ((ownerId: string, id: string) => Promise<unknown>) | null = null;
 // What `/api/conversations` lists: Pincer's own exchange records.
@@ -48,9 +51,13 @@ vi.mock('@/lib/pincerClient', async (importOriginal) => {
       expiresAt: Date.now() + 3_600_000,
       userId: owner,
     }),
-    resetUserId: () => 'reset',
     sendChat: vi.fn(async () => ({ reply: 'fallback reply' })),
-    streamChat: async function* (_text: string, signal?: AbortSignal): AsyncGenerator<StreamEvent> {
+    streamChat: async function* (
+      _text: string,
+      signal?: AbortSignal,
+      conversationId?: string,
+    ): AsyncGenerator<StreamEvent> {
+      sentIds.push(conversationId);
       const script = scripts.shift();
       if (!script) throw new Error('no script for this turn');
       const aborted = () => new DOMException('The operation was aborted.', 'AbortError');
@@ -148,6 +155,7 @@ const exchange = (tag: string, n: number) =>
 beforeEach(() => {
   owner = crypto.randomUUID();
   scripts = [];
+  sentIds = [];
   getHook = null;
   listHook = null;
   pincerRecords = [];
@@ -243,6 +251,98 @@ describe('chat page history', () => {
     expect(alpha.messages.map(m => m.text)).toEqual(exchange('alpha', 3));
   });
 
+  it('sends each conversation to Pincer as its own, and a reopened one as itself', async () => {
+    renderChat();
+    await send('alpha question 1', 'alpha answer 1');
+    await send('alpha question 2', 'alpha answer 2');
+    fireEvent.click(screen.getAllByRole('button', { name: /new chat/i })[0]);
+    await send('gamma question 1', 'gamma answer 1');
+    fireEvent.click(sidebarChat('alpha question 1'));
+    await main().findByText('alpha answer 2');
+    await send('alpha question 3', 'alpha answer 3');
+
+    const [alpha, alphaAgain, gamma, alphaReopened] = sentIds;
+    const stored = await listTranscripts(owner);
+    expect(alpha).toBe(stored.find(t => t.messages[0].text === 'alpha question 1')?.id);
+    expect(alphaAgain).toBe(alpha);
+    expect(gamma).toBe(stored.find(t => t.messages[0].text === 'gamma question 1')?.id);
+    expect(gamma).not.toBe(alpha);
+    expect(alphaReopened).toBe(alpha);
+  });
+
+  it('keeps a chat stored before conversation ids in the main conversation', async () => {
+    // Stored by the previous version: no conversationId, sent with none.
+    await set(
+      `${owner}/legacy`,
+      {
+        id: 'legacy',
+        ownerId: owner,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [{ id: 'l1', role: 'user', text: 'legacy question 1', at: new Date().toISOString() }],
+      },
+      createStore('pincer-chat', 'transcripts'),
+    );
+
+    renderChat();
+    await main().findByText('legacy question 1');
+    await send('legacy question 2', 'legacy answer 2');
+    fireEvent.click(screen.getAllByRole('button', { name: /new chat/i })[0]);
+    await send('fresh question 1', 'fresh answer 1');
+
+    const stored = await listTranscripts(owner);
+    expect(sentIds).toEqual([undefined, stored.find(t => t.id !== 'legacy')!.id]);
+    expect(stored.find(t => t.id === 'legacy')!.conversationId).toBeUndefined();
+  });
+
+  it('continues the chat reopened at boot in its own conversation', async () => {
+    // A conversation id unlike the transcript id, so only the stored one can match.
+    const storedConversationId = 'conv-reopened';
+    await set(
+      `${owner}/saved`,
+      {
+        id: 'saved',
+        ownerId: owner,
+        conversationId: storedConversationId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [{ id: 's1', role: 'user', text: 'saved question 1', at: new Date().toISOString() }],
+      },
+      createStore('pincer-chat', 'transcripts'),
+    );
+
+    renderChat();
+    await main().findByText('saved question 1');
+    await send('saved question 2', 'saved answer 2');
+
+    expect(sentIds[0]).toBe(storedConversationId);
+  });
+
+  it('falls back to the plain endpoint only when the stream never started', async () => {
+    const sendChat = vi.mocked((await import('@/lib/pincerClient')).sendChat);
+    sendChat.mockClear();
+    renderChat();
+    await send('alpha question 1', 'alpha answer 1');
+    const alphaId = sentIds[0];
+
+    // Pincer took the turn, then failed: the turn is not sent again.
+    scripts.push([
+      { event: 'chunk', data: { delta: 'partial' } },
+      { event: 'error', data: { message: 'tool crashed' } },
+    ]);
+    fireEvent.change(input(), { target: { value: 'alpha question 2' } });
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    await main().findByText(/tool crashed/);
+    expect(sendChat).not.toHaveBeenCalled();
+
+    // No script: the stream fails before any frame, so the fallback answers.
+    await waitFor(() => expect(input()).not.toBeDisabled());
+    fireEvent.change(input(), { target: { value: 'alpha question 3' } });
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    await main().findByText('fallback reply');
+    expect(sendChat).toHaveBeenCalledWith('alpha question 3', alphaId);
+  });
+
   it('opens a conversation far longer than the old 20-record history page', async () => {
     const at = Date.now();
     const texts = exchange('long', 40);
@@ -336,7 +436,8 @@ describe('chat page history', () => {
 
   it('does not store an error as the reply', async () => {
     vi.mocked(sendChat).mockRejectedValueOnce(new PincerError('backend down', 503));
-    scripts.push([{ event: 'error', data: { message: 'stream broke' } }]);
+    // A stream that ends before its first frame, so the plain endpoint is tried.
+    scripts.push([]);
     renderChat();
     await waitFor(() => expect(input()).not.toBeDisabled());
     fireEvent.change(input(), { target: { value: 'failing question' } });

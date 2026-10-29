@@ -13,7 +13,7 @@ import {
 // Auth stays single-source: the voice endpoints live on the same Pincer
 // backend as /api/chat and /api/status, so the token, the per-browser
 // `X-Pincer-User` id and the error shape all come from pincerClient.
-import { authedFetch, isConnected, PincerError } from "@/lib/pincerClient";
+import { authedFetch, isConnected, PincerError, sendOneOffChat } from "@/lib/pincerClient";
 import { useSession } from "@/stores/session";
 import { request } from "@/lib/api/client";
 
@@ -541,22 +541,14 @@ export function useLiveCallDetail(callSid: string | null) {
 /**
  * Ask the agent for a call summary WITHOUT touching the user's chat thread.
  *
- * /api/chat/message is stateful per X-Pincer-User: sent as the browser's own
- * user, the agent answers inside the ongoing conversation (memory and all) —
- * which produced replies about *previous* chat context instead of the
- * transcript. So summaries run under a dedicated per-browser summarizer
- * identity: clean context in, and the exchange is stored under that side
- * identity instead of polluting the user's history.
+ * /api/chat/message is stateful per conversation: in the user's own chat, the
+ * agent answers inside the ongoing conversation — which produced replies about
+ * *previous* chat context instead of the transcript. So each summary runs in a
+ * conversation of its own, without the user's long-term memory: no other
+ * call's transcript or remembered fact is in context, and the exchange stays
+ * out of both the user's chat and their memory.
  */
-const SUMMARIZER_ID_KEY = "pincer.web.summarizerId";
-
 export async function generateCallSummary(transcript: string): Promise<string> {
-  let sid = localStorage.getItem(SUMMARIZER_ID_KEY);
-  if (!sid) {
-    sid = crypto.randomUUID();
-    localStorage.setItem(SUMMARIZER_ID_KEY, sid);
-  }
-
   const prompt =
     "You are acting as a summarization function, not a conversational assistant. " +
     "Ignore any previous conversation or memory — respond ONLY based on the transcript below. " +
@@ -566,27 +558,7 @@ export async function generateCallSummary(transcript: string): Promise<string> {
     "If the call has no business content (e.g. a test call), say that in one sentence.\n\n" +
     "TRANSCRIPT:\n" + transcript;
 
-  const res = await authedFetch("/api/chat/message", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Pincer-User": `call-summarizer-${sid}`,
-    },
-    body: JSON.stringify({ text: prompt }),
-  });
-  if (!res.ok) {
-    let detail = `HTTP ${res.status}`;
-    try {
-      const body = await res.json();
-      if (body?.detail) detail = body.detail;
-    } catch {
-      /* keep default */
-    }
-    throw new PincerError(detail, res.status);
-  }
-  const data = (await res.json()) as { reply?: string };
-  if (!data.reply) throw new PincerError("Empty reply from agent", 500);
-  return data.reply;
+  return sendOneOffChat(prompt);
 }
 
 export function useContacts() {

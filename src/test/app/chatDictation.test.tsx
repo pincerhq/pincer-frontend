@@ -475,7 +475,7 @@ describe('chat dictation', () => {
     const rec = last();
     await user.click(screen.getByRole('button', { name: 'Send message' }));
     expect(rec.calls).toContain('abort');
-    expect(streamChat).toHaveBeenCalledWith('send the report', expect.anything());
+    expect(streamChat).toHaveBeenCalledWith('send the report', expect.anything(), expect.any(String));
     rec.emit([['send the report', true], [' again', false]]);
     expect(box().value).toBe('');
   });

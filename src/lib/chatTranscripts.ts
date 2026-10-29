@@ -34,6 +34,12 @@ export interface ChatTranscript {
   ownerId: string;
   createdAt: string;
   updatedAt: string;
+  /**
+   * The Pincer conversation this chat is sent as: its own id for a chat started
+   * here. Absent on chats stored before they had one; those were all sent to
+   * the identity's main web conversation, which still holds their context.
+   */
+  conversationId?: string;
   /** Chronological: the order the messages were first written in. */
   messages: StoredChatMessage[];
 }
@@ -90,6 +96,8 @@ export async function saveMessages(
         updatedAt: now,
         messages: merged,
       };
+      const conversationId = current ? current.conversationId : id;
+      if (conversationId) next.conversationId = conversationId;
       return next;
     },
     db(),

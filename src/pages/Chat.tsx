@@ -15,7 +15,6 @@ import {
   isConnected as pincerConnected,
   streamChat,
   sendChat,
-  resetUserId,
   respondApproval,
   PincerError,
   getAuth,
@@ -196,6 +195,9 @@ const ChatInner = () => {
   // The ref is what handlers read; the state copy drives the sidebar.
   const liveChatIdRef = useRef<string>(NEW_CHAT);
   const [liveChatId, setLiveChatId] = useState<string>(NEW_CHAT);
+  // The Pincer conversation the open chat is sent as (its transcript's
+  // `conversationId`); undefined is the identity's main web conversation.
+  const pincerConvRef = useRef<string | undefined>(undefined);
   // Bumped on every switch, so a load that lands after the next one is dropped.
   const loadSeqRef = useRef(0);
   const saveFailedRef = useRef(false);
@@ -270,6 +272,7 @@ const ChatInner = () => {
       liveChatIdRef.current = latest.id;
       setLiveChatId(latest.id);
       setCurrentChatId(latest.id);
+      pincerConvRef.current = latest.conversationId;
       setMessages(latest.messages.map(fromStored));
     })();
     return () => {
@@ -311,6 +314,7 @@ const ChatInner = () => {
         convId = crypto.randomUUID();
         loadSeqRef.current++;
         setCurrentChatId(convId);
+        pincerConvRef.current = convId;
       }
       liveChatIdRef.current = convId;
       setLiveChatId(convId);
@@ -326,7 +330,7 @@ const ChatInner = () => {
 
     if (pincerOn) {
       void persist(convId, [...carried, userMsg]);
-      void dispatchToPincer(convId, userText);
+      void dispatchToPincer(convId, pincerConvRef.current, userText);
     } else {
       // No backend, no answer. The old fallback echoed the question back as if
       // the agent had replied, which reads as a working assistant and is not.
@@ -345,10 +349,15 @@ const ChatInner = () => {
   // Stream a reply from the Pincer backend, appending tokens to a single
   // assistant bubble. Tool starts/dones and approval requests are merged
   // into a single `chain` timeline on that bubble so the user sees one
-  // vertical sequence of steps. Falls back to POST /api/chat/message on
-  // stream failure. Only a completed reply is stored, once, under `convId`:
-  // a stopped stream's partial text and an error stay on screen only.
-  const dispatchToPincer = async (convId: string, userText: string) => {
+  // vertical sequence of steps. Falls back to POST /api/chat/message when
+  // the stream fails before its first frame. Only a completed reply is stored,
+  // once, under `convId`: a stopped stream's partial text and an error stay on
+  // screen only. `pincerConv` is the conversation Pincer keeps the turn in.
+  const dispatchToPincer = async (
+    convId: string,
+    pincerConv: string | undefined,
+    userText: string,
+  ) => {
     const assistantId = crypto.randomUUID();
     const startedAt = new Date();
     setMessages(p => [
@@ -362,6 +371,8 @@ const ChatInner = () => {
     setIsStreaming(true);
 
     let streamed = '';
+    // Any frame means Pincer took the turn: sending it again would repeat it.
+    let gotEvent = false;
     const appendDelta = (delta: string) => {
       streamed += delta;
       setMessages(p =>
@@ -388,7 +399,8 @@ const ChatInner = () => {
 
     try {
       let gotChunk = false;
-      for await (const ev of streamChat(userText, controller.signal)) {
+      for await (const ev of streamChat(userText, controller.signal, pincerConv)) {
+        gotEvent = true;
         if (ev.event === 'chunk') {
           gotChunk = true;
           appendDelta(ev.data.delta);
@@ -449,9 +461,14 @@ const ChatInner = () => {
         finish(undefined, false);
         return;
       }
+      if (gotEvent) {
+        const msg = streamErr instanceof Error ? streamErr.message : 'Unknown error';
+        settle(streamed ? `${streamed}\n\n⚠️ ${msg}` : `⚠️ ${msg}`, false);
+        return;
+      }
       // Fall back to the non-streaming endpoint so the user still gets a reply.
       try {
-        const { reply } = await sendChat(userText);
+        const { reply } = await sendChat(userText, pincerConv);
         settle(reply);
       } catch (fallbackErr) {
         const msg =
@@ -506,6 +523,7 @@ const ChatInner = () => {
 
   const showNewChat = () => {
     setCurrentChatId(NEW_CHAT);
+    pincerConvRef.current = undefined;
     setLoadingChat(false);
     setLoadError(null);
     setMessages([WELCOME_MESSAGE]);
@@ -513,7 +531,6 @@ const ChatInner = () => {
 
   const startNewChat = () => {
     abortRef.current?.abort();
-    if (pincerOn) resetUserId();
     loadSeqRef.current++;
     liveChatIdRef.current = NEW_CHAT;
     setLiveChatId(NEW_CHAT);
@@ -549,6 +566,7 @@ const ChatInner = () => {
       const transcript = owner ? await getTranscript(owner, target) : null;
       if (seq !== loadSeqRef.current) return;
       if (!transcript) throw new Error('Conversation not found');
+      pincerConvRef.current = transcript.conversationId;
       setMessages(transcript.messages.map(fromStored));
     } catch {
       if (seq === loadSeqRef.current) setLoadError(target);
