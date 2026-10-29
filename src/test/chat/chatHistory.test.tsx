@@ -295,6 +295,29 @@ describe('chat page history', () => {
     expect(stored.find(t => t.id === 'legacy')!.conversationId).toBeUndefined();
   });
 
+  it('continues the chat reopened at boot in its own conversation', async () => {
+    // A conversation id unlike the transcript id, so only the stored one can match.
+    const storedConversationId = 'conv-reopened';
+    await set(
+      `${owner}/saved`,
+      {
+        id: 'saved',
+        ownerId: owner,
+        conversationId: storedConversationId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [{ id: 's1', role: 'user', text: 'saved question 1', at: new Date().toISOString() }],
+      },
+      createStore('pincer-chat', 'transcripts'),
+    );
+
+    renderChat();
+    await main().findByText('saved question 1');
+    await send('saved question 2', 'saved answer 2');
+
+    expect(sentIds[0]).toBe(storedConversationId);
+  });
+
   it('falls back to the plain endpoint only when the stream never started', async () => {
     const sendChat = vi.mocked((await import('@/lib/pincerClient')).sendChat);
     sendChat.mockClear();
