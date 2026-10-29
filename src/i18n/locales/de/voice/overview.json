@@ -16,6 +16,7 @@
   "now": {
     "title": "Jetzt",
     "empty": "Gerade kein Gespräch.",
+    "unreachable": "Server nicht erreichbar – laufende Anrufe unbekannt.",
     "inbound": "Eingehend",
     "outbound": "Ausgehend",
     "since": "seit {{duration}}",

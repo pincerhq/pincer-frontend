@@ -47,10 +47,11 @@ function Row({ call, debug }: { call: ActiveCall; debug: boolean }) {
 
 export default function ActiveCallsCard() {
   const t = useVoiceT("voice-overview");
-  const { data, isLoading } = useActiveCalls();
+  const { data, isLoading, isError } = useActiveCalls();
   const [params] = useSearchParams();
   const debug = params.has("debug");
-  const calls = data ?? [];
+  // After a failed poll `data` is the last list; it must not pass for live calls.
+  const calls = isError ? [] : (data ?? []);
 
   return (
     <OverviewCard
@@ -64,7 +65,7 @@ export default function ActiveCallsCard() {
     >
       {calls.length === 0 ? (
         <p className="text-sm text-[var(--text-3)]" aria-live="polite">
-          {isLoading ? "" : t("now.empty")}
+          {isLoading ? "" : isError ? t("now.unreachable") : t("now.empty")}
         </p>
       ) : (
         <ul className="space-y-2" aria-live="polite">

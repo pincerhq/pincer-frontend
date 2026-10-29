@@ -4,7 +4,7 @@
  * as, and the caller's history is there while you are still talking to them.
  */
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ActiveCall, CallDetail, VoiceApproval } from '@/lib/api/voice';
 
@@ -103,6 +103,7 @@ const MINE: VoiceApproval = {
 const SOMEONE_ELSES: VoiceApproval = { ...MINE, id: 'apr_other', call_sid: 'CA-other' };
 
 let declared = true;
+let detail: CallDetail;
 const endCall = vi.fn();
 vi.mock('@/lib/capabilities', () => ({
   // FE10: operator features with no backend show only when the capability is declared; tests toggle it.
@@ -113,7 +114,7 @@ vi.mock('@/lib/api/voice', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api/voice')>();
   return {
     ...actual,
-    useLiveCallDetail: () => ({ data: DETAIL }),
+    useLiveCallDetail: () => ({ data: detail }),
     useVoiceStatus: () => ({ data: { consent_mode: 'two_party', engine: 'conversation_relay' } }),
     useVoiceConfig: () => ({
       data: { voice_turn_model: 'sonnet', default_model: 'sonnet', choices: [{ value: 'sonnet', label: 'Sonnet' }] },
@@ -152,6 +153,8 @@ beforeAll(() => {
 beforeEach(() => {
   decideMutate.mockClear();
   blockMutate.mockClear();
+  endCall.mockClear();
+  detail = DETAIL;
 });
 
 const renderModal = () => render(<LiveCallModal call={CALL} onClose={() => {}} />);
@@ -219,13 +222,43 @@ describe('live call modal', () => {
     });
   });
 
-  it('FE10: call controls exist only when the backend declares them; End call hangs up the real call', () => {
+  it('FE10: call controls exist only when the backend declares them; End call hangs up the real call after a confirm', async () => {
+    const user = userEvent.setup();
     renderModal();
     expect(screen.getByRole('button', { name: /whisper/i })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: /end call/i }));
+    // The real control is not dimmed like the mocked ones next to it.
+    const end = screen.getByRole('button', { name: /end call/i });
+    expect(end).toBeEnabled();
+    expect(end.closest('.opacity-60')).toBeNull();
+
+    await user.click(end);
+    expect(endCall).not.toHaveBeenCalled(); // confirms first
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /end call/i }));
     expect(endCall).toHaveBeenCalledWith(CALL.call_sid);
     // …while the things that DO work are enabled.
     expect(screen.getByRole('button', { name: /copy transcript/i })).toBeEnabled();
+  });
+
+  it('keeping the call in the confirm leaves it running', async () => {
+    const user = userEvent.setup();
+    renderModal();
+    await user.click(screen.getByRole('button', { name: /end call/i }));
+    await user.click(screen.getByRole('button', { name: /keep the call/i }));
+    expect(endCall).not.toHaveBeenCalled();
+  });
+
+  it('stops reading as live once the call has left the active list', () => {
+    render(<LiveCallModal call={CALL} ended onClose={() => {}} />);
+    expect(screen.getByText(/ended · 0:53/)).toBeInTheDocument();
+    expect(screen.queryByText(/live ·/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /end call/i })).toBeNull();
+  });
+
+  it('stops reading as live once the call detail has an end time', () => {
+    detail = { ...DETAIL, status: 'completed', ended_at: '2026-08-20T10:01:30Z', duration_seconds: 90 };
+    renderModal();
+    expect(screen.getByText(/ended · 1:30/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /end call/i })).toBeNull();
   });
 
   it('FE10: hides the call controls when the capability is not declared', () => {

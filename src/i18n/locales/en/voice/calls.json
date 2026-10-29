@@ -71,7 +71,11 @@
     "end": "End call",
     "ending": "Ending…",
     "endRetry": "Retry end call",
-    "endFailed": "Could not end the call: {{reason}}"
+    "endFailed": "Could not end the call: {{reason}}",
+    "endConfirmTitle": "End this call?",
+    "endConfirmBody": "The line is hung up for both sides. This cannot be undone.",
+    "endCancel": "Keep the call",
+    "unreachable": "Live calls cannot be loaded right now; the server is not reachable."
   },
   "export": {
     "button": "Export CSV",

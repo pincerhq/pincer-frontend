@@ -14,9 +14,17 @@ import EndCallButton from "@/components/voice/EndCallButton";
 export default function LiveCallsSection() {
   const t = useVoiceT("voice-calls");
   const to = useVoiceT("voice-overview");
-  const { data } = useActiveCalls();
+  const { data, isError } = useActiveCalls();
   const apiUrl = useSession((s) => s.apiUrl);
   const canListen = useCan("view_transcript_full");
+  // After a failed poll `data` is the last list; it must not pass for live calls.
+  if (isError) {
+    return (
+      <p role="status" className="rounded-[14px] border border-[var(--line)] px-3 py-2 text-xs text-[var(--text-3)]">
+        {t("live.unreachable")}
+      </p>
+    );
+  }
   const calls = data ?? [];
   if (calls.length === 0) return null;
   return (
