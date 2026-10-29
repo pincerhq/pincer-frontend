@@ -3,6 +3,7 @@ import { useActiveCalls } from "@/lib/api/voice";
 import { useSession, useCan } from "@/stores/session";
 import { useVoiceT } from "@/i18n/voice";
 import { MaskedNumber } from "@/components/voice/MaskedNumber";
+import EndCallButton from "@/components/voice/EndCallButton";
 
 /**
  * Active calls above the history (FE2 §1.3). Listen-in is deferred in the
@@ -13,9 +14,17 @@ import { MaskedNumber } from "@/components/voice/MaskedNumber";
 export default function LiveCallsSection() {
   const t = useVoiceT("voice-calls");
   const to = useVoiceT("voice-overview");
-  const { data } = useActiveCalls();
+  const { data, isError } = useActiveCalls();
   const apiUrl = useSession((s) => s.apiUrl);
   const canListen = useCan("view_transcript_full");
+  // After a failed poll `data` is the last list; it must not pass for live calls.
+  if (isError) {
+    return (
+      <p role="status" className="rounded-[14px] border border-[var(--line)] px-3 py-2 text-xs text-[var(--text-3)]">
+        {t("live.unreachable")}
+      </p>
+    );
+  }
   const calls = data ?? [];
   if (calls.length === 0) return null;
   return (
@@ -46,6 +55,7 @@ export default function LiveCallsSection() {
                   </a>
                 </span>
               )}
+              <EndCallButton callSid={c.call_sid} />
             </li>
           );
         })}

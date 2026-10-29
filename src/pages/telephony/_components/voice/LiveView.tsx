@@ -18,6 +18,7 @@ import {
 import { useActiveCalls, useVoiceConnected, useVoiceStatus, type ActiveCall } from '@/lib/api/voice';
 import LiveCallModal from '@/pages/telephony/_components/voice/LiveCallModal';
 import ListenIn from '@/components/voice/listen/ListenIn';
+import EndCallButton from '@/components/voice/EndCallButton';
 import StartCallModal from '@/pages/telephony/_components/voice/StartCallModal';
 import { cn } from '@/lib/utils';
 
@@ -47,9 +48,14 @@ function ConnectPrompt() {
 
 export default function LiveView() {
   const connected = useVoiceConnected();
-  const { data: calls, isLoading } = useActiveCalls();
+  const { data: polled, isLoading, isError } = useActiveCalls();
+  // After a failed poll `data` is the last list; it must not pass for live calls.
+  const calls = isError ? undefined : polled;
   const { data: status } = useVoiceStatus();
   const [selected, setSelected] = useState<ActiveCall | null>(null);
+  // The open call as of the latest poll; once the list no longer has it, it has ended.
+  const selectedNow = selected ? calls?.find((c) => c.call_sid === selected.call_sid) : undefined;
+  const selectedEnded = !!selected && !!calls && !selectedNow;
   const [startOpen, setStartOpen] = useState(false);
 
   return (
@@ -94,6 +100,14 @@ export default function LiveView() {
           <ConnectPrompt />
         ) : isLoading ? (
           <div className="py-12 text-center text-sm text-[var(--text-5)]">Loading…</div>
+        ) : isError ? (
+          <div className="mx-auto mt-16 max-w-md text-center">
+            <Plug className="mx-auto mb-3 h-8 w-8 text-[var(--text-5)]" />
+            <h2 className="text-sm font-semibold text-[var(--ink)]">Pincer server not reachable</h2>
+            <p className="mt-2 text-xs leading-relaxed text-[var(--text-5)]">
+              Calls in progress cannot be loaded right now. This screen retries every 2 seconds.
+            </p>
+          </div>
         ) : !calls?.length ? (
           <div className="mx-auto mt-16 max-w-md text-center">
             <Radio className="mx-auto mb-3 h-8 w-8 text-[var(--text-5)]" />
@@ -159,8 +173,9 @@ export default function LiveView() {
                     </span>
                   </div>
                 </button>
-                  <div className="mt-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
                     <ListenIn call={c} />
+                    <EndCallButton callSid={c.call_sid} />
                   </div>
                 </div>
               ))}
@@ -170,7 +185,9 @@ export default function LiveView() {
         )}
       </div>
 
-      {selected && <LiveCallModal call={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <LiveCallModal call={selectedNow ?? selected} ended={selectedEnded} onClose={() => setSelected(null)} />
+      )}
       {startOpen && <StartCallModal onClose={() => setStartOpen(false)} />}
     </div>
   );

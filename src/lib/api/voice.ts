@@ -448,12 +448,43 @@ export function useUpdateVoiceConfig() {
   });
 }
 
+/**
+ * Calls the engine has live right now. A failed poll keeps the last list in
+ * `data` (react-query's default), so every surface must check `isError` and
+ * show "unreachable" rather than present that list as still live.
+ */
 export function useActiveCalls() {
   return useQuery<ActiveCall[], PincerError>({
     queryKey: ["voice", "active"],
     queryFn: () => apiFetch("/api/voice/active"),
     refetchInterval: 2_000, // live section polls faster than the history
     enabled: isConnected(),
+  });
+}
+
+/**
+ * Hang up a live call (`POST /api/voice/calls/{sid}/end`). A 404 means the
+ * call had already ended, so it counts as done. On a 502 the backend has
+ * still dropped the call, so the live views refresh whatever the outcome.
+ */
+export function useEndCall() {
+  const qc = useQueryClient();
+  return useMutation<unknown, PincerError, string>({
+    mutationFn: async (callSid) => {
+      try {
+        return await apiFetch(`/api/voice/calls/${encodeURIComponent(callSid)}/end`, { method: "POST" });
+      } catch (err) {
+        if (err instanceof PincerError && err.status === 404) return null;
+        throw err;
+      }
+    },
+    onSettled: (_data, _err, callSid) => {
+      qc.invalidateQueries({ queryKey: ["voice", "active"] });
+      qc.invalidateQueries({ queryKey: ["voice", "calls"] });
+      qc.invalidateQueries({ queryKey: ["voice", "status"] });
+      qc.invalidateQueries({ queryKey: ["voice", "call", callSid] });
+      qc.invalidateQueries({ queryKey: ["voice", "call-live", callSid] });
+    },
   });
 }
 
@@ -534,7 +565,8 @@ export function useLiveCallDetail(callSid: string | null) {
     queryKey: ["voice", "call-live", callSid],
     queryFn: () => apiFetch(`/api/voice/calls/${callSid}`),
     enabled: !!callSid && isConnected(),
-    refetchInterval: 2_000,
+    // Once the call has ended its detail no longer moves.
+    refetchInterval: (q) => (q.state.data?.ended_at ? false : 2_000),
   });
 }
 

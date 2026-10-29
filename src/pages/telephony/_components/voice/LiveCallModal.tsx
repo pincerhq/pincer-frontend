@@ -7,7 +7,7 @@
  * /api/voice/calls/{sid} every 2s, approvals over the v3 stream, model switch
  * applied to the agent's next turn.
  *
- * MOCKED (badged): listen-in, whisper and hang-up. No media proxy yet.
+ * MOCKED (badged): listen-in and whisper. No media proxy yet.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -20,7 +20,6 @@ import {
   Cpu,
   Headphones,
   MessageSquare,
-  PhoneOff,
   ShieldQuestion,
   Zap,
 } from 'lucide-react';
@@ -59,6 +58,7 @@ import {
 } from '@/pages/telephony/_lib/voiceMeta';
 import { msRemaining } from '@/components/voice/ApprovalCard';
 import { useClaimCallApprovals } from '@/components/voice/approvalFocus';
+import EndCallButton from '@/components/voice/EndCallButton';
 import { cn } from '@/lib/utils';
 
 function fmtDuration(s: number) {
@@ -331,9 +331,12 @@ function CallerContext({ number, callSid }: { number: string; callSid: string })
 
 export default function LiveCallModal({
   call,
+  ended = false,
   onClose,
 }: {
   call: ActiveCall;
+  /** The call has left the backend's active list. */
+  ended?: boolean;
   onClose: () => void;
 }) {
   // FE10: call controls need a media proxy + control endpoint; shown only when the backend declares `call_controls`.
@@ -345,6 +348,8 @@ export default function LiveCallModal({
   const feedRef = useRef<HTMLDivElement>(null);
   const [copiedTranscript, setCopiedTranscript] = useState(false);
   const lineCount = detail?.transcript.length ?? 0;
+  // Either signal is enough: the active list drops the call, or its detail gets an end time.
+  const isEnded = ended || !!detail?.ended_at;
 
   /**
    * Follow the conversation, but only while the reader is already at the
@@ -399,7 +404,6 @@ export default function LiveCallModal({
   const controls = [
     { icon: Headphones, label: 'Listen in' },
     { icon: MessageSquare, label: 'Whisper to agent' },
-    { icon: PhoneOff, label: 'Hang up', danger: true },
   ];
 
   return (
@@ -417,10 +421,16 @@ export default function LiveCallModal({
               <ArrowDownLeft className="h-4 w-4 text-[var(--text-5)]" />
             )}
             {who}
-            <span className="flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
-              live · {fmtDuration(call.duration_seconds)}
-            </span>
+            {isEnded ? (
+              <span className="flex items-center gap-1.5 rounded-full bg-[var(--sand)] px-2.5 py-1 text-xs font-semibold text-[var(--text-3)]">
+                ended · {fmtDuration(detail?.ended_at ? detail.duration_seconds : call.duration_seconds)}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
+                live · {fmtDuration(call.duration_seconds)}
+              </span>
+            )}
             {currentLanguage && <LanguageFlag language={currentLanguage} />}
             {detail?.inbound_intent && (
               <span
@@ -599,26 +609,22 @@ export default function LiveCallModal({
             )}
           </div>
 
-          {controlsDeclared && (
-          <div className="border-t border-[var(--line-soft)] px-6 py-3">
+          {controlsDeclared && !isEnded && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-[var(--line-soft)] px-6 py-3">
             <div className="flex flex-wrap gap-2 opacity-60">
-              {controls.map(({ icon: Icon, label, danger }) => (
+              {controls.map(({ icon: Icon, label }) => (
                 <button
                   key={label}
                   type="button"
                   disabled
-                  className={cn(
-                    'flex cursor-not-allowed items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium',
-                    danger
-                      ? 'border-red-200 bg-[var(--paper)] text-red-600'
-                      : 'border-[var(--line)] bg-[var(--paper)] text-[var(--text-3)]',
-                  )}
+                  className="flex cursor-not-allowed items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--paper)] px-3.5 py-1.5 text-xs font-medium text-[var(--text-3)]"
                 >
                   <Icon className="h-3.5 w-3.5" />
                   {label}
                 </button>
               ))}
             </div>
+            <EndCallButton callSid={call.call_sid} />
           </div>
           )}
         </div>
