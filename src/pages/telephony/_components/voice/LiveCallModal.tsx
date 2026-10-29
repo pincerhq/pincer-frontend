@@ -331,9 +331,12 @@ function CallerContext({ number, callSid }: { number: string; callSid: string })
 
 export default function LiveCallModal({
   call,
+  ended = false,
   onClose,
 }: {
   call: ActiveCall;
+  /** The call has left the backend's active list. */
+  ended?: boolean;
   onClose: () => void;
 }) {
   // FE10: call controls need a media proxy + control endpoint; shown only when the backend declares `call_controls`.
@@ -345,6 +348,8 @@ export default function LiveCallModal({
   const feedRef = useRef<HTMLDivElement>(null);
   const [copiedTranscript, setCopiedTranscript] = useState(false);
   const lineCount = detail?.transcript.length ?? 0;
+  // Either signal is enough: the active list drops the call, or its detail gets an end time.
+  const isEnded = ended || !!detail?.ended_at;
 
   /**
    * Follow the conversation, but only while the reader is already at the
@@ -416,10 +421,16 @@ export default function LiveCallModal({
               <ArrowDownLeft className="h-4 w-4 text-[var(--text-5)]" />
             )}
             {who}
-            <span className="flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
-              live · {fmtDuration(call.duration_seconds)}
-            </span>
+            {isEnded ? (
+              <span className="flex items-center gap-1.5 rounded-full bg-[var(--sand)] px-2.5 py-1 text-xs font-semibold text-[var(--text-3)]">
+                ended · {fmtDuration(detail?.ended_at ? detail.duration_seconds : call.duration_seconds)}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
+                live · {fmtDuration(call.duration_seconds)}
+              </span>
+            )}
             {currentLanguage && <LanguageFlag language={currentLanguage} />}
             {detail?.inbound_intent && (
               <span
@@ -598,8 +609,8 @@ export default function LiveCallModal({
             )}
           </div>
 
-          {controlsDeclared && (
-          <div className="border-t border-[var(--line-soft)] px-6 py-3">
+          {controlsDeclared && !isEnded && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-[var(--line-soft)] px-6 py-3">
             <div className="flex flex-wrap gap-2 opacity-60">
               {controls.map(({ icon: Icon, label }) => (
                 <button
@@ -612,8 +623,8 @@ export default function LiveCallModal({
                   {label}
                 </button>
               ))}
-              <EndCallButton callSid={call.call_sid} />
             </div>
+            <EndCallButton callSid={call.call_sid} />
           </div>
           )}
         </div>
