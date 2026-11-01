@@ -16,6 +16,7 @@
   "now": {
     "title": "Jetzt",
     "empty": "Gerade kein Gespräch.",
+    "unavailable": "Laufende Anrufe können gerade nicht geladen werden.",
     "inbound": "Eingehend",
     "outbound": "Ausgehend",
     "since": "seit {{duration}}",

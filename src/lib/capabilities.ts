@@ -33,6 +33,8 @@ export type CapabilityKey =
   | "widget"
   | "call_queues"
   | "call_controls"
+  | "hang_up"
+  | "whisper"
   | "limits_api";
 
 export type Capabilities = Partial<Record<CapabilityKey, boolean>> & {
@@ -60,7 +62,11 @@ export function capabilitiesFromStatus(status: StatusWithCapabilities | undefine
     followups: asFlag(declared.followups),
     widget: asFlag(declared.widget),
     call_queues: asFlag(declared.call_queues),
+    // `call_controls` says the live-call controls bar has a backend; each
+    // control in it has its own flag, so the bar shows only what works.
     call_controls: asFlag(declared.call_controls),
+    hang_up: asFlag(declared.hang_up),
+    whisper: asFlag(declared.whisper),
     limits_api: asFlag(declared.limits_api),
     residency_mode: typeof declared.residency_mode === "string" ? declared.residency_mode : undefined,
   };

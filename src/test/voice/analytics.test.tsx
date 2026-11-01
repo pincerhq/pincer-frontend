@@ -90,6 +90,7 @@ vi.mock('@/lib/api/voice', async (importOriginal) => {
     }),
     useContacts: () => ({ data: [] }),
     useActiveCalls: () => ({ data: [] }),
+    useLiveCalls: () => ({ calls: [], isLoading: false, unavailable: false }),
     useCallDetail: () => ({ data: undefined, isLoading: false }),
     useThread: () => ({ data: undefined }),
     useThreads: () => ({ data: { threads: [], total: 0 }, isLoading: false, isError: false, refetch: vi.fn() }),

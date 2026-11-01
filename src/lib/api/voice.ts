@@ -2,7 +2,7 @@
 // API client + types for /api/voice/*. Follows the existing dashboard
 // pattern: bearer token from the Pincer auth store, TanStack Query hooks.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   useInfiniteQuery,
   useMutation,
@@ -448,12 +448,136 @@ export function useUpdateVoiceConfig() {
   });
 }
 
+/**
+ * The raw `/api/voice/active` poll. Surfaces use `useLiveCalls()`: after a
+ * failed poll this query still holds the last list in `data`.
+ */
 export function useActiveCalls() {
   return useQuery<ActiveCall[], PincerError>({
     queryKey: ["voice", "active"],
     queryFn: () => apiFetch("/api/voice/active"),
     refetchInterval: 2_000, // live section polls faster than the history
     enabled: isConnected(),
+  });
+}
+
+export interface LiveCalls {
+  /** The calls live as of the last poll; undefined while loading or while the poll fails. */
+  calls: ActiveCall[] | undefined;
+  isLoading: boolean;
+  /** The last poll failed: what is live is unknown, so nothing may be shown as live. */
+  unavailable: boolean;
+}
+
+/**
+ * Calls in progress, safe to show as live. A failed poll must not leave the
+ * previous list on screen as if those calls were still running (#27).
+ *
+ * `isError` alone is not enough: a query that never had data goes back to
+ * `pending` (error cleared) on every refetch, which would make an unreachable
+ * backend flicker between "loading" and "unavailable". A pending query that
+ * has failed before is still failing.
+ */
+export function useLiveCalls(): LiveCalls {
+  const q = useActiveCalls();
+  const unavailable = q.isError || (q.isPending && q.errorUpdatedAt > 0);
+  return {
+    calls: unavailable ? undefined : q.data,
+    isLoading: q.isPending && !unavailable,
+    unavailable,
+  };
+}
+
+/**
+ * How long the backend accepts a retry after a failed hang-up (pincer
+ * `was_recently_ended`: 15 minutes). Past that the call is a plain 404.
+ */
+const HANG_UP_RETRY_MS = 15 * 60_000;
+
+/**
+ * Hang-ups Twilio rejected (502), by call. The backend stops tracking the call
+ * either way, so it leaves the live list and every per-row End call button
+ * unmounts with it, yet the caller may still be on the line. Kept here, out of
+ * any one component, so the error and the retry outlive the row; `call` is the
+ * row as last polled, so the failure can still say whose call it is.
+ */
+interface HangUpFailure {
+  callSid: string;
+  reason: string;
+  at: number;
+  call?: ActiveCall;
+}
+const hangUpFailures = new Map<string, HangUpFailure>();
+const hangUpListeners = new Set<() => void>();
+let hangUpVersion = 0;
+
+function setHangUpFailure(callSid: string, failure: Omit<HangUpFailure, "callSid" | "at"> | null) {
+  if (failure === null) {
+    if (!hangUpFailures.delete(callSid)) return;
+  } else {
+    hangUpFailures.set(callSid, { ...failure, callSid, at: Date.now() });
+  }
+  hangUpVersion++;
+  hangUpListeners.forEach((fn) => fn());
+}
+
+function subscribeHangUpFailures(fn: () => void) {
+  hangUpListeners.add(fn);
+  return () => {
+    hangUpListeners.delete(fn);
+  };
+}
+
+const retryable = (f: HangUpFailure) => Date.now() - f.at < HANG_UP_RETRY_MS;
+
+/** Why the last hang-up of this call failed, while it can still be retried; else null. */
+export function useHangUpFailure(callSid: string): string | null {
+  const failure = useSyncExternalStore(subscribeHangUpFailures, () => hangUpFailures.get(callSid));
+  return failure && retryable(failure) ? failure.reason : null;
+}
+
+/** Every hang-up that failed and can still be retried, oldest first. */
+export function useHangUpFailures(): HangUpFailure[] {
+  const version = useSyncExternalStore(subscribeHangUpFailures, () => hangUpVersion);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `version` stands for the store's contents
+  return useMemo(() => [...hangUpFailures.values()].filter(retryable), [version]);
+}
+
+/** The backend's answer for a call it no longer tracks. Any other 404 is a missing route. */
+const CALL_NOT_ACTIVE = "Call is not active";
+
+/**
+ * Hang up a live call (`POST /api/voice/calls/{sid}/end`). "Call is not
+ * active" means it had already ended, so it counts as done. The live views
+ * refresh whatever the outcome: the backend drops the call even on a 502.
+ */
+export function useEndCall() {
+  const qc = useQueryClient();
+  return useMutation<unknown, PincerError, string>({
+    mutationFn: async (callSid) => {
+      try {
+        return await apiFetch(`/api/voice/calls/${encodeURIComponent(callSid)}/end`, { method: "POST" });
+      } catch (err) {
+        if (err instanceof PincerError && err.status === 404 && err.message === CALL_NOT_ACTIVE) return null;
+        throw err;
+      }
+    },
+    onSuccess: (_data, callSid) => setHangUpFailure(callSid, null),
+    onError: (err, callSid) => {
+      if (err.status !== 502) return;
+      // Runs before onSettled's refetch drops the call: the last poll still has it.
+      const call = qc.getQueryData<ActiveCall[]>(["voice", "active"])?.find((c) => c.call_sid === callSid);
+      setHangUpFailure(callSid, { reason: err.message, call: call ?? hangUpFailures.get(callSid)?.call });
+    },
+    onSettled: (_data, _err, callSid) => {
+      qc.invalidateQueries({ queryKey: ["voice", "active"] });
+      qc.invalidateQueries({ queryKey: ["voice", "calls"] });
+      qc.invalidateQueries({ queryKey: ["voice", "status"] });
+      qc.invalidateQueries({ queryKey: ["voice", "call", callSid] });
+      qc.invalidateQueries({ queryKey: ["voice", "call-live", callSid] });
+      qc.invalidateQueries({ queryKey: ["voice", "threads"] });
+      qc.invalidateQueries({ queryKey: ["voice", "thread"] });
+    },
   });
 }
 
@@ -534,7 +658,8 @@ export function useLiveCallDetail(callSid: string | null) {
     queryKey: ["voice", "call-live", callSid],
     queryFn: () => apiFetch(`/api/voice/calls/${callSid}`),
     enabled: !!callSid && isConnected(),
-    refetchInterval: 2_000,
+    // Once the call has ended its detail no longer moves.
+    refetchInterval: (q) => (q.state.data?.ended_at ? false : 2_000),
   });
 }
 

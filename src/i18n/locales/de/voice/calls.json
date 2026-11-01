@@ -67,7 +67,17 @@
     "title": "Gerade im Gespräch",
     "listen": "Mithören",
     "listenHint": "Mithören gibt es in der Betriebskonsole; der Player in dieser App ist zurückgestellt (nach GA).",
-    "listenSprint": "nach GA"
+    "listenSprint": "nach GA",
+    "end": "Anruf beenden",
+    "ending": "Wird beendet…",
+    "endRetry": "Erneut beenden",
+    "endFailed": "Anruf konnte nicht beendet werden: {{reason}}",
+    "endConfirmTitle": "Diesen Anruf beenden?",
+    "endConfirmBody": "Die Leitung wird für beide Seiten aufgelegt. Das lässt sich nicht rückgängig machen.",
+    "endCancel": "Anruf fortsetzen",
+    "unavailable": "Laufende Anrufe können gerade nicht geladen werden. Neuer Versuch alle 2 Sekunden.",
+    "hangUpFailedTitle": "Auflegen fehlgeschlagen: der Anrufer ist womöglich noch in der Leitung",
+    "hangUpFailedUnknown": "Anruf {{sid}}"
   },
   "export": {
     "button": "CSV exportieren",

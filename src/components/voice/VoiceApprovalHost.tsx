@@ -13,7 +13,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import {
   onApprovalTerminal,
-  useActiveCalls,
+  useLiveCalls,
   usePendingApprovals,
   useDecideApproval,
   isConnected,
@@ -71,7 +71,7 @@ interface CardState {
 
 /** The live call behind an approval knows its thread; the card just shows it. */
 function useThreadSubjectFor() {
-  const { data: active } = useActiveCalls();
+  const { calls: active } = useLiveCalls();
   return (callSid: string) =>
     (active ?? []).find((c) => c.call_sid === callSid)?.thread_subject ?? null;
 }

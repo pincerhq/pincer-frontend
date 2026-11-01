@@ -46,7 +46,7 @@ import {
   type ActiveCall,
   type Sentiment,
   CALL_HISTORY_CHUNK,
-  useActiveCalls,
+  useLiveCalls,
   useCallDetail,
   useCallHistoryAll,
   useThread,
@@ -192,7 +192,7 @@ function TurnModelSelect() {
 // ── Active calls ─────────────────────────────────────────────────────
 
 function ActiveCallsSection() {
-  const { data: calls } = useActiveCalls();
+  const { calls, unavailable } = useLiveCalls();
   const [selected, setSelected] = useState<ActiveCall | null>(null);
   return (
     <section className="rounded-[14px] border border-[var(--line)] bg-[var(--paper)] p-5">
@@ -200,7 +200,9 @@ function ActiveCallsSection() {
         <PhoneCall className="h-4 w-4 text-[var(--text-5)]" />
         Active calls
       </h3>
-      {!calls?.length ? (
+      {unavailable ? (
+        <div role="status" className="text-sm text-[var(--text-5)]">Live calls cannot be loaded right now.</div>
+      ) : !calls?.length ? (
         <div className="text-sm text-[var(--text-5)]">No calls in progress.</div>
       ) : (
         <ul className="-mx-5 border-t border-[var(--line-soft)]">

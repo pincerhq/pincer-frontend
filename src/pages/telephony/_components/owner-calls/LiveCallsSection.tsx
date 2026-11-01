@@ -1,8 +1,10 @@
 import { Headphones, PhoneIncoming, PhoneOutgoing } from "lucide-react";
-import { useActiveCalls } from "@/lib/api/voice";
+import { useLiveCalls } from "@/lib/api/voice";
 import { useSession, useCan } from "@/stores/session";
 import { useVoiceT } from "@/i18n/voice";
 import { MaskedNumber } from "@/components/voice/MaskedNumber";
+import EndCallButton from "@/components/voice/EndCallButton";
+import FailedHangUps from "@/components/voice/FailedHangUps";
 
 /**
  * Active calls above the history (FE2 §1.3). Listen-in is deferred in the
@@ -11,12 +13,29 @@ import { MaskedNumber } from "@/components/voice/MaskedNumber";
  * and wears a badge naming the sprint that would replace it.
  */
 export default function LiveCallsSection() {
+  const { calls } = useLiveCalls();
+  return (
+    <>
+      <FailedHangUps liveSids={calls?.map((c) => c.call_sid)} />
+      <LiveCallsList />
+    </>
+  );
+}
+
+function LiveCallsList() {
   const t = useVoiceT("voice-calls");
   const to = useVoiceT("voice-overview");
-  const { data } = useActiveCalls();
+  const { calls: live, unavailable } = useLiveCalls();
   const apiUrl = useSession((s) => s.apiUrl);
   const canListen = useCan("view_transcript_full");
-  const calls = data ?? [];
+  if (unavailable) {
+    return (
+      <p role="status" className="rounded-[14px] border border-[var(--line)] px-3 py-2 text-xs text-[var(--text-3)]">
+        {t("live.unavailable")}
+      </p>
+    );
+  }
+  const calls = live ?? [];
   if (calls.length === 0) return null;
   return (
     <section aria-labelledby="live-calls-title" className="rounded-[14px] border border-green-200 bg-green-50/40 p-3 sm:p-4">
@@ -46,6 +65,7 @@ export default function LiveCallsSection() {
                   </a>
                 </span>
               )}
+              <EndCallButton callSid={c.call_sid} />
             </li>
           );
         })}

@@ -893,6 +893,23 @@
    },
    "ChatIn": {
     "properties": {
+     "conversation_id": {
+      "anyOf": [
+       {
+        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Conversation Id"
+     },
+     "memory": {
+      "default": true,
+      "title": "Memory",
+      "type": "boolean"
+     },
      "text": {
       "maxLength": 20000,
       "minLength": 1,
@@ -2899,6 +2916,33 @@
     "title": "VoiceApprovalOut",
     "type": "object"
    },
+   "VoiceCapabilities": {
+    "description": "What the dashboard may offer for voice. The frontend reads a missing\nfield as \"unknown\", so each one is declared here.\n\n`call_controls` says the live-call controls bar has a backend at all; each\ncontrol in it has its own flag, so the bar shows only what works.",
+    "properties": {
+     "call_controls": {
+      "default": true,
+      "title": "Call Controls",
+      "type": "boolean"
+     },
+     "hang_up": {
+      "default": true,
+      "title": "Hang Up",
+      "type": "boolean"
+     },
+     "listen_in": {
+      "default": false,
+      "title": "Listen In",
+      "type": "boolean"
+     },
+     "whisper": {
+      "default": false,
+      "title": "Whisper",
+      "type": "boolean"
+     }
+    },
+    "title": "VoiceCapabilities",
+    "type": "object"
+   },
    "VoiceConfig": {
     "properties": {
      "choices": {
@@ -2945,6 +2989,9 @@
       "default": 0,
       "title": "Active Call Count",
       "type": "integer"
+     },
+     "capabilities": {
+      "$ref": "#/components/schemas/VoiceCapabilities"
      },
      "consent_mode": {
       "default": "",
@@ -3115,7 +3162,7 @@
   },
   "/api/apps/twilio/transfer-result": {
    "post": {
-    "description": "Sprint 12 §8.4: <Dial action> callback after a receptionist transfer.\n\ncompleted → nothing to do (Twilio hangs up after the bridged leg). Anything\nelse (busy / no-answer / failed / canceled) → apology + message-taking:\nthe call is reconnected to the relay with the apology as its greeting and\nthe session already in TAKE_MESSAGE (name question asked).",
+    "description": "Sprint 12 §8.4: <Dial action> callback after a receptionist transfer.\n\ncompleted / answered / DialBridged=true → the caller talked to the human:\nrecord it and finalize the call (Twilio has ended it; no REST hangup).\nbusy / no-answer / failed / canceled → apology + message-taking: the call\nis reconnected to the relay with the apology as its greeting and the\nsession already in TAKE_MESSAGE (name question asked) — unless the caller\nalready hung up while the target was ringing, in which case there is\nnothing to reconnect. Any other status (empty, unknown) counts as failed\nwhile the caller is on the line; once the call is completed it is not\nguessed at: the call is finalized and the report says the transfer started.\nNo state with the caller still on the line (process restarted while the\ntarget rang) → re-register the call, resume its new receptionist session in\nTAKE_MESSAGE, and reconnect with the apology. If Twilio cannot be asked\nwhether the caller is still there, the callback's own CallStatus decides.\nIdempotent, one delivery per call at a time: a callback for a finalized\ncall, or one Twilio says is no longer in progress, only hangs up; a copy of\na result already processed counts nothing, leaves the session alone, and\nis answered from its dial's record (one per dial in ``DIALS_KEY``, keyed by\nthe ``dial`` token `transfer_call` puts in the action URL, else by\n``DialCallSid``; see `dial_key`): the recorded reconnect TwiML until the\nreconnected relay connects, an empty ``<Response/>`` after that or for an\nearlier dial (`_answer_copy`). The current dial's result is handled even when the\ncall is not marked transferring: the redirect can raise after Twilio\napplied it, and then Twilio is waiting on this answer.\n\nWhy an empty answer is safe there: Twilio executes at most one action\nresponse per <Dial>. The empty answer is given only when this dial's\nreconnected relay has connected (proof that Twilio executed our answer for\nit) or a later dial exists (which needed that answer executed first), so\nTwilio will not execute it. No other TwiML would be safer: if executed, any\nof it would replace the live relay. A retry that Twilio does execute comes\nbefore any relay connected, and the per-call lock puts it behind the first\ndelivery, so it gets the recorded reconnect. That holds under Twilio's\ndefault connection overrides (ct=5000ms, rt=15000ms, tt=15000ms, rc=1,\nrp=ct: a retry only after a failed TCP connect or TLS handshake; see\nhttps://www.twilio.com/docs/usage/webhooks/webhooks-connection-overrides)\nand under read-timeout retries or a proxy that re-sends the POST alike.\n`transfer_call` still refuses an action URL with overrides (``#…``).",
     "operationId": "voice_transfer_result_api_apps_twilio_transfer_result_post",
     "responses": {
      "200": {
@@ -6960,6 +7007,48 @@
     ]
    }
   },
+  "/api/voice/calls/{call_sid}/end": {
+   "post": {
+    "description": "Hang up a live call.\n\nThe call leaves the active list whatever Twilio answers: a 502 says the\nREST hang-up failed, not that the call is still tracked. Twilio may still\nhave the caller on the line then, so for a few minutes after a 502 the\ncall can be ended again: that sends the REST hang-up alone. Any other\ncall that is no longer tracked is a 404, however recently it ended.",
+    "operationId": "end_active_call_api_voice_calls__call_sid__end_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "call_sid",
+      "required": true,
+      "schema": {
+       "title": "Call Sid",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "404": {
+      "description": "The call is not active (already ended, unknown, or voice is off)"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     },
+     "502": {
+      "description": "Twilio rejected the hang-up; the call is no longer tracked as active, retry to hang up"
+     }
+    },
+    "summary": "End Active Call",
+    "tags": [
+     "voice"
+    ]
+   }
+  },
   "/api/voice/config": {
    "get": {
     "description": "Current voice turn model + the options the dashboard can offer.",
@@ -7792,43 +7881,6 @@
     "tags": [
      "voice"
     ]
-   }
-  },
-  "/{full_path}": {
-   "get": {
-    "operationId": "_spa__full_path__get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "full_path",
-      "required": true,
-      "schema": {
-       "title": "Full Path",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {}
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": " Spa"
    }
   }
  },

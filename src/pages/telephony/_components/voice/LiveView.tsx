@@ -15,9 +15,12 @@ import {
   Plug,
   Radio,
 } from 'lucide-react';
-import { useActiveCalls, useVoiceConnected, useVoiceStatus, type ActiveCall } from '@/lib/api/voice';
+import { useLiveCalls, useVoiceConnected, useVoiceStatus, type ActiveCall } from '@/lib/api/voice';
+import { useVoiceT } from '@/i18n/voice';
 import LiveCallModal from '@/pages/telephony/_components/voice/LiveCallModal';
 import ListenIn from '@/components/voice/listen/ListenIn';
+import EndCallButton from '@/components/voice/EndCallButton';
+import FailedHangUps from '@/components/voice/FailedHangUps';
 import StartCallModal from '@/pages/telephony/_components/voice/StartCallModal';
 import { cn } from '@/lib/utils';
 
@@ -47,7 +50,8 @@ function ConnectPrompt() {
 
 export default function LiveView() {
   const connected = useVoiceConnected();
-  const { data: calls, isLoading } = useActiveCalls();
+  const t = useVoiceT('voice-calls');
+  const { calls, isLoading, unavailable } = useLiveCalls();
   const { data: status } = useVoiceStatus();
   const [selected, setSelected] = useState<ActiveCall | null>(null);
   const [startOpen, setStartOpen] = useState(false);
@@ -90,10 +94,22 @@ export default function LiveView() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
+        {connected && (
+          <div className="mb-4 empty:hidden">
+            <FailedHangUps liveSids={calls?.map((c) => c.call_sid)} />
+          </div>
+        )}
         {!connected ? (
           <ConnectPrompt />
         ) : isLoading ? (
           <div className="py-12 text-center text-sm text-[var(--text-5)]">Loading…</div>
+        ) : unavailable ? (
+          <div className="mx-auto mt-16 max-w-md text-center">
+            <Plug className="mx-auto mb-3 h-8 w-8 text-[var(--text-5)]" />
+            <p role="status" className="text-sm text-[var(--text-3)]">
+              {t('live.unavailable')}
+            </p>
+          </div>
         ) : !calls?.length ? (
           <div className="mx-auto mt-16 max-w-md text-center">
             <Radio className="mx-auto mb-3 h-8 w-8 text-[var(--text-5)]" />
@@ -159,8 +175,9 @@ export default function LiveView() {
                     </span>
                   </div>
                 </button>
-                  <div className="mt-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
                     <ListenIn call={c} />
+                    <EndCallButton callSid={c.call_sid} />
                   </div>
                 </div>
               ))}
