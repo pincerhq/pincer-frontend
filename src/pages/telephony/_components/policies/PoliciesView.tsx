@@ -353,7 +353,7 @@ function RetentionSection() {
       label: 'Tools for guest callers',
       env: 'PINCER_VOICE_GUESTS_TOOLS_ALLOWED',
       fallback: 'reads + owner messages',
-      hint: 'names or patterns, e.g. google__* — guests confirm every write out loud',
+      hint: 'replaces the default set — list every tool guests may use, e.g. google__*; guests confirm every write out loud',
     },
   ];
 
