@@ -147,7 +147,8 @@ describe('policies', () => {
     expect(screen.getByText('Retention & approvals')).toBeInTheDocument();
     expect(screen.getByText('Transcript retention')).toBeInTheDocument();
     expect(screen.getByText('90 days')).toBeInTheDocument();
-    expect(screen.getByText(/Approval mode for write tools/)).toBeInTheDocument();
+    expect(screen.getByText(/Tools for guest callers/)).toBeInTheDocument();
+    expect(screen.getByText(/replaces the default set/)).toBeInTheDocument();
   });
 
   it('FE10: hides both blocks when limits_api is not declared', () => {

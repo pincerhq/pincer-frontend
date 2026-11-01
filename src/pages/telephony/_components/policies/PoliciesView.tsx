@@ -350,16 +350,10 @@ function RetentionSection() {
       hint: 'recording is a separate decision from live monitoring',
     },
     {
-      label: 'Approval mode for write tools',
-      env: 'PINCER_VOICE_TOOL_APPROVAL',
-      fallback: 'verbal',
-      hint: 'auto · verbal · user · off — what a Tier W tool needs mid-call',
-    },
-    {
-      label: 'Per-tool overrides',
-      env: 'PINCER_VOICE_TOOL_APPROVAL_OVERRIDES',
-      fallback: 'none',
-      hint: 'tool_name:mode pairs, e.g. payments.refund:user',
+      label: 'Tools for guest callers',
+      env: 'PINCER_VOICE_GUESTS_TOOLS_ALLOWED',
+      fallback: 'reads + owner messages',
+      hint: 'replaces the default set — list every tool guests may use, e.g. google__*; guests confirm every write out loud',
     },
   ];
 
