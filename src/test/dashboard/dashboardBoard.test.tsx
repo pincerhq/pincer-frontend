@@ -20,6 +20,7 @@ vi.mock('@/lib/api/voice', () => ({
     },
   }),
   useActiveCalls: () => ({ data: [] }),
+  useLiveCalls: () => ({ calls: [], isLoading: false, unavailable: false }),
   useCallHistoryAll: () => ({
     calls: [
       {

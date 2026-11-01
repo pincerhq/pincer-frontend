@@ -104,10 +104,18 @@ const SOMEONE_ELSES: VoiceApproval = { ...MINE, id: 'apr_other', call_sid: 'CA-o
 
 let declared = true;
 let detail: CallDetail;
+let live: { calls: ActiveCall[] | undefined; isLoading: boolean; unavailable: boolean };
+let hangUpFailure: string | null = null;
 const endCall = vi.fn();
 vi.mock('@/lib/capabilities', () => ({
   // FE10: operator features with no backend show only when the capability is declared; tests toggle it.
-  useCapabilities: () => ({ caps: {}, isLoading: false, isOff: () => false, isDeclared: () => declared }),
+  // `whisper` has no endpoint on the backend, so it is never declared.
+  useCapabilities: () => ({
+    caps: {},
+    isLoading: false,
+    isOff: () => false,
+    isDeclared: (key: string) => declared && key !== 'whisper',
+  }),
   useHealth: () => ({ data: undefined }),
 }));
 vi.mock('@/lib/api/voice', async (importOriginal) => {
@@ -115,6 +123,8 @@ vi.mock('@/lib/api/voice', async (importOriginal) => {
   return {
     ...actual,
     useLiveCallDetail: () => ({ data: detail }),
+    useLiveCalls: () => live,
+    useHangUpFailure: () => hangUpFailure,
     useVoiceStatus: () => ({ data: { consent_mode: 'two_party', engine: 'conversation_relay' } }),
     useVoiceConfig: () => ({
       data: { voice_turn_model: 'sonnet', default_model: 'sonnet', choices: [{ value: 'sonnet', label: 'Sonnet' }] },
@@ -155,6 +165,8 @@ beforeEach(() => {
   blockMutate.mockClear();
   endCall.mockClear();
   detail = DETAIL;
+  live = { calls: [CALL], isLoading: false, unavailable: false };
+  hangUpFailure = null;
 });
 
 const renderModal = () => render(<LiveCallModal call={CALL} onClose={() => {}} />);
@@ -222,14 +234,14 @@ describe('live call modal', () => {
     });
   });
 
-  it('FE10: call controls exist only when the backend declares them; End call hangs up the real call after a confirm', async () => {
+  it('FE10: shows only the controls the backend serves; End call hangs up the real call after a confirm', async () => {
     const user = userEvent.setup();
     renderModal();
-    expect(screen.getByRole('button', { name: /whisper/i })).toBeDisabled();
-    // The real control is not dimmed like the mocked ones next to it.
+    // Whisper has no endpoint and listen-in needs the call's media fork: no dead buttons.
+    expect(screen.queryByRole('button', { name: /whisper/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /listen in/i })).toBeNull();
     const end = screen.getByRole('button', { name: /end call/i });
     expect(end).toBeEnabled();
-    expect(end.closest('.opacity-60')).toBeNull();
 
     await user.click(end);
     expect(endCall).not.toHaveBeenCalled(); // confirms first
@@ -247,11 +259,30 @@ describe('live call modal', () => {
     expect(endCall).not.toHaveBeenCalled();
   });
 
-  it('stops reading as live once the call has left the active list', () => {
-    render(<LiveCallModal call={CALL} ended onClose={() => {}} />);
-    expect(screen.getByText(/ended · 0:53/)).toBeInTheDocument();
-    expect(screen.queryByText(/live ·/)).toBeNull();
+  it('follows the call through the polls, and reads as ended for good once it leaves the list', () => {
+    const view = renderModal();
+    live = { ...live, calls: [{ ...CALL, duration_seconds: 220 }] };
+    view.rerender(<LiveCallModal call={CALL} onClose={() => {}} />);
+    expect(screen.getByText(/live · 3:40/)).toBeInTheDocument();
+
+    live = { ...live, calls: [] };
+    view.rerender(<LiveCallModal call={CALL} onClose={() => {}} />);
+    // The last polled duration, not the one from when the popup was opened.
+    expect(screen.getByText(/ended · 3:40/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /end call/i })).toBeNull();
+
+    // A failed poll afterwards does not bring the call back to life.
+    live = { calls: undefined, isLoading: false, unavailable: true };
+    view.rerender(<LiveCallModal call={CALL} onClose={() => {}} />);
+    expect(screen.getByText(/ended · 3:40/)).toBeInTheDocument();
+    expect(screen.queryByText(/live ·/)).toBeNull();
+  });
+
+  it('does not call a live call ended just because a poll failed', () => {
+    const view = renderModal();
+    live = { calls: undefined, isLoading: false, unavailable: true };
+    view.rerender(<LiveCallModal call={CALL} onClose={() => {}} />);
+    expect(screen.getByText(/live · 0:53/)).toBeInTheDocument();
   });
 
   it('stops reading as live once the call detail has an end time', () => {
@@ -259,6 +290,16 @@ describe('live call modal', () => {
     renderModal();
     expect(screen.getByText(/ended · 1:30/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /end call/i })).toBeNull();
+  });
+
+  it('keeps the error and the retry after Twilio rejected the hang-up, though the call left the list', () => {
+    const view = renderModal();
+    hangUpFailure = 'Twilio rejected the hang-up: busy';
+    live = { ...live, calls: [] };
+    view.rerender(<LiveCallModal call={CALL} onClose={() => {}} />);
+    expect(screen.getByText(/ended ·/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry end call/i })).toBeEnabled();
+    expect(screen.getByRole('alert').textContent).toMatch(/Twilio rejected the hang-up: busy/);
   });
 
   it('FE10: hides the call controls when the capability is not declared', () => {

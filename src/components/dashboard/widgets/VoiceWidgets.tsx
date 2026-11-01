@@ -6,7 +6,7 @@
 import { useMemo } from 'react';
 import { PhoneCall } from 'lucide-react';
 import {
-  useActiveCalls,
+  useLiveCalls,
   useCallHistoryAll,
   useContacts,
   useVoiceStatus,
@@ -40,16 +40,14 @@ const isToday = (c: CallSummary) => {
 
 export function VoiceWidget() {
   const statusQ = useVoiceStatus();
-  const activeQ = useActiveCalls();
+  const { calls: active, unavailable: activeUnavailable } = useLiveCalls();
   const status = statusQ.data;
-  // A failed poll keeps its last data; live calls taken from it would be stale.
-  const active = activeQ.isError ? undefined : activeQ.data;
   const { calls } = useCallHistoryAll(200);
 
   const today = useMemo(() => calls.filter(isToday), [calls]);
   const todaySeconds = today.reduce((n, c) => n + (c.duration_seconds ?? 0), 0);
   const live = active?.length ?? (statusQ.isError ? undefined : status?.active_call_count);
-  const unreachable = live === undefined && (activeQ.isError || statusQ.isError);
+  const unreachable = live === undefined && (activeUnavailable || statusQ.isError);
 
   return (
     <>

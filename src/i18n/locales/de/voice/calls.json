@@ -75,7 +75,7 @@
     "endConfirmTitle": "Diesen Anruf beenden?",
     "endConfirmBody": "Die Leitung wird für beide Seiten aufgelegt. Das lässt sich nicht rückgängig machen.",
     "endCancel": "Anruf fortsetzen",
-    "unreachable": "Laufende Anrufe können gerade nicht geladen werden; der Server ist nicht erreichbar."
+    "unavailable": "Laufende Anrufe können gerade nicht geladen werden. Neuer Versuch alle 2 Sekunden."
   },
   "export": {
     "button": "CSV exportieren",

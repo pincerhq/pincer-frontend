@@ -13,7 +13,7 @@
 import { MessageSquare, Radio, ShieldCheck, Wifi, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
-  useActiveCalls,
+  useLiveCalls,
   useDecideApproval,
   usePendingApprovals,
   useVoiceConnected,
@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 export default function PendingApprovalView() {
   const navigate = useNavigate();
   const connected = useVoiceConnected();
-  const { data: activeCalls } = useActiveCalls();
+  const { calls: activeCalls } = useLiveCalls();
   const { approvals, streaming, isLoading } = usePendingApprovals();
   const decide = useDecideApproval();
 

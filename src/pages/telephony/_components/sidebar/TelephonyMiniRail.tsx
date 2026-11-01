@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  useActiveCalls,
+  useLiveCalls,
   usePendingApprovals,
   useScheduledCalls,
   useThreads,
@@ -87,7 +87,7 @@ function AmberBadge({ count, label }: { count: number; label: string }) {
 export function useNavBadges() {
   const t = useVoiceT('voice-nav');
   const connected = useVoiceConnected();
-  const { data: activeCalls } = useActiveCalls();
+  const { calls: activeCalls } = useLiveCalls();
   const liveCount = activeCalls?.length ?? 0;
   const { approvals } = usePendingApprovals();
   const pendingCount = approvals.length;

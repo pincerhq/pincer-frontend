@@ -49,6 +49,15 @@ describe("computeTodayStats", () => {
     expect(s).toEqual({ inbound: 4, outbound: 1, answered: 4, missed: 1, afterHours: 1, bookings: 1, messages: 1, total: 5 });
   });
 
+  it("never counts a call that is still running as missed, whatever live status it reports", () => {
+    const calls = ["active", "in-progress", "ringing", "Active"].map((status, i) =>
+      call({ call_sid: `live-${i}`, status, duration_seconds: 0, ended_at: null }),
+    );
+    const s = computeTodayStats(calls, [], profile, now);
+    expect(s.missed).toBe(0);
+    expect(s.answered).toBe(4);
+  });
+
   it("treats a day without hours as after-hours and unknown hours as open", () => {
     expect(isAfterHours("2026-09-06T10:00:00Z", profile)).toBe(true); // Sunday
     expect(isAfterHours("2026-09-07T10:00:00Z", profile)).toBe(false);

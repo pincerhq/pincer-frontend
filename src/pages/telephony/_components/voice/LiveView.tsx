@@ -15,7 +15,8 @@ import {
   Plug,
   Radio,
 } from 'lucide-react';
-import { useActiveCalls, useVoiceConnected, useVoiceStatus, type ActiveCall } from '@/lib/api/voice';
+import { useLiveCalls, useVoiceConnected, useVoiceStatus, type ActiveCall } from '@/lib/api/voice';
+import { useVoiceT } from '@/i18n/voice';
 import LiveCallModal from '@/pages/telephony/_components/voice/LiveCallModal';
 import ListenIn from '@/components/voice/listen/ListenIn';
 import EndCallButton from '@/components/voice/EndCallButton';
@@ -48,14 +49,10 @@ function ConnectPrompt() {
 
 export default function LiveView() {
   const connected = useVoiceConnected();
-  const { data: polled, isLoading, isError } = useActiveCalls();
-  // After a failed poll `data` is the last list; it must not pass for live calls.
-  const calls = isError ? undefined : polled;
+  const t = useVoiceT('voice-calls');
+  const { calls, isLoading, unavailable } = useLiveCalls();
   const { data: status } = useVoiceStatus();
   const [selected, setSelected] = useState<ActiveCall | null>(null);
-  // The open call as of the latest poll; once the list no longer has it, it has ended.
-  const selectedNow = selected ? calls?.find((c) => c.call_sid === selected.call_sid) : undefined;
-  const selectedEnded = !!selected && !!calls && !selectedNow;
   const [startOpen, setStartOpen] = useState(false);
 
   return (
@@ -100,12 +97,11 @@ export default function LiveView() {
           <ConnectPrompt />
         ) : isLoading ? (
           <div className="py-12 text-center text-sm text-[var(--text-5)]">Loading…</div>
-        ) : isError ? (
+        ) : unavailable ? (
           <div className="mx-auto mt-16 max-w-md text-center">
             <Plug className="mx-auto mb-3 h-8 w-8 text-[var(--text-5)]" />
-            <h2 className="text-sm font-semibold text-[var(--ink)]">Pincer server not reachable</h2>
-            <p className="mt-2 text-xs leading-relaxed text-[var(--text-5)]">
-              Calls in progress cannot be loaded right now. This screen retries every 2 seconds.
+            <p role="status" className="text-sm text-[var(--text-3)]">
+              {t('live.unavailable')}
             </p>
           </div>
         ) : !calls?.length ? (
@@ -185,9 +181,7 @@ export default function LiveView() {
         )}
       </div>
 
-      {selected && (
-        <LiveCallModal call={selectedNow ?? selected} ended={selectedEnded} onClose={() => setSelected(null)} />
-      )}
+      {selected && <LiveCallModal call={selected} onClose={() => setSelected(null)} />}
       {startOpen && <StartCallModal onClose={() => setStartOpen(false)} />}
     </div>
   );

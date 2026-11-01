@@ -1,7 +1,7 @@
 /**
  * The Live screen (#27): a failed poll must not leave the last list on screen
- * as if those calls were still running, and an open call that leaves the
- * active list reads as ended.
+ * as if those calls were still running. (Whether an open call has ended is the
+ * popup's own business: liveCallModal.test.tsx.)
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
@@ -20,21 +20,19 @@ const CALL: ActiveCall = {
   duration_seconds: 53,
 };
 
-let active: { data: ActiveCall[] | undefined; isLoading: boolean; isError: boolean };
+let live: { calls: ActiveCall[] | undefined; isLoading: boolean; unavailable: boolean };
 
 vi.mock('@/lib/api/voice', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api/voice')>();
   return {
     ...actual,
-    useActiveCalls: () => active,
+    useLiveCalls: () => live,
     useVoiceConnected: () => true,
     useVoiceStatus: () => ({ data: undefined }),
   };
 });
 vi.mock('@/pages/telephony/_components/voice/LiveCallModal', () => ({
-  default: ({ call, ended }: { call: ActiveCall; ended?: boolean }) => (
-    <div data-testid="modal">{`${call.call_sid}:${ended ? 'ended' : 'live'}`}</div>
-  ),
+  default: ({ call }: { call: ActiveCall }) => <div data-testid="modal">{call.call_sid}</div>,
 }));
 vi.mock('@/components/voice/listen/ListenIn', () => ({ default: () => null }));
 vi.mock('@/components/voice/EndCallButton', () => ({ default: () => null }));
@@ -50,44 +48,24 @@ const renderView = () =>
   );
 
 beforeEach(() => {
-  active = { data: [CALL], isLoading: false, isError: false };
+  live = { calls: [CALL], isLoading: false, unavailable: false };
 });
 
 describe('Live view', () => {
-  it('says the server is unreachable instead of showing the last list as live', () => {
-    active = { data: [CALL], isLoading: false, isError: true };
+  it('says live calls cannot be loaded instead of showing an empty or stale list', () => {
+    live = { calls: undefined, isLoading: false, unavailable: true };
     renderView();
-    expect(screen.getByText(/server not reachable/i)).toBeInTheDocument();
+    expect(screen.getByRole('status').textContent).toMatch(/cannot be loaded/i);
+    expect(screen.queryByText(/no calls in progress/i)).toBeNull();
     expect(screen.queryByText('Tina')).toBeNull();
     expect(screen.queryByText(/\d+ in progress/)).toBeNull();
   });
 
-  it('marks the open call as ended once it leaves the active list', async () => {
+  it('lists the live calls and opens one', async () => {
     const user = userEvent.setup();
-    const { rerender } = renderView();
+    renderView();
+    expect(screen.getByText('1 in progress')).toBeInTheDocument();
     await user.click(screen.getByText('Tina'));
-    expect(screen.getByTestId('modal').textContent).toBe('CA-live:live');
-
-    active = { data: [], isLoading: false, isError: false };
-    rerender(
-      <MemoryRouter>
-        <LiveView />
-      </MemoryRouter>,
-    );
-    expect(screen.getByTestId('modal').textContent).toBe('CA-live:ended');
-  });
-
-  it('does not call an open call ended just because a poll failed', async () => {
-    const user = userEvent.setup();
-    const { rerender } = renderView();
-    await user.click(screen.getByText('Tina'));
-
-    active = { data: [CALL], isLoading: false, isError: true };
-    rerender(
-      <MemoryRouter>
-        <LiveView />
-      </MemoryRouter>,
-    );
-    expect(screen.getByTestId('modal').textContent).toBe('CA-live:live');
+    expect(screen.getByTestId('modal').textContent).toBe('CA-live');
   });
 });

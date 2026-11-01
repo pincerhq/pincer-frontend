@@ -2,7 +2,7 @@
 // API client + types for /api/voice/*. Follows the existing dashboard
 // pattern: bearer token from the Pincer auth store, TanStack Query hooks.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   useInfiniteQuery,
   useMutation,
@@ -449,9 +449,8 @@ export function useUpdateVoiceConfig() {
 }
 
 /**
- * Calls the engine has live right now. A failed poll keeps the last list in
- * `data` (react-query's default), so every surface must check `isError` and
- * show "unreachable" rather than present that list as still live.
+ * The raw `/api/voice/active` poll. Surfaces use `useLiveCalls()`: after a
+ * failed poll this query still holds the last list in `data`.
  */
 export function useActiveCalls() {
   return useQuery<ActiveCall[], PincerError>({
@@ -462,10 +461,77 @@ export function useActiveCalls() {
   });
 }
 
+export interface LiveCalls {
+  /** The calls live as of the last poll; undefined while loading or while the poll fails. */
+  calls: ActiveCall[] | undefined;
+  isLoading: boolean;
+  /** The last poll failed: what is live is unknown, so nothing may be shown as live. */
+  unavailable: boolean;
+}
+
 /**
- * Hang up a live call (`POST /api/voice/calls/{sid}/end`). A 404 means the
- * call had already ended, so it counts as done. On a 502 the backend has
- * still dropped the call, so the live views refresh whatever the outcome.
+ * Calls in progress, safe to show as live. A failed poll must not leave the
+ * previous list on screen as if those calls were still running (#27).
+ *
+ * `isError` alone is not enough: a query that never had data goes back to
+ * `pending` (error cleared) on every refetch, which would make an unreachable
+ * backend flicker between "loading" and "unavailable". A pending query that
+ * has failed before is still failing.
+ */
+export function useLiveCalls(): LiveCalls {
+  const q = useActiveCalls();
+  const unavailable = q.isError || (q.isPending && q.errorUpdatedAt > 0);
+  return {
+    calls: unavailable ? undefined : q.data,
+    isLoading: q.isPending && !unavailable,
+    unavailable,
+  };
+}
+
+/**
+ * How long the backend accepts a retry after a failed hang-up (pincer
+ * `was_recently_ended`: 15 minutes). Past that the call is a plain 404.
+ */
+const HANG_UP_RETRY_MS = 15 * 60_000;
+
+/**
+ * Hang-ups Twilio rejected (502), by call. The backend stops tracking the call
+ * either way, so it leaves the live list and every per-row End call button
+ * unmounts with it, yet the caller may still be on the line. Kept here, out of
+ * any one component, so the error and the retry outlive the row.
+ */
+const hangUpFailures = new Map<string, { reason: string; at: number }>();
+const hangUpListeners = new Set<() => void>();
+
+function setHangUpFailure(callSid: string, reason: string | null) {
+  if (reason === null) {
+    if (!hangUpFailures.delete(callSid)) return;
+  } else {
+    hangUpFailures.set(callSid, { reason, at: Date.now() });
+  }
+  hangUpListeners.forEach((fn) => fn());
+}
+
+function subscribeHangUpFailures(fn: () => void) {
+  hangUpListeners.add(fn);
+  return () => {
+    hangUpListeners.delete(fn);
+  };
+}
+
+/** Why the last hang-up of this call failed, while it can still be retried; else null. */
+export function useHangUpFailure(callSid: string): string | null {
+  const failure = useSyncExternalStore(subscribeHangUpFailures, () => hangUpFailures.get(callSid));
+  return failure && Date.now() - failure.at < HANG_UP_RETRY_MS ? failure.reason : null;
+}
+
+/** The backend's answer for a call it no longer tracks. Any other 404 is a missing route. */
+const CALL_NOT_ACTIVE = "Call is not active";
+
+/**
+ * Hang up a live call (`POST /api/voice/calls/{sid}/end`). "Call is not
+ * active" means it had already ended, so it counts as done. The live views
+ * refresh whatever the outcome: the backend drops the call even on a 502.
  */
 export function useEndCall() {
   const qc = useQueryClient();
@@ -474,9 +540,13 @@ export function useEndCall() {
       try {
         return await apiFetch(`/api/voice/calls/${encodeURIComponent(callSid)}/end`, { method: "POST" });
       } catch (err) {
-        if (err instanceof PincerError && err.status === 404) return null;
+        if (err instanceof PincerError && err.status === 404 && err.message === CALL_NOT_ACTIVE) return null;
         throw err;
       }
+    },
+    onSuccess: (_data, callSid) => setHangUpFailure(callSid, null),
+    onError: (err, callSid) => {
+      if (err.status === 502) setHangUpFailure(callSid, err.message);
     },
     onSettled: (_data, _err, callSid) => {
       qc.invalidateQueries({ queryKey: ["voice", "active"] });
@@ -484,6 +554,8 @@ export function useEndCall() {
       qc.invalidateQueries({ queryKey: ["voice", "status"] });
       qc.invalidateQueries({ queryKey: ["voice", "call", callSid] });
       qc.invalidateQueries({ queryKey: ["voice", "call-live", callSid] });
+      qc.invalidateQueries({ queryKey: ["voice", "threads"] });
+      qc.invalidateQueries({ queryKey: ["voice", "thread"] });
     },
   });
 }

@@ -16,7 +16,7 @@
   "now": {
     "title": "Now",
     "empty": "No call in progress.",
-    "unreachable": "Server not reachable – live calls unknown.",
+    "unavailable": "Live calls cannot be loaded right now.",
     "inbound": "Inbound",
     "outbound": "Outbound",
     "since": "for {{duration}}",

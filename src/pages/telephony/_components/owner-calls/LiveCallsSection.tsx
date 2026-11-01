@@ -1,5 +1,5 @@
 import { Headphones, PhoneIncoming, PhoneOutgoing } from "lucide-react";
-import { useActiveCalls } from "@/lib/api/voice";
+import { useLiveCalls } from "@/lib/api/voice";
 import { useSession, useCan } from "@/stores/session";
 import { useVoiceT } from "@/i18n/voice";
 import { MaskedNumber } from "@/components/voice/MaskedNumber";
@@ -14,18 +14,17 @@ import EndCallButton from "@/components/voice/EndCallButton";
 export default function LiveCallsSection() {
   const t = useVoiceT("voice-calls");
   const to = useVoiceT("voice-overview");
-  const { data, isError } = useActiveCalls();
+  const { calls: live, unavailable } = useLiveCalls();
   const apiUrl = useSession((s) => s.apiUrl);
   const canListen = useCan("view_transcript_full");
-  // After a failed poll `data` is the last list; it must not pass for live calls.
-  if (isError) {
+  if (unavailable) {
     return (
       <p role="status" className="rounded-[14px] border border-[var(--line)] px-3 py-2 text-xs text-[var(--text-3)]">
-        {t("live.unreachable")}
+        {t("live.unavailable")}
       </p>
     );
   }
-  const calls = data ?? [];
+  const calls = live ?? [];
   if (calls.length === 0) return null;
   return (
     <section aria-labelledby="live-calls-title" className="rounded-[14px] border border-green-200 bg-green-50/40 p-3 sm:p-4">

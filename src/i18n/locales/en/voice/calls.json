@@ -75,7 +75,7 @@
     "endConfirmTitle": "End this call?",
     "endConfirmBody": "The line is hung up for both sides. This cannot be undone.",
     "endCancel": "Keep the call",
-    "unreachable": "Live calls cannot be loaded right now; the server is not reachable."
+    "unavailable": "Live calls cannot be loaded right now. Retrying every 2 seconds."
   },
   "export": {
     "button": "Export CSV",

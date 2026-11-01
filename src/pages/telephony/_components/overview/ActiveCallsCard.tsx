@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PhoneIncoming, PhoneOutgoing } from "lucide-react";
-import { useActiveCalls, type ActiveCall } from "@/lib/api/voice";
+import { useLiveCalls, type ActiveCall } from "@/lib/api/voice";
 import { formatClock } from "@/lib/format";
 import { useVoiceT } from "@/i18n/voice";
 import { MaskedNumber } from "@/components/voice/MaskedNumber";
@@ -47,11 +47,10 @@ function Row({ call, debug }: { call: ActiveCall; debug: boolean }) {
 
 export default function ActiveCallsCard() {
   const t = useVoiceT("voice-overview");
-  const { data, isLoading, isError } = useActiveCalls();
+  const { calls: live, isLoading, unavailable } = useLiveCalls();
   const [params] = useSearchParams();
   const debug = params.has("debug");
-  // After a failed poll `data` is the last list; it must not pass for live calls.
-  const calls = isError ? [] : (data ?? []);
+  const calls = live ?? [];
 
   return (
     <OverviewCard
@@ -65,7 +64,7 @@ export default function ActiveCallsCard() {
     >
       {calls.length === 0 ? (
         <p className="text-sm text-[var(--text-3)]" aria-live="polite">
-          {isLoading ? "" : isError ? t("now.unreachable") : t("now.empty")}
+          {isLoading ? "" : unavailable ? t("now.unavailable") : t("now.empty")}
         </p>
       ) : (
         <ul className="space-y-2" aria-live="polite">

@@ -1,5 +1,5 @@
 import { PhoneOff } from "lucide-react";
-import { useEndCall } from "@/lib/api/voice";
+import { useEndCall, useHangUpFailure } from "@/lib/api/voice";
 import { useCapabilities } from "@/lib/capabilities";
 import { useVoiceT } from "@/i18n/voice";
 import {
@@ -15,14 +15,20 @@ import {
 } from "@/components/ui/alert-dialog";
 
 /**
- * Hangs up a live call after a confirmation (it ends a real conversation and
- * cannot be undone); shown only when the backend declares `call_controls`.
+ * Hangs up a call after a confirmation (it ends a real conversation and
+ * cannot be undone). Shown when the backend declares the controls bar and its
+ * `hang_up` control, for a live call, and for a call whose hang-up Twilio
+ * rejected: that call has left the live list, but the caller may still be on
+ * the line, so the error and the retry stay.
  */
-export default function EndCallButton({ callSid }: { callSid: string }) {
+export default function EndCallButton({ callSid, live = true }: { callSid: string; live?: boolean }) {
   const t = useVoiceT("voice-calls");
-  const declared = useCapabilities().isDeclared("call_controls");
+  const caps = useCapabilities();
+  const declared = caps.isDeclared("call_controls") && caps.isDeclared("hang_up");
   const end = useEndCall();
-  if (!declared) return null;
+  const failed = useHangUpFailure(callSid);
+  if (!declared || (!live && !failed)) return null;
+  const error = end.isPending ? null : end.isError ? end.error.message : failed;
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
       <AlertDialog>
@@ -33,7 +39,7 @@ export default function EndCallButton({ callSid }: { callSid: string }) {
             className="inline-flex items-center gap-1 rounded-[8px] border border-[var(--line)] px-2 py-1 text-xs text-[var(--bad-fg)] hover:bg-[var(--sand)] disabled:opacity-60"
           >
             <PhoneOff className="h-3.5 w-3.5" aria-hidden="true" />
-            {end.isPending ? t("live.ending") : end.isError ? t("live.endRetry") : t("live.end")}
+            {end.isPending ? t("live.ending") : error ? t("live.endRetry") : t("live.end")}
           </button>
         </AlertDialogTrigger>
         <AlertDialogContent>
@@ -47,9 +53,9 @@ export default function EndCallButton({ callSid }: { callSid: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {end.isError && (
+      {error && (
         <span role="alert" className="text-xs text-[var(--bad-fg)]">
-          {t("live.endFailed", { reason: end.error.message })}
+          {t("live.endFailed", { reason: error })}
         </span>
       )}
     </span>

@@ -7,7 +7,8 @@
  * /api/voice/calls/{sid} every 2s, approvals over the v3 stream, model switch
  * applied to the agent's next turn.
  *
- * MOCKED (badged): listen-in and whisper. No media proxy yet.
+ * Controls show only what the backend serves: listen-in where the call has a
+ * media fork, End call where `hang_up` is declared. Whisper has no endpoint.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -18,8 +19,6 @@ import {
   Check,
   ClipboardCopy,
   Cpu,
-  Headphones,
-  MessageSquare,
   ShieldQuestion,
   Zap,
 } from 'lucide-react';
@@ -28,7 +27,9 @@ import {
   useAddToBlocklist,
   useCallHistoryAll,
   useDecideApproval,
+  useHangUpFailure,
   useLiveCallDetail,
+  useLiveCalls,
   useMessages,
   usePendingApprovals,
   useUpdateVoiceConfig,
@@ -59,6 +60,7 @@ import {
 import { msRemaining } from '@/components/voice/ApprovalCard';
 import { useClaimCallApprovals } from '@/components/voice/approvalFocus';
 import EndCallButton from '@/components/voice/EndCallButton';
+import ListenIn from '@/components/voice/listen/ListenIn';
 import { cn } from '@/lib/utils';
 
 function fmtDuration(s: number) {
@@ -330,17 +332,27 @@ function CallerContext({ number, callSid }: { number: string; callSid: string })
 // ── The modal ────────────────────────────────────────────────────────
 
 export default function LiveCallModal({
-  call,
-  ended = false,
+  call: picked,
   onClose,
 }: {
+  /** The call as it was in the list it was opened from. */
   call: ActiveCall;
-  /** The call has left the backend's active list. */
-  ended?: boolean;
   onClose: () => void;
 }) {
-  // FE10: call controls need a media proxy + control endpoint; shown only when the backend declares `call_controls`.
-  const controlsDeclared = useCapabilities().isDeclared('call_controls');
+  // The call as of the last poll that listed it. Once a successful poll no
+  // longer lists it, it has ended, for good; a failed poll proves nothing.
+  const { calls: liveCalls } = useLiveCalls();
+  const polled = liveCalls?.find((c) => c.call_sid === picked.call_sid);
+  const [tracked, setTracked] = useState({ call: picked, gone: false });
+  if (!tracked.gone && liveCalls) {
+    if (!polled) setTracked({ call: tracked.call, gone: true });
+    else if (polled !== tracked.call) setTracked({ call: polled, gone: false });
+  }
+  const call = tracked.call;
+
+  const caps = useCapabilities();
+  const hangUpDeclared = caps.isDeclared('call_controls') && caps.isDeclared('hang_up');
+  const hangUpFailed = useHangUpFailure(call.call_sid);
   const { data: detail } = useLiveCallDetail(call.call_sid);
   const { data: status } = useVoiceStatus();
   const { data: cfg } = useVoiceConfig();
@@ -349,7 +361,10 @@ export default function LiveCallModal({
   const [copiedTranscript, setCopiedTranscript] = useState(false);
   const lineCount = detail?.transcript.length ?? 0;
   // Either signal is enough: the active list drops the call, or its detail gets an end time.
-  const isEnded = ended || !!detail?.ended_at;
+  const isEnded = tracked.gone || !!detail?.ended_at;
+  const showListenIn = !isEnded && !!call.listen_available;
+  // After a rejected hang-up the caller may still be on the line: keep the retry.
+  const showEndCall = hangUpDeclared && (!isEnded || !!hangUpFailed);
 
   /**
    * Follow the conversation, but only while the reader is already at the
@@ -400,11 +415,6 @@ export default function LiveCallModal({
       /* clipboard blocked */
     }
   };
-
-  const controls = [
-    { icon: Headphones, label: 'Listen in' },
-    { icon: MessageSquare, label: 'Whisper to agent' },
-  ];
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -609,23 +619,11 @@ export default function LiveCallModal({
             )}
           </div>
 
-          {controlsDeclared && !isEnded && (
-          <div className="flex flex-wrap items-center gap-2 border-t border-[var(--line-soft)] px-6 py-3">
-            <div className="flex flex-wrap gap-2 opacity-60">
-              {controls.map(({ icon: Icon, label }) => (
-                <button
-                  key={label}
-                  type="button"
-                  disabled
-                  className="flex cursor-not-allowed items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--paper)] px-3.5 py-1.5 text-xs font-medium text-[var(--text-3)]"
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {label}
-                </button>
-              ))}
+          {(showListenIn || showEndCall) && (
+            <div className="flex flex-wrap items-center gap-3 border-t border-[var(--line-soft)] px-6 py-3">
+              {showListenIn && <ListenIn call={call} />}
+              <EndCallButton callSid={call.call_sid} live={!isEnded} />
             </div>
-            <EndCallButton callSid={call.call_sid} />
-          </div>
           )}
         </div>
       </DialogContent>
