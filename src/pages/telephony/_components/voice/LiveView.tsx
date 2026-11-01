@@ -20,6 +20,7 @@ import { useVoiceT } from '@/i18n/voice';
 import LiveCallModal from '@/pages/telephony/_components/voice/LiveCallModal';
 import ListenIn from '@/components/voice/listen/ListenIn';
 import EndCallButton from '@/components/voice/EndCallButton';
+import FailedHangUps from '@/components/voice/FailedHangUps';
 import StartCallModal from '@/pages/telephony/_components/voice/StartCallModal';
 import { cn } from '@/lib/utils';
 
@@ -93,6 +94,11 @@ export default function LiveView() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
+        {connected && (
+          <div className="mb-4 empty:hidden">
+            <FailedHangUps liveSids={calls?.map((c) => c.call_sid)} />
+          </div>
+        )}
         {!connected ? (
           <ConnectPrompt />
         ) : isLoading ? (

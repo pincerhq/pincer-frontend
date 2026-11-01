@@ -75,7 +75,9 @@
     "endConfirmTitle": "End this call?",
     "endConfirmBody": "The line is hung up for both sides. This cannot be undone.",
     "endCancel": "Keep the call",
-    "unavailable": "Live calls cannot be loaded right now. Retrying every 2 seconds."
+    "unavailable": "Live calls cannot be loaded right now. Retrying every 2 seconds.",
+    "hangUpFailedTitle": "Hang-up failed: the caller may still be on the line",
+    "hangUpFailedUnknown": "Call {{sid}}"
   },
   "export": {
     "button": "Export CSV",

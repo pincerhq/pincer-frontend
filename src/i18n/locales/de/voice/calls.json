@@ -75,7 +75,9 @@
     "endConfirmTitle": "Diesen Anruf beenden?",
     "endConfirmBody": "Die Leitung wird für beide Seiten aufgelegt. Das lässt sich nicht rückgängig machen.",
     "endCancel": "Anruf fortsetzen",
-    "unavailable": "Laufende Anrufe können gerade nicht geladen werden. Neuer Versuch alle 2 Sekunden."
+    "unavailable": "Laufende Anrufe können gerade nicht geladen werden. Neuer Versuch alle 2 Sekunden.",
+    "hangUpFailedTitle": "Auflegen fehlgeschlagen: der Anrufer ist womöglich noch in der Leitung",
+    "hangUpFailedUnknown": "Anruf {{sid}}"
   },
   "export": {
     "button": "CSV exportieren",

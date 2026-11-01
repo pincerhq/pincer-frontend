@@ -498,17 +498,26 @@ const HANG_UP_RETRY_MS = 15 * 60_000;
  * Hang-ups Twilio rejected (502), by call. The backend stops tracking the call
  * either way, so it leaves the live list and every per-row End call button
  * unmounts with it, yet the caller may still be on the line. Kept here, out of
- * any one component, so the error and the retry outlive the row.
+ * any one component, so the error and the retry outlive the row; `call` is the
+ * row as last polled, so the failure can still say whose call it is.
  */
-const hangUpFailures = new Map<string, { reason: string; at: number }>();
+interface HangUpFailure {
+  callSid: string;
+  reason: string;
+  at: number;
+  call?: ActiveCall;
+}
+const hangUpFailures = new Map<string, HangUpFailure>();
 const hangUpListeners = new Set<() => void>();
+let hangUpVersion = 0;
 
-function setHangUpFailure(callSid: string, reason: string | null) {
-  if (reason === null) {
+function setHangUpFailure(callSid: string, failure: Omit<HangUpFailure, "callSid" | "at"> | null) {
+  if (failure === null) {
     if (!hangUpFailures.delete(callSid)) return;
   } else {
-    hangUpFailures.set(callSid, { reason, at: Date.now() });
+    hangUpFailures.set(callSid, { ...failure, callSid, at: Date.now() });
   }
+  hangUpVersion++;
   hangUpListeners.forEach((fn) => fn());
 }
 
@@ -519,10 +528,19 @@ function subscribeHangUpFailures(fn: () => void) {
   };
 }
 
+const retryable = (f: HangUpFailure) => Date.now() - f.at < HANG_UP_RETRY_MS;
+
 /** Why the last hang-up of this call failed, while it can still be retried; else null. */
 export function useHangUpFailure(callSid: string): string | null {
   const failure = useSyncExternalStore(subscribeHangUpFailures, () => hangUpFailures.get(callSid));
-  return failure && Date.now() - failure.at < HANG_UP_RETRY_MS ? failure.reason : null;
+  return failure && retryable(failure) ? failure.reason : null;
+}
+
+/** Every hang-up that failed and can still be retried, oldest first. */
+export function useHangUpFailures(): HangUpFailure[] {
+  const version = useSyncExternalStore(subscribeHangUpFailures, () => hangUpVersion);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `version` stands for the store's contents
+  return useMemo(() => [...hangUpFailures.values()].filter(retryable), [version]);
 }
 
 /** The backend's answer for a call it no longer tracks. Any other 404 is a missing route. */
@@ -546,7 +564,10 @@ export function useEndCall() {
     },
     onSuccess: (_data, callSid) => setHangUpFailure(callSid, null),
     onError: (err, callSid) => {
-      if (err.status === 502) setHangUpFailure(callSid, err.message);
+      if (err.status !== 502) return;
+      // Runs before onSettled's refetch drops the call: the last poll still has it.
+      const call = qc.getQueryData<ActiveCall[]>(["voice", "active"])?.find((c) => c.call_sid === callSid);
+      setHangUpFailure(callSid, { reason: err.message, call: call ?? hangUpFailures.get(callSid)?.call });
     },
     onSettled: (_data, _err, callSid) => {
       qc.invalidateQueries({ queryKey: ["voice", "active"] });
