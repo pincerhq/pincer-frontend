@@ -610,6 +610,31 @@ function parseFrame(frame: string): StreamEvent | null {
   }
 }
 
+// ───────────────────── call reports ─────────────────────
+
+/** The final report of a phone call placed from a chat (`make_phone_call`). */
+export interface CallReport {
+  call_sid: string;
+  /** completed | no-answer | busy | voicemail | failed | canceled | interrupted */
+  outcome: string;
+  text: string;
+  created_at: string;
+  reported_at: string;
+}
+
+/**
+ * Reports of the calls placed from a conversation (the identity's main web
+ * conversation without one), oldest first. Web chat has no push path, so the
+ * page pulls these: `since` keeps it to reports delivered from then on.
+ */
+export async function fetchCallReports(conversationId?: string, since?: string): Promise<CallReport[]> {
+  const params = new URLSearchParams();
+  if (conversationId) params.set("conversation_id", conversationId);
+  if (since) params.set("since", since);
+  const query = params.toString();
+  return request<CallReport[]>(`/api/chat/call-reports${query ? `?${query}` : ""}`);
+}
+
 // ───────────────────── tool approvals ─────────────────────
 
 // Resolve a pending approval the backend asked about via an SSE `approval`

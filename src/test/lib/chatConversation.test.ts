@@ -5,7 +5,8 @@
  * questions a new one per request.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { clearAuth, sendChat, setAuth, streamChat } from "@/lib/pincerClient";
+import { clearAuth, fetchCallReports, sendChat, setAuth, streamChat } from "@/lib/pincerClient";
+import { callReportMessage, pollCallReports } from "@/lib/callReports";
 import { generateCallSummary } from "@/lib/api/voice";
 import { askCompanyBrain } from "@/lib/api/company";
 
@@ -73,5 +74,66 @@ describe("chat conversation ids", () => {
     await askCompanyBrain("what is our refund policy?");
     expect(lastBody().conversation_id).not.toBe(brain);
     expect([summary, brain]).not.toContain(lastBody().conversation_id);
+  });
+});
+
+describe("call reports", () => {
+  const fetchMock = vi.fn<typeof fetch>();
+
+  beforeEach(() => {
+    setAuth({
+      apiUrl: "http://api.test",
+      token: "secret-token",
+      refreshToken: "refresh-1",
+      expiresAt: Date.now() + 10 * 60_000,
+      userId: "alice",
+    });
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(
+      async () => new Response("[]", { status: 200, headers: { "content-type": "application/json" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    clearAuth();
+    vi.unstubAllGlobals();
+  });
+
+  it("asks for the reports of one conversation, or of the main one without an id", async () => {
+    await fetchCallReports(CONV, "2026-11-02T10:00:00.000Z");
+    const url = new URL(String(fetchMock.mock.calls.at(-1)![0]));
+    expect(url.pathname).toBe("/api/chat/call-reports");
+    expect(url.searchParams.get("conversation_id")).toBe(CONV);
+    expect(url.searchParams.get("since")).toBe("2026-11-02T10:00:00.000Z");
+
+    await fetchCallReports();
+    const bare = new URL(String(fetchMock.mock.calls.at(-1)![0]));
+    expect(bare.search).toBe("");
+  });
+
+  it("polls until a report the transcript lacks arrives, then stops", async () => {
+    const report = { call_sid: "CA1", outcome: "busy", text: "busy", created_at: "", reported_at: "" };
+    const answers = [[], [report]];
+    fetchMock.mockImplementation(
+      async () =>
+        new Response(JSON.stringify(answers.shift() ?? [report]), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    const received: string[] = [];
+    await pollCallReports({
+      conversationId: CONV,
+      knownIds: () => new Set(),
+      onReports: reports => {
+        received.push(...reports.map(callReportMessage).map(m => m.id));
+        return true;
+      },
+      signal: new AbortController().signal,
+      intervalMs: 1,
+    });
+    expect(received).toEqual(["call-report-CA1"]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

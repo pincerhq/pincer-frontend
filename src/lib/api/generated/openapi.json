@@ -682,6 +682,40 @@
     "title": "CallListOut",
     "type": "object"
    },
+   "CallReportOut": {
+    "description": "The final report of a phone call asked for in this conversation.",
+    "properties": {
+     "call_sid": {
+      "title": "Call Sid",
+      "type": "string"
+     },
+     "created_at": {
+      "title": "Created At",
+      "type": "string"
+     },
+     "outcome": {
+      "title": "Outcome",
+      "type": "string"
+     },
+     "reported_at": {
+      "title": "Reported At",
+      "type": "string"
+     },
+     "text": {
+      "title": "Text",
+      "type": "string"
+     }
+    },
+    "required": [
+     "call_sid",
+     "outcome",
+     "text",
+     "created_at",
+     "reported_at"
+    ],
+    "title": "CallReportOut",
+    "type": "object"
+   },
    "CallSummary": {
     "properties": {
      "call_sid": {
@@ -3534,6 +3568,96 @@
      }
     },
     "summary": "Post Approval",
+    "tags": [
+     "chat"
+    ]
+   }
+  },
+  "/api/chat/call-reports": {
+   "get": {
+    "description": "Final reports of the calls placed from this conversation (or the main\nweb chat), oldest first. Web chat has no push path, so the browser polls\nthis after a call is placed and once when a conversation is opened.",
+    "operationId": "get_call_reports_api_chat_call_reports_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "conversation_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Conversation Id"
+      }
+     },
+     {
+      "description": "Only reports delivered at or after this time",
+      "in": "query",
+      "name": "since",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Only reports delivered at or after this time",
+       "title": "Since"
+      }
+     },
+     {
+      "in": "header",
+      "name": "X-Pincer-User",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Pincer-User"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/CallReportOut"
+         },
+         "title": "Response Get Call Reports Api Chat Call Reports Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Call Reports",
     "tags": [
      "chat"
     ]
@@ -7881,6 +8005,43 @@
     "tags": [
      "voice"
     ]
+   }
+  },
+  "/{full_path}": {
+   "get": {
+    "operationId": "_spa__full_path__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "full_path",
+      "required": true,
+      "schema": {
+       "title": "Full Path",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": " Spa"
    }
   }
  },

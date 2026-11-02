@@ -52,6 +52,8 @@ vi.mock('@/lib/pincerClient', async (importOriginal) => {
       userId: owner,
     }),
     sendChat: vi.fn(async () => ({ reply: 'fallback reply' })),
+    // No calls are placed here; opening a chat still asks for their reports.
+    fetchCallReports: vi.fn(async () => []),
     streamChat: async function* (
       _text: string,
       signal?: AbortSignal,
