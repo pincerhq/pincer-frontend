@@ -154,7 +154,15 @@
     "fullAudited": "Revealing is recorded on the server.",
     "empty": "No transcript recorded.",
     "purged": "The transcript was deleted per the retention period.",
-    "undelivered": "not delivered as audio",
+    "delivery": {
+      "failed": "not delivered as audio",
+      "cancelled": "not played",
+      "interrupted": "cut off",
+      "reasons": {
+        "barge_in": "the caller interrupted",
+        "call_ended": "the call ended"
+      }
+    },
     "copy": "Copy transcript"
   },
   "appointment": {

@@ -7,7 +7,8 @@
  * neighbours, and the timeline.
  */
 import { cn } from '@/lib/utils';
-import { parseBriefingLine, parseLanguageSwitch } from '@/pages/telephony/_lib/voiceMeta';
+import { lineDelivery, lineDeliveryReason, parseBriefingLine, parseLanguageSwitch } from '@/pages/telephony/_lib/voiceMeta';
+import DeliveryMarker from './DeliveryMarker';
 import { BriefingDivider, LanguageSwitchDivider } from './CallChips';
 import AppointmentPanel from './AppointmentPanel';
 import BriefingPanel from './BriefingPanel';
@@ -61,9 +62,7 @@ export function CallTranscript({
             <span className={cn('text-sm', t.speaker === 'agent' ? 'text-[var(--text-2)]' : 'text-[var(--ink)]')}>
               {t.text}
             </span>
-            {t.state === 'undelivered' && (
-              <span className="ml-2 text-[10px] text-amber-600">⚠ not delivered as audio</span>
-            )}
+            <DeliveryMarker delivery={lineDelivery(t)} reason={lineDeliveryReason(t)} className="ml-2" />
           </div>
         );
       })}

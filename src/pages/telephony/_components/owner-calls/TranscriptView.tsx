@@ -7,6 +7,7 @@ import type { TranscriptLine } from "@/lib/api/voice";
 import { formatTime } from "@/lib/format";
 import { useCan } from "@/stores/session";
 import { useVoiceT } from "@/i18n/voice";
+import DeliveryMarker from "@/pages/telephony/_components/voice/DeliveryMarker";
 
 const EVENT_ICON: Record<TranscriptEventKind, typeof Info> = {
   briefing: Megaphone,
@@ -93,7 +94,11 @@ export default function TranscriptView({ lines, purged }: { lines: TranscriptLin
                   <time className="font-normal normal-case tabular-nums">{formatTime(item.timestamp)}</time>
                 </div>
                 <p className="whitespace-pre-wrap">{item.text}</p>
-                {item.undelivered && <p className="mt-1 text-[10px] text-amber-800">{t("transcript.undelivered")}</p>}
+                {item.delivery && (
+                  <p className="mt-1">
+                    <DeliveryMarker delivery={item.delivery} reason={item.deliveryReason} />
+                  </p>
+                )}
               </div>
             </li>
           );

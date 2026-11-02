@@ -154,7 +154,15 @@
     "fullAudited": "Das Aufdecken wird auf dem Server protokolliert.",
     "empty": "Kein Gesprächsverlauf aufgezeichnet.",
     "purged": "Der Verlauf wurde gemäß Aufbewahrungsfrist gelöscht.",
-    "undelivered": "nicht als Audio ausgegeben",
+    "delivery": {
+      "failed": "nicht als Audio ausgegeben",
+      "cancelled": "nicht abgespielt",
+      "interrupted": "abgebrochen",
+      "reasons": {
+        "barge_in": "der Anrufer hat unterbrochen",
+        "call_ended": "das Gespräch wurde beendet"
+      }
+    },
     "copy": "Verlauf kopieren"
   },
   "appointment": {

@@ -40,11 +40,14 @@ import {
   OutcomeChip,
 } from '@/pages/telephony/_components/voice/CallChips';
 import {
+  lineDelivery,
+  lineDeliveryReason,
   CHIP_TONE_CLASS,
   intentMeta,
   parseBriefingLine,
   parseLanguageSwitch,
 } from '@/pages/telephony/_lib/voiceMeta';
+import DeliveryMarker from './DeliveryMarker';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -425,9 +428,7 @@ export default function TranscriptModal({
                         {Math.round(t.confidence * 100)}%
                       </span>
                     )}
-                    {t.state === 'undelivered' && (
-                      <span className="ml-2 text-[10px] text-amber-600">⚠ not delivered as audio</span>
-                    )}
+                    <DeliveryMarker delivery={lineDelivery(t)} reason={lineDeliveryReason(t)} className="ml-2" />
                     {/* At the end of the text, not the far edge of the row:
                         floated right it appeared far from its own line. */}
                     <button
