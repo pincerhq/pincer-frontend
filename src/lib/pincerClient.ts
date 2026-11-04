@@ -491,6 +491,8 @@ export interface ChatReply {
   reply: string;
   cost_usd?: number;
   model?: string;
+  /** Calls the turn placed, whose reports come later (pincerhq/pincer#303). */
+  call_sids?: string[];
 }
 
 /**
@@ -533,7 +535,8 @@ export async function sendOneOffChat(text: string): Promise<string> {
 
 export type StreamEvent =
   | { event: "chunk"; data: { delta: string } }
-  | { event: "tool"; data: { phase: "start" | "done"; name: string } }
+  /** A `done` of a placed call names it: its report comes later (pincerhq/pincer#303). */
+  | { event: "tool"; data: { phase: "start" | "done"; name: string; call_sid?: string } }
   | {
       event: "approval";
       data: {

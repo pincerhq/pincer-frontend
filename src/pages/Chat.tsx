@@ -18,8 +18,6 @@ import {
   respondApproval,
   PincerError,
   getAuth,
-  fetchCallReports,
-  type CallReport,
 } from '@/lib/pincerClient';
 import {
   getTranscript,
@@ -29,7 +27,7 @@ import {
   type StoredChatMessage,
 } from '@/lib/chatTranscripts';
 import { listConversations, type Conversation } from '@/lib/api/conversations';
-import { CALL_TOOL, callReportId, callReportMessage, pollCallReports, sinceWithSlack } from '@/lib/callReports';
+import { useCallReportWatches } from '@/hooks/use-call-report-watches';
 import { cleanAssistantText, renderAssistantText, renderTextWithLinks } from '@/lib/formatChat';
 import { useHealth } from '@/lib/capabilities';
 import { pincerBadgeState, useRetryCountdown, type PincerBadge } from '@/lib/pincerReachability';
@@ -208,11 +206,9 @@ const ChatInner = () => {
   const pincerRecordsRef = useRef<Map<string, Conversation>>(new Map());
 
   const ownerId = () => (pincerConnected() ? getAuth()?.userId ?? null : null);
-  // The open chat, for handlers that outlive a render (call report polls).
+  // The open chat, for handlers that outlive a render (call report watches).
   const currentChatIdRef = useRef(currentChatId);
   currentChatIdRef.current = currentChatId;
-  // Call report polls by transcript id, and how many reports each still awaits.
-  const callWatchesRef = useRef<Map<string, { controller: AbortController; pending: number }>>(new Map());
 
   const refreshHistory = async (): Promise<ChatTranscript[] | null> => {
     const owner = ownerId();
@@ -268,63 +264,19 @@ const ChatInner = () => {
 
   // A call's final report joins the chat it was placed from (stored once, by
   // its id), and the screen when that chat is open.
-  const addCallReports = async (convId: string, reports: CallReport[]) => {
-    const owner = ownerId();
-    if (!owner || !reports.length) return;
-    const stored = reports.map(callReportMessage);
-    try {
-      await saveMessages(owner, convId, stored);
-    } catch {
-      /* still shown below; the next open catches it up again */
-    }
-    if (currentChatIdRef.current === convId) {
-      setMessages(p => {
-        const shown = new Set(p.map(m => m.id));
-        const added = stored.filter(m => !shown.has(m.id)).map(fromStored);
-        return added.length ? [...p, ...added] : p;
-      });
-    }
-    void refreshHistory();
-  };
-
-  // After `make_phone_call`: poll until its report arrives. A second call in
-  // the same chat restarts the poll, which then waits for both.
-  const watchCallReports = (convId: string, pincerConv: string | undefined) => {
-    const owner = ownerId();
-    if (!owner || convId === NEW_CHAT) return;
-    const previous = callWatchesRef.current.get(convId);
-    previous?.controller.abort();
-    const watch = { controller: new AbortController(), pending: (previous?.pending ?? 0) + 1 };
-    callWatchesRef.current.set(convId, watch);
-    void pollCallReports({
-      conversationId: pincerConv,
-      knownIds: async () => new Set((await getTranscript(owner, convId))?.messages.map(m => m.id)),
-      onReports: async reports => {
-        await addCallReports(convId, reports);
-        watch.pending -= reports.length;
-        return watch.pending <= 0;
-      },
-      signal: watch.controller.signal,
-    }).finally(() => {
-      if (callWatchesRef.current.get(convId) === watch) callWatchesRef.current.delete(convId);
-    });
-  };
-
-  // Opening a chat picks up reports that arrived while it was not polled
-  // (the page was closed, or the poll gave up).
-  const catchUpCallReports = async (t: ChatTranscript) => {
-    try {
-      // A chat of its own owns every report of its conversation; the main web
-      // conversation is shared by older chats, so only what came after this one.
-      const since = sinceWithSlack(t.conversationId ? t.createdAt : t.updatedAt);
-      const reports = await fetchCallReports(t.conversationId, since);
-      const stored = new Set(t.messages.map(m => m.id));
-      const fresh = reports.filter(r => !stored.has(callReportId(r.call_sid)));
-      if (fresh.length) await addCallReports(t.id, fresh);
-    } catch {
-      /* a nicety: the chat opens either way */
-    }
-  };
+  const callReports = useCallReportWatches({
+    ownerId,
+    onStored: (chatId, stored) => {
+      if (currentChatIdRef.current === chatId) {
+        setMessages(p => {
+          const shown = new Set(p.map(m => m.id));
+          const added = stored.filter(m => !shown.has(m.id)).map(fromStored);
+          return added.length ? [...p, ...added] : p;
+        });
+      }
+      void refreshHistory();
+    },
+  });
 
   // Boot: show welcome, then reopen the conversation the person left off in.
   useEffect(() => {
@@ -342,14 +294,11 @@ const ChatInner = () => {
       setCurrentChatId(latest.id);
       pincerConvRef.current = latest.conversationId;
       setMessages(latest.messages.map(fromStored));
-      void catchUpCallReports(latest);
+      void callReports.opened(latest);
     })();
-    const watches = callWatchesRef.current;
     return () => {
       cancelled = true;
       abortRef.current?.abort();
-      for (const watch of watches.values()) watch.controller.abort();
-      watches.clear();
     };
     // Once per mount: later refreshes come from the handlers that change history.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -441,6 +390,8 @@ const ChatInner = () => {
     abortRef.current?.abort();
     abortRef.current = controller;
     setIsStreaming(true);
+    // A call report that lands mid-turn is stored after this reply.
+    const releaseReports = callReports.holdReports(convId);
 
     let streamed = '';
     // Any frame means Pincer took the turn: sending it again would repeat it.
@@ -492,7 +443,7 @@ const ChatInner = () => {
             },
           ]);
         } else if (ev.event === 'tool') {
-          const { phase, name } = ev.data;
+          const { phase, name, call_sid } = ev.data;
           if (phase === 'start') {
             updateChain(chain => [
               ...chain,
@@ -500,7 +451,7 @@ const ChatInner = () => {
             ]);
           } else {
             // A placed call reports back later, into this chat (pincer issue 303).
-            if (name === CALL_TOOL) watchCallReports(convId, pincerConv);
+            if (call_sid) void callReports.placed(convId, [call_sid]);
             // phase === 'done': mark the latest running tool with this name as done
             updateChain(chain => {
               for (let k = chain.length - 1; k >= 0; k--) {
@@ -542,8 +493,9 @@ const ChatInner = () => {
       }
       // Fall back to the non-streaming endpoint so the user still gets a reply.
       try {
-        const { reply } = await sendChat(userText, pincerConv);
+        const { reply, call_sids } = await sendChat(userText, pincerConv);
         settle(reply);
+        void callReports.placed(convId, call_sids);
       } catch (fallbackErr) {
         const msg =
           fallbackErr instanceof PincerError
@@ -557,6 +509,7 @@ const ChatInner = () => {
         }
       }
     } finally {
+      releaseReports();
       setIsStreaming(false);
       // A newer turn may already own the ref; only clear our own controller.
       if (abortRef.current === controller) abortRef.current = null;
@@ -642,7 +595,7 @@ const ChatInner = () => {
       if (!transcript) throw new Error('Conversation not found');
       pincerConvRef.current = transcript.conversationId;
       setMessages(transcript.messages.map(fromStored));
-      void catchUpCallReports(transcript);
+      void callReports.opened(transcript);
     } catch {
       if (seq === loadSeqRef.current) setLoadError(target);
     } finally {
@@ -946,6 +899,18 @@ const ChatInner = () => {
                       </div>
                     </div>
                   ))}
+                  {callReports.waits[currentChatId] && (
+                    <div className="flex items-center gap-2 px-0.5 text-xs text-[color:var(--text-5)]" role="status">
+                      {callReports.waits[currentChatId] === 'waiting' ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <span>Waiting for the call result…</span>
+                        </>
+                      ) : (
+                        <span>The call result hasn't arrived yet. Open this chat again later to check.</span>
+                      )}
+                    </div>
+                  )}
                   <div ref={messagesEndRef} />
                 </div>
               </div>
