@@ -27,6 +27,7 @@ import {
   type StoredChatMessage,
 } from '@/lib/chatTranscripts';
 import { listConversations, type Conversation } from '@/lib/api/conversations';
+import { useCallReportWatches } from '@/hooks/use-call-report-watches';
 import { cleanAssistantText, renderAssistantText, renderTextWithLinks } from '@/lib/formatChat';
 import { useHealth } from '@/lib/capabilities';
 import { pincerBadgeState, useRetryCountdown, type PincerBadge } from '@/lib/pincerReachability';
@@ -205,6 +206,9 @@ const ChatInner = () => {
   const pincerRecordsRef = useRef<Map<string, Conversation>>(new Map());
 
   const ownerId = () => (pincerConnected() ? getAuth()?.userId ?? null : null);
+  // The open chat, for handlers that outlive a render (call report watches).
+  const currentChatIdRef = useRef(currentChatId);
+  currentChatIdRef.current = currentChatId;
 
   const refreshHistory = async (): Promise<ChatTranscript[] | null> => {
     const owner = ownerId();
@@ -258,6 +262,22 @@ const ChatInner = () => {
     void refreshHistory();
   };
 
+  // A call's final report joins the chat it was placed from (stored once, by
+  // its id), and the screen when that chat is open.
+  const callReports = useCallReportWatches({
+    ownerId,
+    onStored: (chatId, stored) => {
+      if (currentChatIdRef.current === chatId) {
+        setMessages(p => {
+          const shown = new Set(p.map(m => m.id));
+          const added = stored.filter(m => !shown.has(m.id)).map(fromStored);
+          return added.length ? [...p, ...added] : p;
+        });
+      }
+      void refreshHistory();
+    },
+  });
+
   // Boot: show welcome, then reopen the conversation the person left off in.
   useEffect(() => {
     setMessages([WELCOME_MESSAGE]);
@@ -274,6 +294,7 @@ const ChatInner = () => {
       setCurrentChatId(latest.id);
       pincerConvRef.current = latest.conversationId;
       setMessages(latest.messages.map(fromStored));
+      void callReports.opened(latest);
     })();
     return () => {
       cancelled = true;
@@ -369,6 +390,8 @@ const ChatInner = () => {
     abortRef.current?.abort();
     abortRef.current = controller;
     setIsStreaming(true);
+    // A call report that lands mid-turn is stored after this reply.
+    const releaseReports = callReports.holdReports(convId);
 
     let streamed = '';
     // Any frame means Pincer took the turn: sending it again would repeat it.
@@ -420,13 +443,15 @@ const ChatInner = () => {
             },
           ]);
         } else if (ev.event === 'tool') {
-          const { phase, name } = ev.data;
+          const { phase, name, call_sid } = ev.data;
           if (phase === 'start') {
             updateChain(chain => [
               ...chain,
               { kind: 'tool', key: `tool-${chain.length}-${name}`, name, status: 'running' },
             ]);
           } else {
+            // A placed call reports back later, into this chat (pincer issue 303).
+            if (call_sid) void callReports.placed(convId, [call_sid]);
             // phase === 'done': mark the latest running tool with this name as done
             updateChain(chain => {
               for (let k = chain.length - 1; k >= 0; k--) {
@@ -468,8 +493,9 @@ const ChatInner = () => {
       }
       // Fall back to the non-streaming endpoint so the user still gets a reply.
       try {
-        const { reply } = await sendChat(userText, pincerConv);
+        const { reply, call_sids } = await sendChat(userText, pincerConv);
         settle(reply);
+        void callReports.placed(convId, call_sids);
       } catch (fallbackErr) {
         const msg =
           fallbackErr instanceof PincerError
@@ -483,6 +509,7 @@ const ChatInner = () => {
         }
       }
     } finally {
+      releaseReports();
       setIsStreaming(false);
       // A newer turn may already own the ref; only clear our own controller.
       if (abortRef.current === controller) abortRef.current = null;
@@ -568,6 +595,7 @@ const ChatInner = () => {
       if (!transcript) throw new Error('Conversation not found');
       pincerConvRef.current = transcript.conversationId;
       setMessages(transcript.messages.map(fromStored));
+      void callReports.opened(transcript);
     } catch {
       if (seq === loadSeqRef.current) setLoadError(target);
     } finally {
@@ -871,6 +899,18 @@ const ChatInner = () => {
                       </div>
                     </div>
                   ))}
+                  {callReports.waits[currentChatId] && (
+                    <div className="flex items-center gap-2 px-0.5 text-xs text-[color:var(--text-5)]" role="status">
+                      {callReports.waits[currentChatId] === 'waiting' ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <span>Waiting for the call result…</span>
+                        </>
+                      ) : (
+                        <span>The call result hasn't arrived yet. Open this chat again later to check.</span>
+                      )}
+                    </div>
+                  )}
                   <div ref={messagesEndRef} />
                 </div>
               </div>

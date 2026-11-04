@@ -29,6 +29,13 @@ export interface StoredChatMessage {
   attachments?: Array<{ name: string; type: string; size: number }>;
 }
 
+/** A phone call placed from a chat; its report comes back later (pincerhq/pincer#303). */
+export interface PlacedCall {
+  callSid: string;
+  /** ISO timestamp of when the dial was placed, by this browser's clock. */
+  at: string;
+}
+
 export interface ChatTranscript {
   id: string;
   ownerId: string;
@@ -42,6 +49,8 @@ export interface ChatTranscript {
   conversationId?: string;
   /** Chronological: the order the messages were first written in. */
   messages: StoredChatMessage[];
+  /** The calls this chat placed, so it accepts only their reports. */
+  calls?: PlacedCall[];
 }
 
 let store: UseStore | null = null;
@@ -78,26 +87,55 @@ export async function saveMessages(
   id: string,
   messages: StoredChatMessage[],
 ): Promise<ChatTranscript> {
+  return write(ownerId, id, current => {
+    const merged = current ? current.messages.slice() : [];
+    for (const m of messages) {
+      const at = merged.findIndex(x => x.id === m.id);
+      if (at === -1) merged.push(m);
+      else merged[at] = m;
+    }
+    return { messages: merged };
+  });
+}
+
+/** Note calls placed from a transcript (creating it if needed); a known SID is kept once. */
+export async function recordPlacedCalls(
+  ownerId: string,
+  id: string,
+  callSids: string[],
+  at = new Date().toISOString(),
+): Promise<ChatTranscript> {
+  return write(ownerId, id, current => {
+    const calls = current?.calls?.slice() ?? [];
+    for (const callSid of callSids) {
+      if (!calls.some(c => c.callSid === callSid)) calls.push({ callSid, at });
+    }
+    return { messages: current?.messages ?? [], calls };
+  });
+}
+
+/** One read-modify-write of a transcript, in a single `readwrite` transaction. */
+async function write(
+  ownerId: string,
+  id: string,
+  change: (current: ChatTranscript | undefined) => Pick<ChatTranscript, 'messages' | 'calls'>,
+): Promise<ChatTranscript> {
   let next!: ChatTranscript;
   await update<ChatTranscript>(
     keyOf(ownerId, id),
     current => {
       const now = new Date().toISOString();
-      const merged = current ? current.messages.slice() : [];
-      for (const m of messages) {
-        const at = merged.findIndex(x => x.id === m.id);
-        if (at === -1) merged.push(m);
-        else merged[at] = m;
-      }
+      const { messages, calls = current?.calls } = change(current);
       next = {
         id,
         ownerId,
         createdAt: current?.createdAt ?? now,
         updatedAt: now,
-        messages: merged,
+        messages,
       };
       const conversationId = current ? current.conversationId : id;
       if (conversationId) next.conversationId = conversationId;
+      if (calls?.length) next.calls = calls;
       return next;
     },
     db(),
