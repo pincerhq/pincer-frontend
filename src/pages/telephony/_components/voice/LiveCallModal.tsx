@@ -47,6 +47,8 @@ import CallActionsTimeline from '@/pages/telephony/_components/voice/CallActions
 import { parseOutcome } from '@/pages/telephony/_components/voice/CallOutcomePanel';
 import PlatSelect from '@/pages/telephony/_components/shared/PlatSelect';
 import {
+  lineDelivery,
+  lineDeliveryReason,
   CHIP_TONE_CLASS,
   fmtCostUsd,
   fmtMs,
@@ -57,6 +59,7 @@ import {
   humanizeCode,
   parseLanguageSwitch,
 } from '@/pages/telephony/_lib/voiceMeta';
+import DeliveryMarker from './DeliveryMarker';
 import { msRemaining } from '@/components/voice/ApprovalCard';
 import { useClaimCallApprovals } from '@/components/voice/approvalFocus';
 import EndCallButton from '@/components/voice/EndCallButton';
@@ -503,9 +506,7 @@ export default function LiveCallModal({
                         )}
                       >
                         {t.text}
-                        {t.state === 'undelivered' && (
-                          <span className="ml-2 text-[10px] text-amber-600">⚠ not delivered as audio</span>
-                        )}
+                        <DeliveryMarker delivery={lineDelivery(t)} reason={lineDeliveryReason(t)} className="ml-2" />
                       </span>
                     </div>
                   );

@@ -348,6 +348,36 @@ export function parseBriefingLine(line: { speaker: string; text: string; state?:
   return m ? m[1].trim() : null;
 }
 
+// ── Delivery outcome of an agent line ────────────────────────────────
+
+/**
+ * An agent line that did not play in full. `failed` is a delivery failure
+ * (state `undelivered`); `cancelled` (never played) and `interrupted` (cut off
+ * partway) are deliberate — the caller talked over it or the call ended — and
+ * must not read as a fault.
+ */
+export type LineDelivery = 'failed' | 'cancelled' | 'interrupted';
+
+const DELIVERY_BY_STATE: Record<string, LineDelivery> = {
+  undelivered: 'failed',
+  cancelled: 'cancelled',
+  interrupted: 'interrupted',
+};
+
+/** The line's delivery outcome, or null for a line that played. */
+export function lineDelivery(line: { state?: string }): LineDelivery | null {
+  return DELIVERY_BY_STATE[line.state ?? ''] ?? null;
+}
+
+/**
+ * Why it did not play: `barge_in`, `call_ended`, or a failure code
+ * (`send_error`, `tts_failed`, …). Read loosely — older backends do not send it.
+ */
+export function lineDeliveryReason(line: object): string {
+  const reason = (line as { delivery_reason?: unknown }).delivery_reason;
+  return typeof reason === 'string' ? reason : '';
+}
+
 // ── Deny reasons (S11 §5.2 codes → sentences, both UI languages) ─────
 
 /**

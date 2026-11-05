@@ -132,7 +132,21 @@ describe("transcript", () => {
       "event:handoff",
       "line:assistant",
     ]);
-    expect(items[5]).toMatchObject({ kind: "line", undelivered: true });
+    expect(items[1]).toMatchObject({ kind: "line", delivery: null });
+    expect(items[5]).toMatchObject({ kind: "line", delivery: "failed", deliveryReason: "" });
+  });
+  it("tells a deliberate cut apart from a delivery failure", () => {
+    const at = "2026-09-07T08:00:10Z";
+    const cut: (TranscriptLine & { delivery_reason: string })[] = [
+      { speaker: "agent", text: "Gern geschehen.", confidence: 1, state: "interrupted", delivery_reason: "barge_in", timestamp: at },
+      { speaker: "agent", text: "Schönen Tag!", confidence: 1, state: "cancelled", delivery_reason: "barge_in", timestamp: at },
+      { speaker: "agent", text: "Hallo?", confidence: 1, state: "undelivered", delivery_reason: "send_error", timestamp: at },
+    ];
+    expect(parseTranscript(cut, true).map((i) => (i.kind === "line" ? [i.delivery, i.deliveryReason] : null))).toEqual([
+      ["interrupted", "barge_in"],
+      ["cancelled", "barge_in"],
+      ["failed", "send_error"],
+    ]);
   });
   it("masks numbers in speech and events, and unmasks on request", () => {
     const masked = parseTranscript(lines, true);

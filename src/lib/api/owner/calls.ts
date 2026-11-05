@@ -25,7 +25,13 @@ import {
   type Contact,
   type TranscriptLine,
 } from "@/lib/api/voice";
-import { parseBriefingLine, parseLanguageSwitch } from "@/pages/telephony/_lib/voiceMeta";
+import {
+  lineDelivery,
+  lineDeliveryReason,
+  parseBriefingLine,
+  parseLanguageSwitch,
+  type LineDelivery,
+} from "@/pages/telephony/_lib/voiceMeta";
 import { computeAttention, useAttentionItems } from "./overview";
 
 // ── Owner vocabulary ─────────────────────────────────────────────────────
@@ -332,7 +338,15 @@ export type TranscriptSpeaker = "caller" | "assistant" | "system";
 export type TranscriptEventKind = "briefing" | "language_switch" | "disclosure" | "tool" | "handoff" | "system";
 
 export type TranscriptItem =
-  | { kind: "line"; speaker: TranscriptSpeaker; text: string; timestamp?: string; undelivered: boolean }
+  | {
+      kind: "line";
+      speaker: TranscriptSpeaker;
+      text: string;
+      timestamp?: string;
+      /** null when the line played; see `lineDelivery`. */
+      delivery: LineDelivery | null;
+      deliveryReason: string;
+    }
   | { kind: "event"; event: TranscriptEventKind; text: string; timestamp?: string };
 
 const PHONE_RE = /(\+?\d[\d\s\-/().]{6,}\d)/g;
@@ -374,7 +388,14 @@ export function parseTranscript(lines: TranscriptLine[], masked: boolean): Trans
       continue;
     }
     const speaker: TranscriptSpeaker = line.speaker === "agent" ? "assistant" : line.speaker === "caller" ? "caller" : "system";
-    out.push({ kind: "line", speaker, text, timestamp: line.timestamp, undelivered: line.state === "undelivered" });
+    out.push({
+      kind: "line",
+      speaker,
+      text,
+      timestamp: line.timestamp,
+      delivery: lineDelivery(line),
+      deliveryReason: lineDeliveryReason(line),
+    });
   }
   return out;
 }
