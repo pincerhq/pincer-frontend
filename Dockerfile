@@ -12,6 +12,11 @@ RUN npm ci
 
 COPY . .
 
+# The runtime stage copies the entrypoint script from here, mode included, so
+# its executable bit is set without COPY --chmod (which needs BuildKit; ACR
+# Tasks build with the classic builder).
+RUN chmod 755 docker/40-runtime-env.sh
+
 # Nothing is configured here: the bundle reads its configuration at runtime
 # (see the runtime stage), so one image serves every deployment.
 RUN npm run build
@@ -30,7 +35,7 @@ ENV PINCER_API_UPSTREAM=http://pincer:8080
 # served to the browser, so none may be a secret; a restart applies a change.
 #   VITE_PINCER_API_URL    unset = same origin; nginx here proxies /api to Pincer
 #   SIGNUP_ALLOWED         "true" adds the /signup request-access page
-COPY --chmod=755 docker/40-runtime-env.sh /docker-entrypoint.d/
+COPY --from=builder /app/docker/40-runtime-env.sh /docker-entrypoint.d/
 
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=builder /app/dist /usr/share/nginx/html
