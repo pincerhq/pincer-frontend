@@ -26,6 +26,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import {
   useAddToBlocklist,
   useCallHistoryAll,
+  isApprovalClosed,
   useDecideApproval,
   useHangUpFailure,
   useLiveCallDetail,
@@ -144,8 +145,8 @@ function LiveApprovals({ callSid }: { callSid: string }) {
       {
         onSuccess: (out) => setSettled((s) => ({ ...s, [id]: out.state })),
         onError: (err) =>
-          err.status === 409
-            ? setSettled((s) => ({ ...s, [id]: err.state ?? 'expired' }))
+          isApprovalClosed(err)
+            ? setSettled((s) => ({ ...s, [id]: 'expired' }))
             : setBusy(({ [id]: _drop, ...rest }) => rest),
       },
     );

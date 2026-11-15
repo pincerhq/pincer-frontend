@@ -2,7 +2,7 @@
 // API client + types for /api/voice/*. Follows the existing dashboard
 // pattern: bearer token from the Pincer auth store, TanStack Query hooks.
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import {
   useInfiniteQuery,
   useMutation,
@@ -20,7 +20,6 @@ import { request } from "@/lib/api/client";
 // Re-exported so voice surfaces have one import for "is there a backend?".
 export { isConnected };
 import { REFETCH_INTERVALS } from "@/lib/constants";
-import { sseFrames } from "@/lib/sse";
 
 /**
  * Authenticated JSON fetch against the connected Pincer backend.
@@ -832,6 +831,11 @@ export const APPROVAL_TERMINAL_STATES: ApprovalState[] = [
   "call_ended",
 ];
 
+/**
+ * @derives VoiceApprovalOut
+ * View model: the card keys on `id` and a non-optional `state`, where the wire
+ * calls them `approval_id` and `final_state` ("" while still open).
+ */
 export interface VoiceApproval {
   id: string;
   call_sid: string;
@@ -841,8 +845,7 @@ export interface VoiceApproval {
   args_preview: Record<string, string | number | boolean | null>;
   /** Absolute ISO-8601; the countdown is driven from this, not a local timer. */
   expires_at: string;
-  /** Present on stream events; absent on the pending list (all pending). */
-  state?: ApprovalState;
+  state: ApprovalState;
 }
 
 export interface ApprovalDecisionOut {
@@ -850,211 +853,78 @@ export interface ApprovalDecisionOut {
   state: ApprovalState;
 }
 
-/** How fast the pending list is polled while the stream is down. */
+function toVoiceApproval(wire: Wire<"VoiceApprovalOut">): VoiceApproval {
+  return {
+    id: wire.approval_id,
+    call_sid: wire.call_sid,
+    tool_name: wire.tool_name,
+    summary: wire.summary,
+    args_preview: (wire.args_preview ?? {}) as VoiceApproval["args_preview"],
+    expires_at: wire.expires_at ?? "",
+    state: (wire.final_state || "pending") as ApprovalState,
+  };
+}
+
+/**
+ * How often the open approvals are polled. The backend has no approvals event
+ * stream; an approval waits 25s by default, so a 3s poll shows it in time.
+ */
 export const APPROVAL_POLL_MS = 3_000;
-/** …and while it is up, where it is only a safety net. */
-const APPROVAL_POLL_STREAMING_MS = 30_000;
 
-/** The one place that knows where the approvals stream lives. */
-const APPROVALS_STREAM_PATH = "/api/approvals/stream";
-/** The one event name on that stream this client cares about. */
-const VOICE_APPROVAL_EVENT = "voice_approval";
-
+const APPROVALS_PATH = "/api/voice/approvals";
 const APPROVALS_KEY = ["voice", "approvals", "pending"];
 
-/** A bare array or an envelope; both are accepted. */
-function asApprovalList(raw: unknown): VoiceApproval[] {
-  if (Array.isArray(raw)) return raw as VoiceApproval[];
-  const envelope = raw as { approvals?: VoiceApproval[] } | null;
-  return envelope?.approvals ?? [];
-}
-
-type TerminalListener = (id: string, state: ApprovalState) => void;
-const terminalListeners = new Set<TerminalListener>();
-
-/**
- * Approvals pushed over the stream, held until they go terminal or expire.
- *
- * They cannot live only in the query cache: a poll that started before the push
- * resolves after it and would erase the card. A card outliving the list by a
- * few seconds is harmless; one that blinks out while a caller waits is not.
- */
-const streamedPending = new Map<string, VoiceApproval>();
-
-/**
- * Terminal approval events: decided elsewhere, expired, call ended. The card
- * needs them to show which state it reached, not just to stop counting.
- */
-export function onApprovalTerminal(fn: TerminalListener): () => void {
-  terminalListeners.add(fn);
-  return () => terminalListeners.delete(fn);
-}
-
-/**
- * One shared stream connection, ref-counted: two subscribers opening two
- * streams would deliver every approval twice.
- */
-let streamRefs = 0;
-let streamAbort: AbortController | null = null;
-const streamStateListeners = new Set<(up: boolean) => void>();
-
-function setStreamUp(up: boolean) {
-  streamStateListeners.forEach((fn) => fn(up));
-}
-
-async function runApprovalStream(onFrame: (a: VoiceApproval) => void) {
-  let backoff = 1_000;
-
-  while (streamAbort && !streamAbort.signal.aborted) {
-    try {
-      const res = await authedFetch(APPROVALS_STREAM_PATH, {
-        headers: { Accept: "text/event-stream" },
-        signal: streamAbort.signal,
-      });
-      if (!res.ok || !res.body) throw new PincerError(`HTTP ${res.status}`, res.status);
-
-      setStreamUp(true);
-      backoff = 1_000;
-
-      for await (const frame of sseFrames(res.body)) {
-        if (frame.event !== VOICE_APPROVAL_EVENT) continue; // chat/notes share the stream
-        try {
-          onFrame(JSON.parse(frame.data) as VoiceApproval);
-        } catch {
-          /* a malformed frame is dropped, not acted on */
-        }
-      }
-    } catch (err) {
-      // Signed out — including a 401 that just ended the session: retrying
-      // cannot help. The hook starts a new stream on the next sign-in.
-      if (err instanceof PincerError && err.status === 0) {
-        setStreamUp(false);
-        return;
-      }
-      /* otherwise fall through to the backoff below — polling covers the gap */
-    }
-
-    setStreamUp(false);
-    if (!streamAbort || streamAbort.signal.aborted) return;
-    // Exponential-ish backoff, capped: a backend that is down should not be
-    // hammered, but an approval waiting 25s cannot wait a minute for a retry.
-    await new Promise((r) => setTimeout(r, backoff));
-    backoff = Math.min(backoff * 2, 10_000);
-  }
-}
-
-/**
- * Pending `user`-mode approvals: stream first, poll as a fallback. The event is
- * what makes the card appear in about a second; the 3s poll is what makes it
- * appear at all when the stream is dead.
- */
+/** Open `user`-mode approvals, polled from `GET /api/voice/approvals`. */
 export function usePendingApprovals() {
-  const qc = useQueryClient();
-  const [streaming, setStreaming] = useState(false);
   // Mounted at the app root, so it outlives sign-in and sign-out: follow the
   // session instead of what was true at mount.
   const connected = useSession((s) => s.connected);
 
   const query = useQuery<VoiceApproval[], PincerError>({
     queryKey: APPROVALS_KEY,
-    queryFn: async () => asApprovalList(await apiFetch("/api/voice/approvals/pending")),
-    refetchInterval: streaming ? APPROVAL_POLL_STREAMING_MS : APPROVAL_POLL_MS,
+    queryFn: async () =>
+      (await apiFetch<Wire<"VoiceApprovalOut">[]>(APPROVALS_PATH)).map(toVoiceApproval),
+    refetchInterval: APPROVAL_POLL_MS,
     enabled: connected,
-    // A backend without the endpoint answers 404; retrying that every 3s is
-    // not useful.
     retry: false,
   });
 
-  useEffect(() => {
-    if (!connected) return;
-
-    const onUp = (up: boolean) => setStreaming(up);
-    streamStateListeners.add(onUp);
-
-    streamRefs += 1;
-    if (streamRefs === 1) {
-      streamAbort = new AbortController();
-      void runApprovalStream((incoming) => {
-        const state = incoming.state ?? "pending";
-        if (state === "pending") {
-          streamedPending.set(incoming.id, incoming);
-          qc.setQueryData<VoiceApproval[]>(APPROVALS_KEY, (prev = []) => [
-            ...prev.filter((a) => a.id !== incoming.id),
-            incoming,
-          ]);
-        } else {
-          streamedPending.delete(incoming.id);
-          qc.setQueryData<VoiceApproval[]>(APPROVALS_KEY, (prev = []) =>
-            prev.filter((a) => a.id !== incoming.id),
-          );
-          terminalListeners.forEach((fn) => fn(incoming.id, state));
-        }
-      });
-    }
-
-    return () => {
-      streamStateListeners.delete(onUp);
-      streamRefs -= 1;
-      if (streamRefs === 0) {
-        streamAbort?.abort();
-        streamAbort = null;
-      }
-    };
-  }, [qc, connected]);
-
-  // What the server last listed, plus anything the stream announced since,
-  // minus anything already expired.
+  // Drop anything already past its expiry between polls.
   const approvals = useMemo(() => {
-    const byId = new Map<string, VoiceApproval>();
-    for (const a of query.data ?? []) byId.set(a.id, a);
-    for (const [id, a] of streamedPending) if (!byId.has(id)) byId.set(id, a);
     const now = Date.now();
-    return [...byId.values()].filter((a) => new Date(a.expires_at).getTime() > now);
-    // No dep on the streamed map: every push writes through setQueryData.
+    return (query.data ?? []).filter((a) => new Date(a.expires_at).getTime() > now);
   }, [query.data]);
 
-  return {
-    approvals,
-    isLoading: query.isLoading,
-    /** True while the SSE stream is connected — the card is then near-instant. */
-    streaming,
-  };
+  return { approvals, isLoading: query.isLoading };
 }
 
 /**
- * Approve or deny. A 409 is not an error to hide: the approval reached a
- * terminal state elsewhere and the card has to show that state.
+ * Whether a decision failed because the approval is no longer open: the
+ * backend answers 404 when it is unknown, already decided (Telegram, another
+ * tab) or expired, without saying which.
  */
+export function isApprovalClosed(err: PincerError): boolean {
+  return err.status === 404;
+}
+
+/** Approve or deny via `POST /api/voice/approvals/{id}`. */
 export function useDecideApproval() {
   const qc = useQueryClient();
-  return useMutation<
-    ApprovalDecisionOut,
-    PincerError & { state?: ApprovalState },
-    { id: string; decision: "approve" | "deny" }
-  >({
+  return useMutation<ApprovalDecisionOut, PincerError, { id: string; decision: "approve" | "deny" }>({
     mutationFn: async ({ id, decision }) => {
-      const res = await authedFetch(`/api/voice/approvals/${id}`, {
+      const res = await authedFetch(`${APPROVALS_PATH}/${encodeURIComponent(id)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decision }),
+        body: JSON.stringify({ approved: decision === "approve" }),
       });
-      const body = (await res.json().catch(() => ({}))) as {
+      const body = (await res.json().catch(() => ({}))) as Partial<Wire<"VoiceApprovalOut">> & {
         detail?: string;
-        state?: ApprovalState;
-        id?: string;
       };
-      if (!res.ok) {
-        const err = new PincerError(body.detail ?? `HTTP ${res.status}`, res.status) as PincerError & {
-          state?: ApprovalState;
-        };
-        // 409 carries the terminal state the server settled on.
-        err.state = body.state;
-        throw err;
-      }
-      return { id: body.id ?? id, state: body.state ?? (decision === "approve" ? "approved" : "denied") };
+      if (!res.ok) throw new PincerError(body.detail ?? `HTTP ${res.status}`, res.status);
+      const state = (body.final_state || (decision === "approve" ? "approved" : "denied")) as ApprovalState;
+      return { id: body.approval_id ?? id, state };
     },
     onSettled: (_data, _err, vars) => {
-      streamedPending.delete(vars.id);
       qc.setQueryData<VoiceApproval[]>(APPROVALS_KEY, (prev = []) =>
         prev.filter((a) => a.id !== vars.id),
       );

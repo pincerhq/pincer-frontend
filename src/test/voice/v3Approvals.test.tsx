@@ -1,7 +1,7 @@
 /**
  * The live approval card (S11 §6.5). The properties a caller pays for when they
  * break: the countdown comes from the server's expiry, a second click does not
- * send a second decision, and a 409 shows the state the server settled on.
+ * send a second decision, and a transport error stays on the card.
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -18,6 +18,7 @@ const APPROVAL: VoiceApproval = {
   summary: 'Book Tuesday 14:00 with Anna Weber (30 min)',
   args_preview: { start: '2026-08-25T14:00:00+02:00', duration_minutes: 30 },
   expires_at: new Date(Date.now() + 25_000).toISOString(),
+  state: 'pending',
 };
 
 function renderCard(overrides: Partial<Parameters<typeof ApprovalCard>[0]> = {}) {

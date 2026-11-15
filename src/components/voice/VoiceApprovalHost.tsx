@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import {
-  onApprovalTerminal,
+  isApprovalClosed,
   useLiveCalls,
   usePendingApprovals,
   useDecideApproval,
@@ -129,8 +129,8 @@ function ApprovalStack() {
         }
       }
 
-      // Gone from the list, no terminal event: resolved elsewhere (Telegram).
-      // Drop it rather than invent a verdict.
+      // Gone from the list: resolved elsewhere (Telegram, another tab) or
+      // expired server-side. Drop it rather than invent a verdict.
       const liveIds = new Set(live.map((a) => a.id));
       return next.filter(
         (c) => c.state !== 'pending' || c.deciding || liveIds.has(c.approval.id),
@@ -143,9 +143,6 @@ function ApprovalStack() {
       if (!readMuted()) playPing();
     }
   }, [approvals]);
-
-  // Terminal events from the stream: decided elsewhere, or expired server-side.
-  useEffect(() => onApprovalTerminal((id, state) => settle(id, state)), [settle]);
 
   // Local expiry: the ring hitting zero flips the card too.
   useEffect(() => {
@@ -173,10 +170,10 @@ function ApprovalStack() {
       {
         onSuccess: (out) => settle(id, out.state),
         onError: (err) => {
-          // 409 means it reached a terminal state elsewhere. Not an error to
-          // the owner: it is the answer.
-          if (err.status === 409) {
-            settle(id, err.state ?? 'expired');
+          // No longer open: it was decided elsewhere or ran out. Not an error
+          // to the owner; the backend does not say which, so show it as over.
+          if (isApprovalClosed(err)) {
+            settle(id, 'expired');
             return;
           }
           setCards((prev) =>
@@ -226,7 +223,7 @@ function ApprovalStack() {
 }
 
 export default function VoiceApprovalHost() {
-  // No token, no stream, nothing to approve, and no polling either.
+  // No token, nothing to approve, and no polling either.
   if (!isConnected()) return null;
   return (
     <QueryClientProvider client={queryClient}>
