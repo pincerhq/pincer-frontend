@@ -4,15 +4,16 @@
  * v3 turned this real. Until Sprint 11 there was no way to park an approval
  * gate — decisions only existed live, inside a call — so this screen was a
  * badged demo queue. Now `user`-mode gates are held server-side and listed by
- * `/api/voice/approvals/pending`, streamed over SSE, so the queue below is the
+ * `GET /api/voice/approvals` (polled every 3s), so the queue below is the
  * actual set of callers waiting on an answer.
  *
  * The same cards also float over every other page (`VoiceApprovalHost`): this
  * screen is where you go to watch for them, not the only place they appear.
  */
-import { MessageSquare, Radio, ShieldCheck, Wifi, WifiOff } from 'lucide-react';
+import { MessageSquare, Radio, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
+  isApprovalClosed,
   useLiveCalls,
   useDecideApproval,
   usePendingApprovals,
@@ -21,13 +22,12 @@ import {
 } from '@/lib/api/voice';
 import { ApprovalCard } from '@/components/voice/ApprovalCard';
 import { useState } from 'react';
-import { cn } from '@/lib/utils';
 
 export default function PendingApprovalView() {
   const navigate = useNavigate();
   const connected = useVoiceConnected();
   const { calls: activeCalls } = useLiveCalls();
-  const { approvals, streaming, isLoading } = usePendingApprovals();
+  const { approvals, isLoading } = usePendingApprovals();
   const decide = useDecideApproval();
 
   const [decided, setDecided] = useState<Record<string, ApprovalState>>({});
@@ -42,8 +42,8 @@ export default function PendingApprovalView() {
       {
         onSuccess: (out) => setDecided((d) => ({ ...d, [id]: out.state })),
         onError: (err) => {
-          if (err.status === 409) {
-            setDecided((d) => ({ ...d, [id]: err.state ?? 'expired' }));
+          if (isApprovalClosed(err)) {
+            setDecided((d) => ({ ...d, [id]: 'expired' }));
             return;
           }
           setErrors((e) => ({ ...e, [id]: err.message || 'Could not send the decision' }));
@@ -59,24 +59,6 @@ export default function PendingApprovalView() {
         <p className="plat-crumb" style={{ color: 'var(--text-4)' }}>3days.telephony</p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="text-[26px] text-[var(--ink)]">Pending Approval</h1>
-          {connected && (
-            <span
-              title={
-                streaming
-                  ? 'Live: approvals arrive over the event stream'
-                  : 'Stream down — falling back to polling every 3s'
-              }
-              className={cn(
-                'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium',
-                streaming
-                  ? 'border-green-200 bg-green-50 text-green-700'
-                  : 'border-amber-200 bg-amber-50 text-amber-700',
-              )}
-            >
-              {streaming ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-              {streaming ? 'live' : 'polling'}
-            </span>
-          )}
         </div>
         <p className="mt-1 text-xs text-[var(--text-4)]">
           Tool calls the agent paused mid-conversation, waiting on you — the caller is on hold.

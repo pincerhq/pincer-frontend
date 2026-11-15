@@ -98,6 +98,7 @@ const MINE: VoiceApproval = {
   summary: 'Create a reminder tomorrow 12:00',
   args_preview: {},
   expires_at: new Date(Date.now() + 20_000).toISOString(),
+  state: 'pending',
 };
 
 const SOMEONE_ELSES: VoiceApproval = { ...MINE, id: 'apr_other', call_sid: 'CA-other' };
@@ -131,7 +132,7 @@ vi.mock('@/lib/api/voice', async (importOriginal) => {
     }),
     useUpdateVoiceConfig: () => ({ mutate: updateModel, isPending: false }),
     useEndCall: () => ({ mutate: endCall, isPending: false, isError: false }),
-    usePendingApprovals: () => ({ approvals: [MINE, SOMEONE_ELSES], streaming: true, isLoading: false }),
+    usePendingApprovals: () => ({ approvals: [MINE, SOMEONE_ELSES], isLoading: false }),
     useDecideApproval: () => ({ mutate: decideMutate }),
     useCallHistoryAll: () => ({
       calls: [

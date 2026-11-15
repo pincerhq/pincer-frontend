@@ -49,7 +49,7 @@ const WORKLIST: Record<string, string[]> = {
   'pages/telephony/_components/voice/LiveCallModal.tsx': ['bg-amber-50/70', 'bg-green-50', 'bg-green-500 ×3', 'border-amber-300', 'text-amber-700 ×2', 'text-green-700'],
   'pages/telephony/_components/voice/LiveView.tsx': ['bg-green-50', 'bg-green-500', 'text-green-600', 'text-green-700'],
   'pages/telephony/_components/voice/MessagesView.tsx': ['bg-amber-50', 'bg-amber-500', 'border-amber-200', 'text-amber-800'],
-  'pages/telephony/_components/voice/PendingApprovalView.tsx': ['bg-amber-50', 'bg-green-50', 'border-amber-200', 'border-green-200', 'text-amber-700', 'text-green-500', 'text-green-700'],
+  'pages/telephony/_components/voice/PendingApprovalView.tsx': ['text-green-500'],
   'pages/telephony/_components/voice/PolicyPanel.tsx': ['bg-amber-50', 'border-amber-300', 'text-amber-700', 'text-amber-800', 'text-amber-900'],
   'pages/telephony/_components/voice/ReceptionistPanel.tsx': ['bg-green-600'],
   'pages/telephony/_components/voice/StartCallModal.tsx': ['bg-red-50 ×3', 'border-red-200 ×3', 'border-red-300', 'text-green-600', 'text-red-500 ×2', 'text-red-600 ×3', 'text-red-700 ×3', 'text-red-700/80'],
